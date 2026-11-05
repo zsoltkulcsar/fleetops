@@ -1,5 +1,7 @@
 using System.Text.Json.Serialization;
 using FleetOps.Kernel;
+using FleetOps.Kernel.Authorization;
+using FleetOps.Api.Pipeline;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
@@ -15,6 +17,12 @@ builder.Services.AddOpenApi();
 builder.Services.AddSingleton<ICompanyTimeService>(_ =>
     new CompanyTimeService(CompanyTimeService.Resolve(builder.Configuration["Company:Timezone"] ?? "Europe/Berlin")));
 builder.Services.AddSingleton<IDatabaseHealth, DatabaseHealth>();
+builder.Services.AddSingleton<IAccessContextAccessor, NoSessionAccessor>();
+builder.Services.AddSingleton<ICommandPolicyProvider, DefaultCommandPolicyProvider>();
+builder.Services.AddSingleton<ICommandTransactionFactory, NpgsqlCommandTransactionFactory>();
+builder.Services.AddScoped<ISubjectRoleLookup, FailClosedSubjectRoleLookup>();
+builder.Services.AddScoped<CommandDispatcher>();
+builder.Services.AddScoped<QueryDispatcher>();
 
 var app = builder.Build();
 app.UseExceptionHandler(new ExceptionHandlerOptions
@@ -23,6 +31,19 @@ app.UseExceptionHandler(new ExceptionHandlerOptions
     ExceptionHandler = async context =>
     {
         var exception = context.Features.Get<IExceptionHandlerFeature>()?.Error;
+        if (exception is AuthorizationException refusal)
+        {
+            context.Items["ProblemCode"] = refusal.Code;
+            var status = refusal.Code == "not_signed_in" ? StatusCodes.Status401Unauthorized :
+                refusal.Code == "state_conflict" ? StatusCodes.Status409Conflict :
+                StatusCodes.Status403Forbidden;
+            await Results.Problem(statusCode: status, extensions: new Dictionary<string, object?>
+            {
+                ["code"] = refusal.Code,
+                ["allowedRoles"] = refusal.AllowedRoles.Select(role => role.Code()).ToArray()
+            }).ExecuteAsync(context);
+            return;
+        }
         app.Logger.LogError("Unhandled exception {ExceptionType} TraceId {TraceId}",
             exception?.GetType().Name ?? "Unknown", context.TraceIdentifier);
         context.Response.StatusCode = StatusCodes.Status500InternalServerError;
@@ -49,7 +70,7 @@ public sealed class DatabaseHealth(IConfiguration configuration, ILogger<Databas
 {
     public async Task<bool> IsHealthyAsync(CancellationToken cancellationToken)
     {
-        var connectionString = configuration.GetConnectionString("FleetOps") ?? configuration["FLEETOPS_DATABASE_RUNTIME_URL"];
+        var connectionString = DatabaseConnectionString.Resolve(configuration);
         if (string.IsNullOrWhiteSpace(connectionString)) return false;
         try
         {
