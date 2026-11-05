@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+.context/
+.vercel/
+bin/
+obj/
+node_modules/
+dist/
+*.user
+.vs/
+coverage/
+TestResults/
