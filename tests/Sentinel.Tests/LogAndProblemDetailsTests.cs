@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
+using System.Threading;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -10,6 +11,10 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using FleetOps.Kernel.Authorization;
+using FleetOps.Api.Pipeline;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Net.Http;
 using Xunit;
 
@@ -52,6 +57,41 @@ public sealed class LogAndProblemDetailsTests
         Assert.DoesNotContain(sentinel, problemBody, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task Dispatcher_output_is_masked_by_role()
+    {
+        var employeeId = Guid.NewGuid();
+        var accessor = new MutableAccessor(AccessContext.For(employeeId, RoleCode.Dispatcher));
+        using var services = new ServiceCollection()
+            .AddSingleton<IAccessContextAccessor>(accessor)
+            .AddSingleton<ICommandPolicyProvider, DefaultCommandPolicyProvider>()
+            .AddSingleton<IQueryHandler<MedicalSummaryQuery, DispatcherSummaryReadModel>, MedicalSummaryQueryHandler>()
+            .AddSingleton<IQueryHandler<MedicalDetailQuery, MedicalDetailReadModel>, MedicalDetailQueryHandler>()
+            .AddScoped<QueryDispatcher>()
+            .BuildServiceProvider();
+        var dispatcher = services.GetRequiredService<QueryDispatcher>();
+        var options = new JsonSerializerOptions { NumberHandling = JsonNumberHandling.Strict };
+        var summary = await dispatcher.DispatchAsync<MedicalSummaryQuery, DispatcherSummaryReadModel>(new MedicalSummaryQuery(), TestContext.Current.CancellationToken);
+        Assert.DoesNotContain("MEDICAL_SENTINEL", JsonSerializer.Serialize(summary, options));
+        await Assert.ThrowsAsync<AuthorizationException>(() =>
+            dispatcher.DispatchAsync<MedicalDetailQuery, MedicalDetailReadModel>(new MedicalDetailQuery(Guid.NewGuid()), TestContext.Current.CancellationToken));
+
+        accessor.Current = AccessContext.For(employeeId, RoleCode.Hr);
+        var detail = await dispatcher.DispatchAsync<MedicalDetailQuery, MedicalDetailReadModel>(new MedicalDetailQuery(Guid.NewGuid()), TestContext.Current.CancellationToken);
+        Assert.Contains("MEDICAL_SENTINEL", JsonSerializer.Serialize(detail, options));
+
+        accessor.Current = AccessContext.For(Guid.NewGuid(), RoleCode.Driver);
+        await Assert.ThrowsAsync<AuthorizationException>(() =>
+            dispatcher.DispatchAsync<MedicalDetailQuery, MedicalDetailReadModel>(new MedicalDetailQuery(Guid.NewGuid()), TestContext.Current.CancellationToken));
+        var ownSubject = ((AccessContext)accessor.Current!).EmployeeId;
+        detail = await dispatcher.DispatchAsync<MedicalDetailQuery, MedicalDetailReadModel>(new MedicalDetailQuery(ownSubject), TestContext.Current.CancellationToken);
+        Assert.Contains("MEDICAL_SENTINEL", JsonSerializer.Serialize(detail, options));
+
+        accessor.Current = AccessContext.For(Guid.NewGuid(), RoleCode.Owner);
+        detail = await dispatcher.DispatchAsync<MedicalDetailQuery, MedicalDetailReadModel>(new MedicalDetailQuery(Guid.NewGuid()), TestContext.Current.CancellationToken);
+        Assert.Contains("MEDICAL_SENTINEL", JsonSerializer.Serialize(detail, options));
+    }
+
     private sealed class SentinelEndpointStartupFilter : IStartupFilter
     {
         public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) => app =>
@@ -78,6 +118,44 @@ public sealed class LogAndProblemDetailsTests
         public ConcurrentBag<string> Entries { get; } = new();
         public ILogger CreateLogger(string categoryName) => new CaptureLogger(Entries, categoryName);
         public void Dispose() { }
+    }
+
+    private sealed class MutableAccessor(AccessContext? current) : IAccessContextAccessor
+    {
+        public AccessContext? Current { get; set; } = current;
+    }
+
+    [QueryPolicy("documents.medical.view")]
+    private sealed class MedicalSummaryQuery : IQuery<DispatcherSummaryReadModel> { }
+
+    [QueryPolicy("documents.medical.view")]
+    private sealed record MedicalDetailQuery(Guid? SubjectId) : IQuery<MedicalDetailReadModel>, IHasSubject;
+
+    [VisibleTo(RoleCode.Dispatcher)]
+    private sealed class DispatcherSummaryReadModel(string sourceMedicalValue) : IReadModel
+    {
+        public string Status => sourceMedicalValue.Length > 0 ? "masked" : "masked";
+    }
+
+    [VisibleTo(RoleCode.Driver, RoleCode.Hr, RoleCode.Owner)]
+    private sealed class MedicalDetailReadModel(string medical) : IReadModel { public string Medical => medical; }
+
+    private sealed class MedicalSummaryQueryHandler : IQueryHandler<MedicalSummaryQuery, DispatcherSummaryReadModel>
+    {
+        public Task<DispatcherSummaryReadModel> HandleAsync(MedicalSummaryQuery query, AccessContext actor, CancellationToken cancellationToken)
+        {
+            var sourceMedicalValue = "MEDICAL_SENTINEL";
+            return Task.FromResult(new DispatcherSummaryReadModel(sourceMedicalValue));
+        }
+    }
+
+    private sealed class MedicalDetailQueryHandler : IQueryHandler<MedicalDetailQuery, MedicalDetailReadModel>
+    {
+        public Task<MedicalDetailReadModel> HandleAsync(MedicalDetailQuery query, AccessContext actor, CancellationToken cancellationToken)
+        {
+            var sourceMedicalValue = "MEDICAL_SENTINEL";
+            return Task.FromResult(new MedicalDetailReadModel(sourceMedicalValue));
+        }
     }
 
     private sealed class CaptureLogger(ConcurrentBag<string> entries, string categoryName) : ILogger
