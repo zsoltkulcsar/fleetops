@@ -13,7 +13,7 @@ export default defineConfig({
     },
     {
       command:
-        "npm run build --workspace @fleetops/office && npm run preview --workspace @fleetops/office -- --host 127.0.0.1 --port 4174 --strictPort",
+        "npm run build && npm run preview --workspace @fleetops/office -- --host 127.0.0.1 --port 4174 --strictPort",
       port: 4174,
       reuseExistingServer: !process.env.CI,
     },
