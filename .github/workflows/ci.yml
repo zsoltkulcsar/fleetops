@@ -87,9 +87,27 @@ jobs:
       - working-directory: web
         run: npm ci && npm audit --audit-level=high
 
+  accessibility:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with: { node-version: '24', cache: npm, cache-dependency-path: web/package-lock.json }
+      - working-directory: web
+        run: npm ci && npx playwright install --with-deps chromium && npm run test:e2e
+        env:
+          CI: true
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-results
+          path: web/test-results/
+          retention-days: 7
+
   deploy:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    needs: [build, tests, architecture, client-staleness, migration-dry-run, dependency-audit]
+    needs: [build, tests, architecture, client-staleness, migration-dry-run, dependency-audit, accessibility]
     runs-on: ubuntu-latest
     environment: demo
     steps:
