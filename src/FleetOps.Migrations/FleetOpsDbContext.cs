@@ -12,6 +12,7 @@ public sealed class FleetOpsDbContext(DbContextOptions<FleetOpsDbContext> option
         {
             entity.ToTable("migration_marker");
             entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasColumnName("id");
             entity.Property(x => x.Name).HasColumnName("name").HasMaxLength(100).IsRequired();
         });
     }

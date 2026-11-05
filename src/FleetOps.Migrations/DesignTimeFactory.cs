@@ -12,8 +12,8 @@ public sealed class DesignTimeFactory : IDesignTimeDbContextFactory<FleetOpsDbCo
         var builder = new Npgsql.NpgsqlConnectionStringBuilder(connectionString);
         if (!string.IsNullOrWhiteSpace(builder.RootCertificate) && !Path.IsPathRooted(builder.RootCertificate))
             builder.RootCertificate = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), builder.RootCertificate));
-        var options = new DbContextOptionsBuilder<FleetOpsDbContext>().UseNpgsql(
-            builder.ConnectionString).Options;
-        return new FleetOpsDbContext(options);
+        var options = new DbContextOptionsBuilder<FleetOpsDbContext>();
+        MigrationDbContextOptions.Configure(options, builder.ConnectionString);
+        return new FleetOpsDbContext(options.Options);
     }
 }

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Logging.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.Warning);
 builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
 {
     context.ProblemDetails.Extensions.TryAdd("code", context.HttpContext.Items["ProblemCode"] ?? "unexpected_error");
@@ -16,7 +17,18 @@ builder.Services.AddSingleton<ICompanyTimeService>(_ =>
 builder.Services.AddSingleton<IDatabaseHealth, DatabaseHealth>();
 
 var app = builder.Build();
-app.UseExceptionHandler();
+app.UseExceptionHandler(new ExceptionHandlerOptions
+{
+    SuppressDiagnosticsCallback = _ => true,
+    ExceptionHandler = async context =>
+    {
+        var exception = context.Features.Get<IExceptionHandlerFeature>()?.Error;
+        app.Logger.LogError("Unhandled exception {ExceptionType} TraceId {TraceId}",
+            exception?.GetType().Name ?? "Unknown", context.TraceIdentifier);
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        await Results.Problem(statusCode: StatusCodes.Status500InternalServerError).ExecuteAsync(context);
+    }
+});
 app.MapOpenApi("/openapi/{documentName}.json");
 
 app.MapGet("/healthz", async (IDatabaseHealth database, CancellationToken cancellationToken) =>
