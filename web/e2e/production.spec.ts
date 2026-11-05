@@ -10,5 +10,5 @@ test("gallery redirects and deep links render", async ({ page }) => {
 test("production preview serves the driver app", async ({ request }) => {
   const response = await request.get("/driver/");
   expect(response.ok()).toBeTruthy();
-  expect(await response.text()).toMatch(/Driver|FleetOps/);
+  expect(await response.text()).toContain("<title>FleetOps Driver</title>");
 });

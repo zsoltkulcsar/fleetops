@@ -49,10 +49,14 @@ test("pill colours match the design system in dark theme", async ({ page }) => {
       .toBe(color);
 });
 
-test("today renders as DD.MM.YYYY in Berlin across midnight", async ({ page }) => {
-  await page.clock.setFixedTime(new Date("2026-11-05T23:30:00Z"));
-  await page.goto("/");
-  await expect(page.getByTestId("today")).toContainText("06.11.2026");
+test.describe("today rendering", () => {
+  test.use({ timezoneId: "America/New_York" });
+
+  test("today renders as DD.MM.YYYY in Berlin across midnight", async ({ page }) => {
+    await page.clock.setFixedTime(new Date("2026-11-05T23:30:00Z"));
+    await page.goto("/");
+    await expect(page.getByTestId("today")).toContainText("06.11.2026");
+  });
 });
 test("primary button keeps 4.5 to 1 contrast on hover", async ({ page }) => {
   for (const theme of ["light", "dark"] as const) {
