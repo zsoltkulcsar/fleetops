@@ -1,0 +1,24 @@
+<Solution>
+  <Project Path="src/Kernel/Kernel.csproj" />
+  <Project Path="src/FleetOps.Api/FleetOps.Api.csproj" />
+  <Project Path="src/FleetOps.Migrations/FleetOps.Migrations.csproj" />
+  <Project Path="src/Modules/Setup/Setup.csproj" />
+  <Project Path="src/Modules/Audit/Audit.csproj" />
+  <Project Path="src/Modules/Notifications/Notifications.csproj" />
+  <Project Path="src/Modules/People/People.csproj" />
+  <Project Path="src/Modules/Identity/Identity.csproj" />
+  <Project Path="src/Modules/Fleet/Fleet.csproj" />
+  <Project Path="src/Modules/Documents/Documents.csproj" />
+  <Project Path="src/Modules/Absences/Absences.csproj" />
+  <Project Path="src/Modules/Maintenance/Maintenance.csproj" />
+  <Project Path="src/Modules/Readiness/Readiness.csproj" />
+  <Project Path="src/Modules/Schedule/Schedule.csproj" />
+  <Project Path="src/Modules/Shifts/Shifts.csproj" />
+  <Project Path="src/Modules/Payroll/Payroll.csproj" />
+  <Project Path="src/Modules/Alerts/Alerts.csproj" />
+  <Project Path="src/Modules/Views/Views.csproj" />
+  <Project Path="tests/Kernel.UnitTests/Kernel.UnitTests.csproj" />
+  <Project Path="tests/FleetOps.Api.IntegrationTests/FleetOps.Api.IntegrationTests.csproj" />
+  <Project Path="tests/Architecture.Tests/Architecture.Tests.csproj" />
+  <Project Path="tests/Sentinel.Tests/Sentinel.Tests.csproj" />
+ </Solution>

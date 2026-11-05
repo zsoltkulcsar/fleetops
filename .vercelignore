@@ -1,0 +1,11 @@
+.env
+.env.*
+!.env.example
+.context
+.git
+.github
+bin
+obj
+node_modules
+coverage
+TestResults

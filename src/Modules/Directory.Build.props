@@ -1,0 +1,9 @@
+<Project>
+  <ItemGroup>
+    <Folder Include="Contracts\" />
+    <Folder Include="Api\" />
+    <Folder Include="Application\" />
+    <Folder Include="Domain\" />
+    <Folder Include="Infrastructure\" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,7 @@
+{
+  "name": "fleetops-web",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": { "build": "npm run typecheck --workspace @fleetops/office && npm run typecheck --workspace @fleetops/driver && npm run build --workspace @fleetops/office && npm run build --workspace @fleetops/driver", "typecheck": "tsc --noEmit", "generate:client": "openapi-typescript packages/api-client/openapi.json -o packages/api-client/src/generated.ts", "check:client": "node scripts/check-client.mjs && npm run generate:client && git diff --exit-code -- packages/api-client/openapi.json packages/api-client/src/generated.ts" },
+  "devDependencies": { "openapi-typescript": "7.13.0", "typescript": "5.9.3", "vite": "8.3.5" }
+}

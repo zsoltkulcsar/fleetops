@@ -1,0 +1,1 @@
+{"name":"@fleetops/ui","private":true,"scripts":{"build":"tsc --noEmit"},"devDependencies":{"typescript":"5.9.3"}}

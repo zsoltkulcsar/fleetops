@@ -11,3 +11,7 @@ dist/
 .vs/
 coverage/
 TestResults/
+*.suo
+*.nupkg
+web/packages/api-client/src/generated.ts.tmp
+.npm-cache/
