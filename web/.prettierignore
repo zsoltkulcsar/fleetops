@@ -1,0 +1,4 @@
+dist
+node_modules
+packages/api-client/src/generated.ts
+packages/api-client/openapi.json
