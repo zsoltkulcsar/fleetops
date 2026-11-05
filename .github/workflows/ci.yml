@@ -64,6 +64,7 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with: { dotnet-version: '10.0.302' }
       - run: dotnet tool install --global dotnet-ef --version 10.0.14
+      - run: dotnet restore src/FleetOps.Migrations/FleetOps.Migrations.csproj
       - run: dotnet ef migrations script --idempotent --project src/FleetOps.Migrations/FleetOps.Migrations.csproj --startup-project src/FleetOps.Migrations/FleetOps.Migrations.csproj --output migration.sql
 
   dependency-audit:
@@ -93,6 +94,7 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with: { dotnet-version: '10.0.302' }
       - run: dotnet tool install --global dotnet-ef --version 10.0.14
+      - run: dotnet restore src/FleetOps.Migrations/FleetOps.Migrations.csproj
       - run: ./deploy/db/migrate.ps1
         shell: pwsh
         env: { FLEETOPS_DATABASE_MIGRATION_URL: '${{ secrets.FLEETOPS_DATABASE_MIGRATION_URL }}' }
