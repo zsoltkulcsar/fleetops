@@ -23,7 +23,7 @@ Never commit values. The following names are required by CI, deployment, migrati
 - `FLEETOPS_DATABASE_RUNTIME_URL` — Npgsql keyword-form runtime-role URL with the same TLS verification settings.
 - `FLEETOPS_MIGRATION_ROLE_PASSWORD`, `FLEETOPS_RUNTIME_ROLE_PASSWORD`, `FLEETOPS_PURGE_ROLE_PASSWORD` — generated role passwords; never print them.
 - `FLEETOPS_JOB_SECRET` — per-environment job authorization secret.
-- `VERCEL_TOKEN`, `VERCEL_PROJECT_ID`, `VERCEL_SCOPE` — CI-only Vercel deployment credentials and scope.
+- `VERCEL_TOKEN`, `VERCEL_SCOPE` — CI-only Vercel deployment credentials and scope.
 
 `deploy/db/supabase-ca.crt` is Supabase's public root CA, used for certificate verification. Local Postgres uses an ordinary local connection string; hosted connections must use session pooling on port 5432 and certificate verification.
 
