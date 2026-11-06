@@ -19,9 +19,8 @@ public sealed class AuditSaveChangesInterceptor : SaveChangesInterceptor
             if (entry.State == EntityState.Modified && !property.IsModified) continue;
             if (entry.State == EntityState.Added && property.CurrentValue is null) continue;
             if (audited.AuditActorId == Guid.Empty) throw new InvalidOperationException("audit_actor_required");
-            var oldValue = entry.State == EntityState.Modified ? Format(property.OriginalValue) : null;
-            var newValue = Format(property.CurrentValue);
-            if (entry.State == EntityState.Modified && classification == AuditFieldClasses.Special) { oldValue = null; newValue = null; }
+            var oldValue = classification == AuditFieldClasses.Special ? null : entry.State == EntityState.Modified ? Format(property.OriginalValue) : null;
+            var newValue = classification == AuditFieldClasses.Special ? null : Format(property.CurrentValue);
             audited.AddAudit(new AuditEntry { Id = Guid.CreateVersion7(), EntityType = entry.Metadata.ClrType.Name, EntityId = entry.Property("Id").CurrentValue is Guid id ? id : throw new InvalidOperationException("audit_entity_id_required"), FieldName = property.Metadata.Name, OldValue = oldValue, NewValue = newValue, ActorId = audited.AuditActorId.ToString(), Reason = audited.AuditReason, CreatedAt = DateTimeOffset.UtcNow });
         }
     }

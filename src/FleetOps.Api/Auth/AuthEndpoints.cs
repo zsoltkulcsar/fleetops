@@ -41,17 +41,14 @@ public static class AuthEndpoints
         [FromServices] UserManager<OfficeUser> users,
         [FromServices] IHttpContextAccessor http,
         [FromServices] TimeProvider time,
-        [FromServices] IOptions<AuthOptions> authOptions)
+        [FromServices] IOptions<AuthOptions> authOptions,
+        [FromServices] ICompanyTimeService companyTime)
     {
+        var invalidFields = Validate(("email", input?.Email), ("password", input?.Password));
+        if (invalidFields is not null) return invalidFields;
         var normalized = input.Email.Trim().ToUpperInvariant();
         var user = await users.Users.SingleOrDefaultAsync(x => x.NormalizedEmail == normalized);
         var locked = user is not null && user.AccessFailedCount >= authOptions.Value.SecondFactorFailureLimit && IsLockedOut(user, time);
-        if (user is not null && user.AccessFailedCount >= 5)
-        {
-            user.AccessFailedCount = 0;
-            user.LockoutEnd = null;
-            await users.UpdateAsync(user);
-        }
 
         var valid = user is not null
             ? await users.CheckPasswordAsync(user, input.Password)
@@ -75,7 +72,8 @@ public static class AuthEndpoints
         if (locked) return Results.Json(new { code = "account_locked" }, statusCode: StatusCodes.Status423Locked);
 
         var employee = await db.Employees.FindAsync([user!.EmployeeId], http.HttpContext?.RequestAborted ?? CancellationToken.None);
-        if (employee is null || employee.Status != EmployeeStatus.Active)
+        var ended = employee?.EndDate is DateOnly endDate && companyTime.ToCompanyDate(time.GetUtcNow()) > endDate;
+        if (employee is null || employee.Status != EmployeeStatus.Active || ended)
         {
             return Results.Json(new { code = "sign_in_failed" }, statusCode: StatusCodes.Status401Unauthorized);
         }
@@ -117,14 +115,18 @@ public static class AuthEndpoints
     private static bool IsLockedOut(OfficeUser user, TimeProvider time) =>
         user.LockoutEnabled && user.LockoutEnd is DateTimeOffset lockoutEnd && lockoutEnd > time.GetUtcNow();
 
-    private static Task<IResult> SecondFactor(
+    private static async Task<IResult> SecondFactor(
         [FromBody] SecondFactorRequest input,
         [FromServices] FleetOpsDbContext db,
         [FromServices] UserManager<OfficeUser> users,
         [FromServices] IHttpContextAccessor http,
         [FromServices] TimeProvider time,
-        [FromServices] IOptions<AuthOptions> options) =>
-        CompleteFactor(input, db, users, http, time, options);
+        [FromServices] IOptions<AuthOptions> options)
+    {
+        var invalidFields = Validate(("code", input?.Code));
+        if (invalidFields is not null) return invalidFields;
+        return await CompleteFactor(input, db, users, http, time, options);
+    }
 
     private static async Task<IResult> Enrol(
         [FromServices] FleetOpsDbContext db,
@@ -185,6 +187,8 @@ public static class AuthEndpoints
         [FromServices] TimeProvider time,
         [FromServices] IOptions<AuthOptions> options)
     {
+        var invalidFields = Validate(("version", input?.Version));
+        if (invalidFields is not null) return invalidFields;
         var session = await FindSession(db, http);
         if (session is null || session.Stage != SessionStage.PendingPrivacy)
         {
@@ -203,14 +207,24 @@ public static class AuthEndpoints
         [FromServices] FleetOpsDbContext db,
         [FromServices] IMailbox mailbox,
         [FromServices] TimeProvider time,
-        [FromServices] IOptions<AuthOptions> options)
+        [FromServices] IOptions<AuthOptions> options,
+        [FromServices] ILoggerFactory loggerFactory)
     {
+        var invalidFields = Validate(("email", input?.Email));
+        if (invalidFields is not null) return invalidFields;
         var user = await db.Users.SingleOrDefaultAsync(x => x.NormalizedEmail == input.Email.Trim().ToUpperInvariant());
         if (user is not null)
         {
             var raw = AuthTokens.New();
             db.PasswordResetTokens.Add(new PasswordResetToken { Id = Guid.NewGuid(), UserId = user.Id, TokenHash = AuthTokens.Hash(raw), ExpiresAt = time.GetUtcNow().Add(options.Value.ResetTokenLifetime) });
-            mailbox.Store(user.Email ?? user.UserName ?? "", raw);
+            try
+            {
+                mailbox.Store(user.Email ?? user.UserName ?? "", raw);
+            }
+            catch
+            {
+                loggerFactory.CreateLogger("FleetOps.Api.Auth.AuthEndpoints").LogWarning("Password reset mailbox delivery failed with code {Code}", "mailbox_unavailable");
+            }
             await db.SaveChangesAsync();
         }
         return Results.Accepted(value: new { code = "reset_requested" });
@@ -222,6 +236,8 @@ public static class AuthEndpoints
         [FromServices] UserManager<OfficeUser> users,
         [FromServices] TimeProvider time)
     {
+        var invalidFields = Validate(("token", input?.Token), ("password", input?.Password));
+        if (invalidFields is not null) return invalidFields;
         if (input.Token.Length != 43)
             return Results.Json(new { code = "reset_token_refused" }, statusCode: StatusCodes.Status401Unauthorized);
         var token = await db.PasswordResetTokens.SingleOrDefaultAsync(x => x.TokenHash == AuthTokens.Hash(input.Token));
@@ -276,6 +292,8 @@ public static class AuthEndpoints
         [FromServices] IHttpContextAccessor http,
         [FromServices] TimeProvider time)
     {
+        var invalidFields = Validate(("code", input?.Code));
+        if (invalidFields is not null) return invalidFields;
         var session = await FindSession(db, http);
         var user = session is null ? null : await users.FindByIdAsync(session.UserId.ToString());
         var accepted = session is not null && session.Stage == SessionStage.Full && user is not null;
@@ -292,6 +310,12 @@ public static class AuthEndpoints
     }
 
     private static Task<OfficeSession?> FindSession(FleetOpsDbContext db, IHttpContextAccessor http) => http.HttpContext?.Request.Cookies.TryGetValue(CookieName, out var raw) == true ? db.OfficeSessions.SingleOrDefaultAsync(x => x.TokenHash == AuthTokens.Hash(raw!)) : Task.FromResult<OfficeSession?>(null);
+
+    private static IResult? Validate(params (string Name, string? Value)[] fields)
+    {
+        var missing = fields.Where(field => string.IsNullOrWhiteSpace(field.Value)).Select(field => field.Name).ToArray();
+        return missing.Length == 0 ? null : Results.Json(new { code = "validation_error", fields = missing }, statusCode: StatusCodes.Status400BadRequest);
+    }
 
     private static string Next(SessionStage stage) => stage switch
     {
