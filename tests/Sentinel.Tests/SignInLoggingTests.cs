@@ -118,6 +118,26 @@ public sealed class SignInLoggingTests
         Assert.DoesNotContain("__Host-fleetops_session", everything, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task Configuration_cannot_widen_the_logging_allow_list()
+    {
+        var logs = new Capture();
+        await using var app = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        {
+            builder.UseEnvironment("Production");
+            builder.UseSetting("Logging:LogLevel:Npgsql", "Debug");
+            builder.UseSetting("ConnectionStrings:FleetOps", UnreachableDatabase);
+            builder.ConfigureLogging(logging => logging.AddProvider(logs));
+        });
+        var loggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
+        loggerFactory.CreateLogger("Npgsql.Probe").LogError("probe from a disallowed category");
+        loggerFactory.CreateLogger("FleetOps.Probe").LogError("probe from an allowed category");
+
+        Assert.DoesNotContain("Npgsql.Probe", logs.Categories);
+        Assert.Contains("FleetOps.Probe", logs.Categories);
+        Assert.DoesNotContain("probe from a disallowed category", logs.Items);
+    }
+
     private const string UnreachableDatabase = "Host=127.0.0.1;Port=1;Database=sentinel;Username=sentinel;Password=DB-PASSWORD-SENTINEL;Timeout=1;Command Timeout=1";
 
     private static Task<HttpResponseMessage> SendWithOriginHeaders(HttpClient client, string path, object? body, string? cookie = null, HttpMethod? method = null)

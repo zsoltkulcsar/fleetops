@@ -8,6 +8,7 @@ public sealed class OfficeUser : IdentityUser<Guid>
 {
     public Guid EmployeeId { get; set; }
     public long? LastAcceptedTotpStep { get; set; }
+    public int FailedSecondFactorAttempts { get; set; }
 }
 
 public sealed class OfficeSession
@@ -19,6 +20,7 @@ public sealed class OfficeSession
     public string Device { get; set; } = "";
     public SessionStage Stage { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset StageChangedAt { get; set; }
     public DateTimeOffset LastSeenAt { get; set; }
     public DateTimeOffset? RevokedAt { get; set; }
     public DateTimeOffset? StepUpAt { get; set; }

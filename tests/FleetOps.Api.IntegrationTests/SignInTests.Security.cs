@@ -7,6 +7,7 @@ using FleetOps.Identity;
 using FleetOps.Migrations;
 using FleetOps.People;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -259,6 +260,249 @@ public sealed partial class SignInTests
         using var command = await factory.Send(client, HttpMethod.Post, StepUpProbePath);
         Assert.Equal(HttpStatusCode.Forbidden, command.StatusCode);
         Assert.Equal("step_up_required", CodeOf(await BodyOf(command)));
+    }
+
+    [Fact]
+    public async Task Second_factor_failures_lock_the_account_across_sessions()
+    {
+        var employee = await factory.CreateEmployee(["hr"]);
+        using var first = factory.Client;
+        using var firstSignIn = await factory.SignIn(first, employee);
+        using var second = factory.Client;
+        using var secondSignIn = await factory.SignIn(second, employee);
+
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            using var response = await factory.Send(first, HttpMethod.Post, SecondFactorPath, new AuthEndpoints.SecondFactorRequest("000000"));
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        }
+
+        for (var attempt = 0; attempt < 2; attempt++)
+        {
+            using var response = await factory.Send(second, HttpMethod.Post, SecondFactorPath, new AuthEndpoints.SecondFactorRequest("000000"));
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        }
+
+        var user = await LoadUser(employee);
+        Assert.Equal(5, user.FailedSecondFactorAttempts);
+        Assert.True(user.LockoutEnd > factory.Clock.GetUtcNow());
+        using var lockedSignIn = await factory.SignIn(factory.Client, employee);
+        Assert.Equal(HttpStatusCode.Locked, lockedSignIn.StatusCode);
+        Assert.Equal("account_locked", CodeOf(await BodyOf(lockedSignIn)));
+    }
+
+    [Fact]
+    public async Task A_correct_password_does_not_clear_second_factor_failures()
+    {
+        var employee = await factory.CreateEmployee(["hr"]);
+        using var client = factory.Client;
+        using var signIn = await factory.SignIn(client, employee);
+        using var wrong = await factory.Send(client, HttpMethod.Post, SecondFactorPath, new AuthEndpoints.SecondFactorRequest("000000"));
+        Assert.Equal(HttpStatusCode.Unauthorized, wrong.StatusCode);
+
+        using var correctPassword = await factory.SignIn(factory.Client, employee);
+        Assert.Equal(HttpStatusCode.OK, correctPassword.StatusCode);
+        Assert.Equal(1, (await LoadUser(employee)).FailedSecondFactorAttempts);
+    }
+
+    [Fact]
+    public async Task Parallel_wrong_codes_are_all_counted()
+    {
+        var employee = await factory.CreateEmployee(["hr"]);
+        using var bootstrap = factory.Client;
+        await CompleteSignIn(bootstrap, employee);
+        var clients = Enumerable.Range(0, 39).Select(_ => factory.Client).ToArray();
+        foreach (var client in clients)
+        {
+            using var signIn = await factory.SignIn(client, employee);
+            Assert.Equal("second_factor", NextOf(await BodyOf(signIn)));
+        }
+        var requests = clients.Select(client => factory.Send(client, HttpMethod.Post, SecondFactorPath, new AuthEndpoints.SecondFactorRequest("000000")));
+        var responses = await Task.WhenAll(requests);
+
+        Assert.All(responses, response => Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode));
+        Assert.Equal(5, (await LoadUser(employee)).FailedSecondFactorAttempts);
+        foreach (var client in clients)
+        {
+            client.Dispose();
+        }
+    }
+
+    [Fact]
+    public async Task Parallel_wrong_passwords_are_all_counted()
+    {
+        var employee = await factory.CreateEmployee(["dispatcher"]);
+        var requests = Enumerable.Range(0, 39).Select(_ => factory.SignIn(factory.Client, employee, "wrong"));
+        var responses = await Task.WhenAll(requests);
+
+        Assert.All(responses, response => Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode));
+        Assert.Equal(5, (await LoadUser(employee)).AccessFailedCount);
+        Assert.True((await LoadUser(employee)).LockoutEnd > factory.Clock.GetUtcNow());
+    }
+
+    [Fact]
+    public async Task Enrol_is_refused_on_a_revoked_session()
+    {
+        var employee = await factory.CreateEmployee(["hr"]);
+        using var client = factory.PlainClient();
+        using var signIn = await factory.SignIn(client, employee);
+        var token = SessionCookieValue(signIn);
+        await RevokeLatestSession(employee);
+
+        using var response = await factory.Send(client, HttpMethod.Post, "/api/v1/auth/second-factor/enrol", sessionToken: token);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(0, (await LoadUser(employee)).FailedSecondFactorAttempts);
+    }
+
+    [Fact]
+    public async Task Enrol_is_refused_after_the_pending_window()
+    {
+        var employee = await factory.CreateEmployee(["hr"]);
+        using var client = factory.Client;
+        using var signIn = await factory.SignIn(client, employee);
+        factory.Clock.Advance(TimeSpan.FromMinutes(10) + TimeSpan.FromSeconds(1));
+
+        using var response = await factory.Send(client, HttpMethod.Post, "/api/v1/auth/second-factor/enrol");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.NotNull((await LatestSession(employee)).RevokedAt);
+    }
+
+    [Fact]
+    public async Task Password_reset_replaces_an_unconfirmed_enrolment_secret()
+    {
+        var employee = await factory.CreateEmployee(["hr"]);
+        using var first = factory.Client;
+        using var signIn = await factory.SignIn(first, employee);
+        using var firstEnrol = await factory.Send(first, HttpMethod.Post, "/api/v1/auth/second-factor/enrol");
+        var firstSecret = JsonDocument.Parse(await BodyOf(firstEnrol)).RootElement.GetProperty("secret").GetString();
+        var resetToken = await ResetToken(employee);
+        using var reset = await Reset(resetToken, "New Correct Password!");
+        Assert.Equal(HttpStatusCode.OK, reset.StatusCode);
+
+        using var second = factory.Client;
+        using var secondSignIn = await factory.SignIn(second, employee, "New Correct Password!");
+        using var secondEnrol = await factory.Send(second, HttpMethod.Post, "/api/v1/auth/second-factor/enrol");
+        var secondSecret = JsonDocument.Parse(await BodyOf(secondEnrol)).RootElement.GetProperty("secret").GetString();
+
+        Assert.NotEqual(firstSecret, secondSecret);
+    }
+
+    [Fact]
+    public async Task Step_up_locks_after_five_wrong_codes()
+    {
+        var employee = await factory.CreateEmployee(["hr"]);
+        using var client = factory.Client;
+        await CompleteSignIn(client, employee);
+        factory.Clock.Advance(TimeSpan.FromSeconds(30));
+
+        for (var attempt = 0; attempt < 5; attempt++)
+        {
+            using var response = await factory.Send(client, HttpMethod.Post, StepUpPath, new AuthEndpoints.SecondFactorRequest("000000"));
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        }
+
+        Assert.NotNull((await LatestSession(employee)).RevokedAt);
+        Assert.Equal(5, (await LoadUser(employee)).FailedSecondFactorAttempts);
+        using var signIn = await factory.SignIn(factory.Client, employee);
+        Assert.Equal(HttpStatusCode.Locked, signIn.StatusCode);
+    }
+
+    [Fact]
+    public async Task Dead_cookie_is_refused_on_route_variants()
+    {
+        var employee = await factory.CreateEmployee(["dispatcher"]);
+        using var client = factory.PlainClient();
+        using var signIn = await factory.SignIn(client, employee);
+        var token = SessionCookieValue(signIn);
+        using var privacy = await factory.Send(client, HttpMethod.Post, PrivacyPath, new AuthEndpoints.PrivacyRequest("placeholder-v1"), sessionToken: token);
+        token = SessionCookieValue(privacy);
+        await RevokeLatestSession(employee);
+        var before = await LatestSession(employee);
+
+        using var stepUp = await factory.Send(client, HttpMethod.Post, "/api/v1/auth/step-up/", new AuthEndpoints.SecondFactorRequest("000000"), sessionToken: token);
+        using var privacyVariant = await factory.Send(client, HttpMethod.Post, "/API/V1/AUTH/PRIVACY-NOTICE", new AuthEndpoints.PrivacyRequest("placeholder-v1"), sessionToken: token);
+        var after = await LatestSession(employee);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, stepUp.StatusCode);
+        Assert.Equal("session_expired", CodeOf(await BodyOf(stepUp)));
+        Assert.Equal(HttpStatusCode.Unauthorized, privacyVariant.StatusCode);
+        Assert.Equal("session_expired", CodeOf(await BodyOf(privacyVariant)));
+        Assert.Equal(before.RevokedAt, after.RevokedAt);
+        Assert.Equal(before.FailedSecondFactorAttempts, after.FailedSecondFactorAttempts);
+    }
+
+    [Fact]
+    public async Task Healthz_ignores_a_dead_cookie()
+    {
+        var employee = await factory.CreateEmployee(["dispatcher"]);
+        using var client = factory.PlainClient();
+        using var signIn = await factory.SignIn(client, employee);
+        var token = SessionCookieValue(signIn);
+        await RevokeLatestSession(employee);
+
+        using var response = await factory.Send(client, HttpMethod.Get, "/healthz", sessionToken: token);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("\"api\":\"ok\"", await BodyOf(response));
+    }
+
+    [Fact]
+    public async Task Lock_clears_fully_after_it_expires()
+    {
+        var employee = await factory.CreateEmployee(["dispatcher"]);
+        await FailFiveTimes(employee);
+        factory.Clock.Advance(TimeSpan.FromMinutes(15) + TimeSpan.FromSeconds(1));
+
+        using var wrong = await factory.SignIn(factory.Client, employee, "wrong");
+        using var right = await factory.SignIn(factory.Client, employee);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, wrong.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, right.StatusCode);
+        Assert.Equal(0, (await LoadUser(employee)).AccessFailedCount);
+        Assert.Null((await LoadUser(employee)).LockoutEnd);
+    }
+
+    [Fact]
+    public async Task Promotion_in_an_older_session_can_finish_enrolment()
+    {
+        var employee = await factory.CreateEmployee(["dispatcher"]);
+        using var client = factory.Client;
+        await CompleteSignIn(client, employee);
+        factory.Clock.Advance(TimeSpan.FromMinutes(11));
+        await SetRoles(employee, "owner");
+        await EnableAuthenticator(employee);
+
+        using var promoted = await factory.Send(client, HttpMethod.Get, SessionPath);
+        Assert.Equal(HttpStatusCode.Unauthorized, promoted.StatusCode);
+        var session = await LatestSession(employee);
+        Assert.Equal(SessionStage.PendingSecondFactor, session.Stage);
+        factory.Clock.Advance(TimeSpan.FromMinutes(9));
+        using var factor = await factory.Send(client, HttpMethod.Post, SecondFactorPath, new AuthEndpoints.SecondFactorRequest(await factory.CurrentTotp(employee)));
+
+        Assert.Equal(HttpStatusCode.OK, factor.StatusCode);
+    }
+
+    [Fact]
+    public async Task Control_characters_in_an_email_return_400()
+    {
+        using var response = await factory.Send(factory.Client, HttpMethod.Post, ForgotPath, new AuthEndpoints.ForgotRequest("person\0@example.test"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("validation_error", CodeOf(await BodyOf(response)));
+        Assert.Contains("email", await BodyOf(response), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Openapi_is_not_served_outside_development()
+    {
+        await using var production = factory.WithWebHostBuilder(builder => builder.UseEnvironment("Production"));
+        using var client = production.CreateClient(OptionsFor(factory.Origin));
+
+        using var response = await client.GetAsync("/openapi/v1.json", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     // ------------------------------------------------------------------ lockout enumeration
@@ -552,6 +796,18 @@ public sealed partial class SignInTests
         record!.Roles = JsonSerializer.Serialize(roles);
         await db.SaveChangesAsync();
     });
+
+    private async Task EnableAuthenticator(OfficeUser employee)
+    {
+        using var scope = factory.Services.CreateScope();
+        var users = scope.ServiceProvider.GetRequiredService<UserManager<OfficeUser>>();
+        var user = await users.FindByIdAsync(employee.Id.ToString());
+        Assert.NotNull(user);
+        await users.ResetAuthenticatorKeyAsync(user!);
+        user!.TwoFactorEnabled = true;
+        var result = await users.UpdateAsync(user);
+        Assert.True(result.Succeeded, string.Join(";", result.Errors.Select(error => error.Description)));
+    }
 
     private async Task<T> Db<T>(Func<FleetOpsDbContext, Task<T>> query)
     {

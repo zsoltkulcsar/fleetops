@@ -32,7 +32,7 @@ public sealed class SessionAccessor(FleetOpsDbContext db, ICompanyTimeService cl
         }
         var employee = await db.Employees.FindAsync([session.EmployeeId], httpContext.RequestAborted);
         var ended = employee?.EndDate is DateOnly end && clock.ToCompanyDate(now) > end;
-        var pendingExpired = session.Stage != SessionStage.Full && now - session.CreatedAt > _options.PendingSessionLifetime;
+        var pendingExpired = session.Stage != SessionStage.Full && now - session.StageChangedAt > _options.PendingSessionLifetime;
         if (employee is null || employee.Status != EmployeeStatus.Active || ended || pendingExpired || now - session.LastSeenAt > _options.IdleSessionLifetime || now - session.CreatedAt > _options.AbsoluteSessionLifetime)
         {
             session.RevokedAt = now;
@@ -62,6 +62,7 @@ public sealed class SessionAccessor(FleetOpsDbContext db, ICompanyTimeService cl
         if (requiresFactor && session.StepUpAt is null)
         {
             session.Stage = SessionStage.PendingSecondFactor;
+            session.StageChangedAt = now;
             await db.SaveChangesAsync(httpContext.RequestAborted);
             return;
         }

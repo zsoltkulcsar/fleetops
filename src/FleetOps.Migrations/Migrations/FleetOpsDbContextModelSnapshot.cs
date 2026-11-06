@@ -60,6 +60,10 @@ namespace FleetOps.Migrations.Migrations
                         .HasColumnType("text")
                         .HasColumnName("stage");
 
+                    b.Property<DateTimeOffset>("StageChangedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("stage_changed_at");
+
                     b.Property<DateTimeOffset?>("StepUpAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("step_up_at");
@@ -74,6 +78,8 @@ namespace FleetOps.Migrations.Migrations
                         .HasColumnName("user_id");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("EmployeeId");
 
                     b.HasIndex("TokenHash")
                         .IsUnique();
@@ -111,6 +117,10 @@ namespace FleetOps.Migrations.Migrations
                     b.Property<Guid>("EmployeeId")
                         .HasColumnType("uuid")
                         .HasColumnName("employee_id");
+
+                    b.Property<int>("FailedSecondFactorAttempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("failed_second_factor_attempts");
 
                     b.Property<long?>("LastAcceptedTotpStep")
                         .HasColumnType("bigint")
@@ -672,6 +682,12 @@ namespace FleetOps.Migrations.Migrations
 
             modelBuilder.Entity("FleetOps.Identity.OfficeSession", b =>
                 {
+                    b.HasOne("FleetOps.People.Employee", null)
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("FleetOps.Identity.OfficeUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")

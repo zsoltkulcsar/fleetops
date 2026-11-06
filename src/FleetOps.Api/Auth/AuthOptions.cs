@@ -9,6 +9,6 @@ public sealed class AuthOptions
     public TimeSpan ResetTokenLifetime { get; set; } = TimeSpan.FromMinutes(15);
     public int SecondFactorFailureLimit { get; set; } = 5;
     public TimeSpan PendingSessionLifetime { get; set; } = TimeSpan.FromMinutes(10);
-    public string PrivacyVersion { get; set; } = "placeholder-v1";
+    public const string PrivacyVersion = "placeholder-v1";
     public string? PublicOrigin { get; set; }
 }

@@ -241,7 +241,7 @@ public sealed partial class SignInTests(AuthApiFactory fixture) : IClassFixture<
         }
 
         Assert.NotNull((await LatestSession(employee)).RevokedAt);
-        Assert.NotEqual(0, (await LoadUser(employee)).AccessFailedCount);
+        Assert.Equal(5, (await LoadUser(employee)).FailedSecondFactorAttempts);
         var correctCode = await factory.CurrentTotp(employee);
         using var afterLock = await factory.Send(client, HttpMethod.Post, SecondFactorPath, new AuthEndpoints.SecondFactorRequest(correctCode));
         Assert.Equal(HttpStatusCode.Unauthorized, afterLock.StatusCode);
@@ -331,11 +331,18 @@ public sealed partial class SignInTests(AuthApiFactory fixture) : IClassFixture<
     }
 
     [Fact]
-    public async Task Stale_privacy_version_asks_again()
+    public async Task Privacy_version_is_constant_and_not_configuration_overridable()
     {
         var employee = await factory.CreateEmployee(["dispatcher"]);
         using var original = factory.Client;
         await CompleteSignIn(original, employee);
+
+        await Mutate(async db =>
+        {
+            var row = await db.PrivacyAcknowledgements.SingleAsync(row => row.EmployeeId == employee.EmployeeId);
+            row.Version = "stale-version";
+            await db.SaveChangesAsync();
+        });
 
         await using var newerVersion = factory.WithWebHostBuilder(builder => builder.UseSetting("Auth:PrivacyVersion", "placeholder-v2"));
         using var client = newerVersion.CreateClient(OptionsFor(factory.Origin));
@@ -343,13 +350,15 @@ public sealed partial class SignInTests(AuthApiFactory fixture) : IClassFixture<
 
         Assert.Equal(HttpStatusCode.OK, signIn.StatusCode);
         Assert.Equal("privacy_notice", NextOf(await BodyOf(signIn)));
-        using var acknowledgement = await factory.Send(client, HttpMethod.Post, PrivacyPath, new AuthEndpoints.PrivacyRequest("client-chosen-version"));
+        using var acknowledgement = await factory.Send(client, HttpMethod.Post, PrivacyPath, new AuthEndpoints.PrivacyRequest("placeholder-v2"));
         Assert.Equal(HttpStatusCode.OK, acknowledgement.StatusCode);
         var versions = await Db(db => db.PrivacyAcknowledgements
             .Where(row => row.EmployeeId == employee.EmployeeId)
             .Select(row => row.Version)
             .ToListAsync());
-        Assert.Equal(["placeholder-v1", "placeholder-v2"], versions.Order().ToArray());
+        Assert.Contains("stale-version", versions);
+        Assert.Contains(AuthOptions.PrivacyVersion, versions);
+        Assert.DoesNotContain("placeholder-v2", versions);
         using var third = newerVersion.CreateClient(OptionsFor(factory.Origin));
         using var afterAcknowledging = await factory.SignIn(third, employee);
         Assert.Equal("done", NextOf(await BodyOf(afterAcknowledging)));

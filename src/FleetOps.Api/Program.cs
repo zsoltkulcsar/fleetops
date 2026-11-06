@@ -17,6 +17,12 @@ builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 builder.Logging.SetMinimumLevel(LogLevel.None);
 builder.Logging.AddFilter((category, level) => category.StartsWith("FleetOps.", StringComparison.Ordinal) || category == "Microsoft.Hosting.Lifetime");
+builder.Logging.AddFilter((category, level) => category.StartsWith("FleetOps.", StringComparison.Ordinal) || category == "Microsoft.Hosting.Lifetime");
+builder.Services.PostConfigure<LoggerFilterOptions>(options =>
+{
+    options.Rules.Add(new LoggerFilterRule(null, null, LogLevel.Trace, static (_, category, _) => category is not null && (category.StartsWith("FleetOps.", StringComparison.Ordinal) || category == "Microsoft.Hosting.Lifetime")));
+    options.Rules.Add(new LoggerFilterRule(null, "Npgsql", LogLevel.None, null));
+});
 builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context => context.ProblemDetails.Extensions.TryAdd("code", context.HttpContext.Items["ProblemCode"] ?? "unexpected_error"));
 builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.NumberHandling = JsonNumberHandling.Strict);
 builder.Services.AddOpenApi();
@@ -70,7 +76,7 @@ app.UseExceptionHandler(new ExceptionHandlerOptions
         context.Response.StatusCode = 500; await Results.Problem(statusCode: 500).ExecuteAsync(context);
     }
 });
-app.MapOpenApi("/openapi/{documentName}.json");
+if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing")) app.MapOpenApi("/openapi/{documentName}.json");
 app.UseMiddleware<SessionMiddleware>();
 app.Use(async (context, next) =>
 {

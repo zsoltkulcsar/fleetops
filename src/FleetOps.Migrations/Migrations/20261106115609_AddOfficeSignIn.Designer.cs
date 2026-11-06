@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FleetOps.Migrations.Migrations
 {
     [DbContext(typeof(FleetOpsDbContext))]
-    [Migration("20261106085131_AddOfficeSignIn")]
+    [Migration("20261106115609_AddOfficeSignIn")]
     partial class AddOfficeSignIn
     {
         /// <inheritdoc />
@@ -30,7 +30,8 @@ namespace FleetOps.Migrations.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -45,6 +46,10 @@ namespace FleetOps.Migrations.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("employee_id");
 
+                    b.Property<int>("FailedSecondFactorAttempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("failed_second_factor_attempts");
+
                     b.Property<DateTimeOffset>("LastSeenAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_seen_at");
@@ -57,6 +62,10 @@ namespace FleetOps.Migrations.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("stage");
+
+                    b.Property<DateTimeOffset>("StageChangedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("stage_changed_at");
 
                     b.Property<DateTimeOffset?>("StepUpAt")
                         .HasColumnType("timestamp with time zone")
@@ -73,8 +82,12 @@ namespace FleetOps.Migrations.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("EmployeeId");
+
                     b.HasIndex("TokenHash")
                         .IsUnique();
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("sessions", "fleetops");
                 });
@@ -107,6 +120,10 @@ namespace FleetOps.Migrations.Migrations
                     b.Property<Guid>("EmployeeId")
                         .HasColumnType("uuid")
                         .HasColumnName("employee_id");
+
+                    b.Property<int>("FailedSecondFactorAttempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("failed_second_factor_attempts");
 
                     b.Property<long?>("LastAcceptedTotpStep")
                         .HasColumnType("bigint")
@@ -158,6 +175,7 @@ namespace FleetOps.Migrations.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("NormalizedEmail")
+                        .IsUnique()
                         .HasDatabaseName("EmailIndex");
 
                     b.HasIndex("NormalizedUserName")
@@ -171,7 +189,8 @@ namespace FleetOps.Migrations.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<DateTimeOffset>("ExpiresAt")
                         .HasColumnType("timestamp with time zone")
@@ -195,6 +214,8 @@ namespace FleetOps.Migrations.Migrations
                     b.HasIndex("TokenHash")
                         .IsUnique();
 
+                    b.HasIndex("UserId");
+
                     b.ToTable("password_reset_tokens", "fleetops");
                 });
 
@@ -202,7 +223,8 @@ namespace FleetOps.Migrations.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<DateTimeOffset>("AcknowledgedAt")
                         .HasColumnType("timestamp with time zone")
@@ -218,6 +240,8 @@ namespace FleetOps.Migrations.Migrations
                         .HasColumnName("version");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("EmployeeId");
 
                     b.ToTable("privacy_acknowledgements", "fleetops");
                 });
@@ -240,6 +264,223 @@ namespace FleetOps.Migrations.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("migration_marker", "fleetops");
+                });
+
+            modelBuilder.Entity("FleetOps.Modules.Audit.AuditEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ActorId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("actor_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("EntityId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("entity_id");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("entity_type");
+
+                    b.Property<string>("FieldName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("field_name");
+
+                    b.Property<string>("NewValue")
+                        .HasColumnType("text")
+                        .HasColumnName("new_value");
+
+                    b.Property<string>("OldValue")
+                        .HasColumnType("text")
+                        .HasColumnName("old_value");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("reason");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("audit_entries", "fleetops");
+                });
+
+            modelBuilder.Entity("FleetOps.Modules.Fleet.PlateHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("ChangedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("changed_at");
+
+                    b.Property<string>("Plate")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("plate");
+
+                    b.Property<Guid>("VehicleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("vehicle_id");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("vehicle_plate_history", "fleetops");
+                });
+
+            modelBuilder.Entity("FleetOps.Modules.Fleet.Vehicle", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("DepotId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("depot_id");
+
+                    b.Property<int>("GrossWeightKg")
+                        .HasColumnType("integer")
+                        .HasColumnName("gross_weight_kg");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("kind");
+
+                    b.Property<DateOnly?>("LastTachoDownloadAt")
+                        .HasColumnType("date")
+                        .HasColumnName("last_tacho_download_at");
+
+                    b.Property<DateOnly?>("LeaseEndDate")
+                        .HasColumnType("date")
+                        .HasColumnName("lease_end_date");
+
+                    b.Property<string>("Make")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("make");
+
+                    b.Property<string>("Model")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("model");
+
+                    b.Property<int?>("OdometerKm")
+                        .HasColumnType("integer")
+                        .HasColumnName("odometer_km");
+
+                    b.Property<DateTimeOffset?>("OdometerUpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("odometer_updated_at");
+
+                    b.Property<string>("Ownership")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("ownership");
+
+                    b.Property<string>("Plate")
+                        .IsRequired()
+                        .HasMaxLength(12)
+                        .HasColumnType("character varying(12)")
+                        .HasColumnName("plate");
+
+                    b.Property<string>("RequiredLicenceClass")
+                        .HasColumnType("text")
+                        .HasColumnName("required_licence_class");
+
+                    b.Property<int?>("ServiceIntervalKm")
+                        .HasColumnType("integer")
+                        .HasColumnName("service_interval_km");
+
+                    b.Property<int?>("ServiceIntervalMonths")
+                        .HasColumnType("integer")
+                        .HasColumnName("service_interval_months");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.Property<string>("TrailerType")
+                        .HasColumnType("text")
+                        .HasColumnName("trailer_type");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.Property<string>("Vin")
+                        .IsRequired()
+                        .HasMaxLength(17)
+                        .HasColumnType("character varying(17)")
+                        .HasColumnName("vin");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer")
+                        .HasColumnName("year");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Plate")
+                        .IsUnique()
+                        .HasFilter("status = 'Active'");
+
+                    b.HasIndex("Vin")
+                        .IsUnique()
+                        .HasFilter("status = 'Active'");
+
+                    b.ToTable("vehicles", "fleetops");
+                });
+
+            modelBuilder.Entity("FleetOps.Modules.Setup.Depot", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("address");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("depots", "fleetops");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("11111111-1111-1111-1111-111111111111"),
+                            Address = "Default address",
+                            Name = "Default depot"
+                        });
                 });
 
             modelBuilder.Entity("FleetOps.People.Employee", b =>
@@ -440,6 +681,39 @@ namespace FleetOps.Migrations.Migrations
                     b.HasKey("UserId", "LoginProvider", "Name");
 
                     b.ToTable("user_tokens", "fleetops");
+                });
+
+            modelBuilder.Entity("FleetOps.Identity.OfficeSession", b =>
+                {
+                    b.HasOne("FleetOps.People.Employee", null)
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("FleetOps.Identity.OfficeUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FleetOps.Identity.PasswordResetToken", b =>
+                {
+                    b.HasOne("FleetOps.Identity.OfficeUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FleetOps.Identity.PrivacyAcknowledgement", b =>
+                {
+                    b.HasOne("FleetOps.People.Employee", null)
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
