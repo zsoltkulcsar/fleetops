@@ -7,13 +7,23 @@ public sealed class DesignTimeFactory : IDesignTimeDbContextFactory<FleetOpsDbCo
 {
     public FleetOpsDbContext CreateDbContext(string[] args)
     {
+        var connectionString = ResolveConnectionString();
+        var builder = new Npgsql.NpgsqlConnectionStringBuilder(connectionString);
+        var options = new DbContextOptionsBuilder<FleetOpsDbContext>();
+        MigrationDbContextOptions.Configure(options, builder.ConnectionString);
+        return new FleetOpsDbContext(options.Options);
+    }
+
+    public static string ResolveConnectionString()
+    {
         var connectionString = Environment.GetEnvironmentVariable("FLEETOPS_DATABASE_MIGRATION_URL")
             ?? "Host=localhost;Port=5432;Database=fleetops;Username=postgres;Password=postgres";
         var builder = new Npgsql.NpgsqlConnectionStringBuilder(connectionString);
         if (!string.IsNullOrWhiteSpace(builder.RootCertificate) && !Path.IsPathRooted(builder.RootCertificate))
+        {
             builder.RootCertificate = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), builder.RootCertificate));
-        var options = new DbContextOptionsBuilder<FleetOpsDbContext>();
-        MigrationDbContextOptions.Configure(options, builder.ConnectionString);
-        return new FleetOpsDbContext(options.Options);
+        }
+
+        return builder.ConnectionString;
     }
 }

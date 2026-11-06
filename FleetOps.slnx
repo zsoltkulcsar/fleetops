@@ -2,6 +2,7 @@
   <Project Path="src/Kernel/Kernel.csproj" />
   <Project Path="src/FleetOps.Api/FleetOps.Api.csproj" />
   <Project Path="src/FleetOps.Migrations/FleetOps.Migrations.csproj" />
+  <Project Path="src/FleetOps.Seed/FleetOps.Seed.csproj" />
   <Project Path="src/Modules/Setup/Setup.csproj" />
   <Project Path="src/Modules/Audit/Audit.csproj" />
   <Project Path="src/Modules/Notifications/Notifications.csproj" />
