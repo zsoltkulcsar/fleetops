@@ -1,4 +1,7 @@
 using System.Text.Json.Serialization;
+using System.Text;
+using System.Text.Json;
+using System.Security.Cryptography;
 using FleetOps.Api;
 using FleetOps.Api.Auth;
 using FleetOps.Api.Pipeline;
@@ -9,6 +12,7 @@ using FleetOps.Migrations;
 using FleetOps.Modules.Fleet;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
@@ -46,11 +50,13 @@ builder.Services.AddSingleton<IMailbox, DemoMailbox>();
 builder.Services.AddSingleton<ICompanyTimeService>(_ => new CompanyTimeService(CompanyTimeService.Resolve(builder.Configuration["Company:Timezone"] ?? "Europe/Berlin")));
 builder.Services.AddSingleton<IDatabaseHealth, DatabaseHealth>();
 builder.Services.AddSingleton<ICommandPolicyProvider, DefaultCommandPolicyProvider>();
+builder.Services.AddDataProtection();
 builder.Services.AddSingleton<ICommandTransactionFactory, NpgsqlCommandTransactionFactory>();
 builder.Services.AddScoped<ISubjectRoleLookup, FailClosedSubjectRoleLookup>();
 builder.Services.AddScoped<CommandDispatcher>();
 builder.Services.AddScoped<QueryDispatcher>();
 builder.Services.AddScoped<IQueryHandler<GetVehicleQuery, VehicleDetail>, VehicleQueryHandler>();
+builder.Services.AddScoped<IQueryHandler<ListVehiclesQuery, VehicleListResult>, VehicleListQueryHandler>();
 builder.Services.AddScoped<IVehicleStore, EfVehicleStore>();
 builder.Services.AddScoped<ICommandStatePrecondition<EditVehicleCommand>, RetiredVehicleEditPrecondition>();
 builder.Services.AddScoped<ICommandHandler<CreateVehicleCommand, VehicleDetail>, CreateVehicleHandler>();
@@ -71,6 +77,7 @@ app.UseExceptionHandler(new ExceptionHandlerOptions
         }
         if (exception is InvalidOperationException { Message: "mailbox_unavailable" }) { await Results.Json(new { code = "mailbox_unavailable" }, statusCode: 503).ExecuteAsync(context); return; }
         if (exception is VehicleValidationException validation) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "validation_error", ["fields"] = validation.Fields }).ExecuteAsync(context); return; }
+        if (exception is InvalidCursorException) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "invalid_cursor" }).ExecuteAsync(context); return; }
         if (exception is VehicleConflictException conflict) { await Results.Problem(statusCode: conflict.Code is "duplicate_vehicle" or "version_conflict" or "state_conflict" ? 409 : 404, extensions: new Dictionary<string, object?> { ["code"] = conflict.Code }).ExecuteAsync(context); return; }
         try { app.Logger.LogError("Unhandled exception {ExceptionType} TraceId {TraceId}", exception?.GetType().Name ?? "Unknown", context.TraceIdentifier); } catch { }
         context.Response.StatusCode = 500; await Results.Problem(statusCode: 500).ExecuteAsync(context);
@@ -89,6 +96,18 @@ app.MapGet("/healthz", async (IDatabaseHealth database, CancellationToken cancel
 AuthEndpoints.Map(app);
 app.MapPost("/api/v1/fleet/vehicles", async (CreateVehicleCommand command, CommandDispatcher dispatcher, CancellationToken cancellationToken) => { var result = await dispatcher.DispatchAsync<CreateVehicleCommand, VehicleDetail>(command, cancellationToken); return Results.Created($"/api/v1/fleet/vehicles/{result.Id}", result); });
 app.MapPut("/api/v1/fleet/vehicles/{id:guid}", async (Guid id, EditVehicleRequest request, CommandDispatcher dispatcher, CancellationToken cancellationToken) => Results.Ok(await dispatcher.DispatchAsync<EditVehicleCommand, VehicleDetail>(request.ToCommand(id), cancellationToken)));
+app.MapGet("/api/v1/fleet/vehicles", async (string? cursor, int? limit, string? search, string? kind, bool? includeRetired, QueryDispatcher dispatcher, CancellationToken cancellationToken) =>
+{
+    VehicleKind? parsedKind = null;
+    if (!string.IsNullOrWhiteSpace(kind))
+    {
+        if (!Enum.TryParse<VehicleKind>(kind, true, out var value) || !Enum.IsDefined(value))
+            throw new VehicleValidationException(["kind"]);
+        parsedKind = value;
+    }
+    var query = new ListVehiclesQuery(cursor, limit is null ? 50 : Math.Clamp(limit.Value, 1, 100), search, parsedKind?.ToString(), includeRetired == true);
+    return Results.Ok(await dispatcher.DispatchAsync<ListVehiclesQuery, VehicleListResult>(query, cancellationToken));
+});
 app.MapGet("/api/v1/fleet/vehicles/{id:guid}", async (Guid id, QueryDispatcher dispatcher, CancellationToken cancellationToken) => Results.Ok(await dispatcher.DispatchAsync<GetVehicleQuery, VehicleDetail>(new(id), cancellationToken)));
 if (app.Environment.IsEnvironment("Testing"))
 {
@@ -106,4 +125,38 @@ public sealed record EditVehicleRequest(int Version, VehicleKind Kind, string? P
 { public EditVehicleCommand ToCommand(Guid id) => new(id, Version, Kind, Plate, Vin, Make, Model, Year, GrossWeightKg, RequiredLicenceClass, Ownership, LeaseEndDate, TrailerType, OdometerKm, DepotId, ServiceIntervalKm, ServiceIntervalMonths, LastTachoDownloadAt, Reason); }
 public sealed class VehicleQueryHandler(IConfiguration configuration) : IQueryHandler<GetVehicleQuery, VehicleDetail>
 { public async Task<VehicleDetail> HandleAsync(GetVehicleQuery query, AccessContext actor, CancellationToken cancellationToken) => await EfVehicleStore.ReadByConnectionAsync(DatabaseConnectionString.Resolve(configuration) ?? throw new InvalidOperationException("Database is not configured."), query.SubjectId ?? throw new VehicleValidationException(["id"]), cancellationToken); }
+
+public sealed class VehicleListQueryHandler(IConfiguration configuration, IDataProtectionProvider protectionProvider) : IQueryHandler<ListVehiclesQuery, VehicleListResult>
+{
+    private readonly IDataProtector protector = protectionProvider.CreateProtector("FleetOps.VehicleListCursor.v1");
+
+    public async Task<VehicleListResult> HandleAsync(ListVehiclesQuery query, AccessContext actor, CancellationToken cancellationToken)
+    {
+        var cursor = Unprotect(query.Cursor);
+        var page = await EfVehicleStore.ReadListByConnectionAsync(DatabaseConnectionString.Resolve(configuration) ?? throw new InvalidOperationException("Database is not configured."), query, cursor, cancellationToken);
+        var nextCursor = page.NextCursor is null ? null : protector.Protect(JsonSerializer.Serialize(page.NextCursor));
+        return new(page.Items, nextCursor);
+    }
+
+    private VehicleListCursor? Unprotect(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
+        try
+        {
+            var cursor = JsonSerializer.Deserialize<VehicleListCursor>(protector.Unprotect(value));
+            if (cursor is null || string.IsNullOrWhiteSpace(cursor.Plate) || cursor.Id == Guid.Empty)
+                throw new InvalidCursorException();
+            return cursor;
+        }
+        catch (InvalidCursorException)
+        {
+            throw;
+        }
+        catch (Exception exception) when (exception is FormatException or CryptographicException or JsonException)
+        {
+            throw new InvalidCursorException();
+        }
+    }
+}
 public partial class Program { }

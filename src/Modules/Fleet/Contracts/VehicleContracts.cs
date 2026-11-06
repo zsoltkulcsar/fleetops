@@ -1,11 +1,105 @@
 using FleetOps.Kernel.Authorization;
+
 namespace FleetOps.Modules.Fleet;
-[VisibleTo(RoleCode.Driver, RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner)] public sealed record RequiredDocument(string Type, bool NeedsConfirmation);
-[VisibleTo(RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner)] public sealed record VehicleDetail(Guid Id, VehicleKind Kind, string Plate, string Vin, string Make, string Model, int Year, int GrossWeightKg, VehicleOwnership Ownership, DateOnly? LeaseEndDate, TrailerType? TrailerType, int? OdometerKm, Guid DepotId, VehicleStatus Status, int Version, string? RequiredLicenceClass, int? ServiceIntervalKm, int? ServiceIntervalMonths, DateOnly? LastTachoDownloadAt, IReadOnlyList<string> PlateHistory, IReadOnlyList<RequiredDocument> RequiredDocuments) : IReadModel;
-[QueryPolicy("vehicles.view")] public sealed record GetVehicleQuery(Guid? SubjectId) : IQuery<VehicleDetail>, IHasSubject;
-[CommandPolicy("vehicles.manage")] public sealed record CreateVehicleCommand(VehicleKind Kind, string? Plate, string? Vin, string? Make, string? Model, int Year, int GrossWeightKg, string? RequiredLicenceClass, VehicleOwnership Ownership, DateOnly? LeaseEndDate, TrailerType? TrailerType, int? OdometerKm, Guid? DepotId, int? ServiceIntervalKm, int? ServiceIntervalMonths, DateOnly? LastTachoDownloadAt, string? Reason) : ICommand<VehicleDetail>;
-[CommandPolicy("vehicles.manage", HasStatePrecondition = true)] public sealed record EditVehicleCommand(Guid? SubjectId, int Version, VehicleKind Kind, string? Plate, string? Vin, string? Make, string? Model, int Year, int GrossWeightKg, string? RequiredLicenceClass, VehicleOwnership Ownership, DateOnly? LeaseEndDate, TrailerType? TrailerType, int? OdometerKm, Guid? DepotId, int? ServiceIntervalKm, int? ServiceIntervalMonths, DateOnly? LastTachoDownloadAt, string? Reason) : ICommand<VehicleDetail>, IHasSubject, IHasReason;
-public interface IHasReason { string? Reason { get; } }
+
+[VisibleTo(RoleCode.Driver, RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner)]
+public sealed record RequiredDocument(string Type, bool NeedsConfirmation);
+
+[VisibleTo(RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner)]
+public sealed record VehicleDetail(
+    Guid Id,
+    VehicleKind Kind,
+    string Plate,
+    string Vin,
+    string Make,
+    string Model,
+    int Year,
+    int GrossWeightKg,
+    VehicleOwnership Ownership,
+    DateOnly? LeaseEndDate,
+    TrailerType? TrailerType,
+    int? OdometerKm,
+    Guid DepotId,
+    VehicleStatus Status,
+    int Version,
+    string? RequiredLicenceClass,
+    int? ServiceIntervalKm,
+    int? ServiceIntervalMonths,
+    DateOnly? LastTachoDownloadAt,
+    IReadOnlyList<string> PlateHistory,
+    IReadOnlyList<RequiredDocument> RequiredDocuments) : IReadModel;
+
+[VisibleTo(RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner)]
+public sealed record VehicleListItem(
+    Guid Id,
+    VehicleKind Kind,
+    string Plate,
+    string Make,
+    string Model,
+    int Year,
+    VehicleStatus Status,
+    VehicleOwnership Ownership,
+    int Version);
+
+[VisibleTo(RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner)]
+public sealed record VehicleListResult(IReadOnlyList<VehicleListItem> Items, string? NextCursor) : IReadModel;
+
+[QueryPolicy("vehicles.view")]
+public sealed record GetVehicleQuery(Guid? SubjectId) : IQuery<VehicleDetail>, IHasSubject;
+
+[QueryPolicy("vehicles.view")]
+public sealed record ListVehiclesQuery(string? Cursor, int Limit, string? Search, string? Kind, bool IncludeRetired) : IQuery<VehicleListResult>;
+
+public sealed record VehicleListCursor(string Plate, Guid Id);
+
+public sealed record VehicleListPage(IReadOnlyList<VehicleListItem> Items, VehicleListCursor? NextCursor);
+
+[CommandPolicy("vehicles.manage")]
+public sealed record CreateVehicleCommand(
+    VehicleKind Kind,
+    string? Plate,
+    string? Vin,
+    string? Make,
+    string? Model,
+    int Year,
+    int GrossWeightKg,
+    string? RequiredLicenceClass,
+    VehicleOwnership Ownership,
+    DateOnly? LeaseEndDate,
+    TrailerType? TrailerType,
+    int? OdometerKm,
+    Guid? DepotId,
+    int? ServiceIntervalKm,
+    int? ServiceIntervalMonths,
+    DateOnly? LastTachoDownloadAt,
+    string? Reason) : ICommand<VehicleDetail>;
+
+[CommandPolicy("vehicles.manage", HasStatePrecondition = true)]
+public sealed record EditVehicleCommand(
+    Guid? SubjectId,
+    int Version,
+    VehicleKind Kind,
+    string? Plate,
+    string? Vin,
+    string? Make,
+    string? Model,
+    int Year,
+    int GrossWeightKg,
+    string? RequiredLicenceClass,
+    VehicleOwnership Ownership,
+    DateOnly? LeaseEndDate,
+    TrailerType? TrailerType,
+    int? OdometerKm,
+    Guid? DepotId,
+    int? ServiceIntervalKm,
+    int? ServiceIntervalMonths,
+    DateOnly? LastTachoDownloadAt,
+    string? Reason) : ICommand<VehicleDetail>, IHasSubject, IHasReason;
+
+public interface IHasReason
+{
+    string? Reason { get; }
+}
 public static class VehicleRules
 {
  public static readonly System.Text.RegularExpressions.Regex PlatePattern = new("\\A[A-ZÄÖÜ]{1,3}-[A-ZÄÖÜ]{1,2} [0-9]{1,4}\\z", System.Text.RegularExpressions.RegexOptions.Compiled);

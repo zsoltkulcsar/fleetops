@@ -44,3 +44,8 @@ public sealed class VehicleConflictException(string code) : Exception(code)
 {
     public string Code { get; } = code;
 }
+
+public sealed class InvalidCursorException : Exception
+{
+    public InvalidCursorException() : base("invalid_cursor") { }
+}
