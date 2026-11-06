@@ -24,7 +24,7 @@ public sealed class DefaultCommandPolicyProvider : ICommandPolicyProvider
         Func<ICommand, Guid?>? subject = relation == SubjectRelation.Own || attribute.Separation != SeparationOfDuty.None
             ? c => (c as IHasSubject)?.SubjectId : null;
         return new CommandPolicy(attribute.ActionKey, entry.AllowedRoles, relation,
-            separation: attribute.Separation, subjectId: subject, ownRoles: own);
+            separation: attribute.Separation, subjectId: subject, ownRoles: own, requiresStepUp: attribute.RequiresStepUp);
     }
 }
 

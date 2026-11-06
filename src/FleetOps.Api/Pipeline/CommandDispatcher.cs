@@ -9,6 +9,7 @@ public sealed class CommandDispatcher(IAccessContextAccessor accessor, ICommandP
         var policy = policies.GetPolicy(command.GetType()) ?? throw new InvalidOperationException($"Command {command.GetType().FullName} has no policy.");
         var actor = accessor.Current;
         if (actor is null) Refuse(RefusalCodes.NotSignedIn, policy, []);
+        if (policy.RequiresStepUp && accessor is not IStepUpContextAccessor { HasFreshStepUp: true }) Refuse(RefusalCodes.StepUpRequired, policy, policy.AllowedRoles);
         var subject = policy.SubjectId?.Invoke(command);
         var permittedRoles = actor!.Roles.Where(role =>
         {
@@ -45,4 +46,5 @@ public sealed class CommandDispatcher(IAccessContextAccessor accessor, ICommandP
     }
 
     private static void Refuse(string code, CommandPolicy policy, IReadOnlyCollection<RoleCode> allowed) => throw new AuthorizationException(code, policy.ActionKey, allowed);
+
 }

@@ -24,3 +24,8 @@ public interface IAccessContextAccessor
 {
     AccessContext? Current { get; }
 }
+
+public interface IStepUpContextAccessor
+{
+    bool HasFreshStepUp { get; }
+}

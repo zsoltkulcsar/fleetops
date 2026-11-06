@@ -11,6 +11,7 @@ public sealed class CommandPolicyAttribute(string actionKey) : Attribute
     public string ActionKey { get; } = actionKey;
     public SeparationOfDuty Separation { get; init; } = SeparationOfDuty.None;
     public bool HasStatePrecondition { get; init; }
+    public bool RequiresStepUp { get; init; }
 }
 
 public interface IHasSubject { Guid? SubjectId { get; } }
@@ -41,6 +42,7 @@ public static class RefusalCodes
     public const string SelfApproval = "self_approval";
     public const string OwnerRoutesToHr = "owner_routes_to_hr";
     public const string StateConflict = "state_conflict";
+    public const string StepUpRequired = "step_up_required";
 }
 
 public interface ISubjectRoleLookup

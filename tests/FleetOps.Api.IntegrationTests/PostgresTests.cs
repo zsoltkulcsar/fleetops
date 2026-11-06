@@ -15,9 +15,8 @@ public sealed class PostgresTests
     [Fact]
     public async Task Real_postgres_transaction_context_commits_isolates_and_rolls_back()
     {
-        await using var postgres = new PostgreSqlBuilder("postgres:17").Build();
-        await postgres.StartAsync(TestContext.Current.CancellationToken);
-        await using (var setup = new NpgsqlConnection(postgres.GetConnectionString()))
+        await using var postgres = await TestPostgres.StartAsync(nameof(PostgresTests), TestContext.Current.CancellationToken);
+        await using (var setup = new NpgsqlConnection(postgres.ConnectionString))
         {
             await setup.OpenAsync(TestContext.Current.CancellationToken);
             await using var create = new NpgsqlCommand("create table context_rows (id integer not null)", setup);
@@ -27,7 +26,7 @@ public sealed class PostgresTests
         var provider = new ServiceCollection()
             .AddSingleton<IAccessContextAccessor>(new FixedAccessor(AccessContext.For(Guid.NewGuid(), RoleCode.Dispatcher)))
             .AddSingleton<ICommandPolicyProvider>(new FixedPolicyProvider(CommandPolicy.For("shifts.approve_reject", RoleCode.Dispatcher)))
-            .AddSingleton<ICommandTransactionFactory>(new NpgsqlCommandTransactionFactory(Configuration(postgres.GetConnectionString())))
+            .AddSingleton<ICommandTransactionFactory>(new NpgsqlCommandTransactionFactory(Configuration(postgres.ConnectionString)))
             .AddSingleton<ISubjectRoleLookup, FailClosedSubjectRoleLookup>()
             .AddSingleton<ICommandStatePrecondition<InsertCommand>>(precondition)
             .AddSingleton<ICommandHandler<InsertCommand, int>, InsertContextHandler>()
@@ -35,7 +34,7 @@ public sealed class PostgresTests
         var dispatcher = provider.GetRequiredService<CommandDispatcher>();
         Assert.Equal(1, await dispatcher.DispatchAsync<InsertCommand, int>(new InsertCommand(), TestContext.Current.CancellationToken));
         Assert.True(precondition.ContextSeen);
-        await using (var verify = new NpgsqlConnection(postgres.GetConnectionString()))
+        await using (var verify = new NpgsqlConnection(postgres.ConnectionString))
         {
             await verify.OpenAsync(TestContext.Current.CancellationToken);
             await using var count = new NpgsqlCommand("select count(*) from context_rows", verify);
@@ -44,13 +43,13 @@ public sealed class PostgresTests
         var failing = new ServiceCollection()
             .AddSingleton<IAccessContextAccessor>(new FixedAccessor(AccessContext.For(Guid.NewGuid(), RoleCode.Dispatcher)))
             .AddSingleton<ICommandPolicyProvider>(new FixedPolicyProvider(CommandPolicy.For("shifts.approve_reject", RoleCode.Dispatcher)))
-            .AddSingleton<ICommandTransactionFactory>(new NpgsqlCommandTransactionFactory(Configuration(postgres.GetConnectionString())))
+            .AddSingleton<ICommandTransactionFactory>(new NpgsqlCommandTransactionFactory(Configuration(postgres.ConnectionString)))
             .AddSingleton<ISubjectRoleLookup, FailClosedSubjectRoleLookup>()
             .AddSingleton<ICommandStatePrecondition<InsertCommand>, RefusingPrecondition>()
             .AddSingleton<ICommandHandler<InsertCommand, int>, InsertAndFailHandler>()
             .AddScoped<CommandDispatcher>().BuildServiceProvider();
         await Assert.ThrowsAsync<AuthorizationException>(() => failing.GetRequiredService<CommandDispatcher>().DispatchAsync<InsertCommand, int>(new InsertCommand(), TestContext.Current.CancellationToken));
-        await using var final = new NpgsqlConnection(postgres.GetConnectionString());
+        await using var final = new NpgsqlConnection(postgres.ConnectionString);
         await final.OpenAsync(TestContext.Current.CancellationToken);
         await using var finalCount = new NpgsqlCommand("select count(*) from context_rows", final);
         Assert.Equal(1L, await finalCount.ExecuteScalarAsync(TestContext.Current.CancellationToken));
@@ -58,9 +57,8 @@ public sealed class PostgresTests
     [Fact]
     public async Task Postgres_17_accepts_a_tls_capable_database_connection()
     {
-        await using var postgres = new PostgreSqlBuilder("postgres:17").Build();
-        await postgres.StartAsync(TestContext.Current.CancellationToken);
-        await using var connection = new NpgsqlConnection(postgres.GetConnectionString());
+        await using var postgres = await TestPostgres.StartAsync(nameof(PostgresTests), TestContext.Current.CancellationToken);
+        await using var connection = new NpgsqlConnection(postgres.ConnectionString);
         await connection.OpenAsync(TestContext.Current.CancellationToken);
         await using var command = new NpgsqlCommand("select 1", connection);
         Assert.Equal(1, await command.ExecuteScalarAsync(TestContext.Current.CancellationToken));
@@ -69,18 +67,8 @@ public sealed class PostgresTests
     [Fact]
     public async Task Runtime_role_can_read_the_marker_but_cannot_execute_schema_ddl()
     {
-        await using var postgres = new PostgreSqlBuilder("postgres:17").Build();
-        await postgres.StartAsync(TestContext.Current.CancellationToken);
-        var admin = new NpgsqlConnectionStringBuilder(postgres.GetConnectionString());
-        await using (var adminConnection = new NpgsqlConnection(admin.ConnectionString))
-        {
-            await adminConnection.OpenAsync(TestContext.Current.CancellationToken);
-            await using var command = new NpgsqlCommand(
-                "CREATE ROLE fleetops_migrator LOGIN PASSWORD 'migrator-password'; " +
-                "CREATE ROLE fleetops_runtime LOGIN PASSWORD 'runtime-password'; " +
-                "CREATE SCHEMA fleetops AUTHORIZATION fleetops_migrator;", adminConnection);
-            await command.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
-        }
+        await using var postgres = await TestPostgres.StartAsync(nameof(PostgresTests), TestContext.Current.CancellationToken);
+        var admin = new NpgsqlConnectionStringBuilder(postgres.ConnectionString);
         var migrator = new NpgsqlConnectionStringBuilder(admin.ConnectionString)
         { Username = "fleetops_migrator", Password = "migrator-password" };
         var options = new DbContextOptionsBuilder<FleetOpsDbContext>();
@@ -106,9 +94,8 @@ public sealed class PostgresTests
     [Fact]
     public async Task Real_dispatcher_rolls_back_handler_failure_on_postgres()
     {
-        await using var postgres = new PostgreSqlBuilder("postgres:17").Build();
-        await postgres.StartAsync(TestContext.Current.CancellationToken);
-        await using (var setup = new NpgsqlConnection(postgres.GetConnectionString()))
+        await using var postgres = await TestPostgres.StartAsync(nameof(PostgresTests), TestContext.Current.CancellationToken);
+        await using (var setup = new NpgsqlConnection(postgres.ConnectionString))
         {
             await setup.OpenAsync(TestContext.Current.CancellationToken);
             await using var command = new NpgsqlCommand("create table dispatch_rows (id integer not null)", setup);
@@ -119,7 +106,7 @@ public sealed class PostgresTests
         using var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection()
             .AddSingleton<IAccessContextAccessor>(new FixedAccessor(AccessContext.For(Guid.NewGuid(), RoleCode.Dispatcher)))
             .AddSingleton<ICommandPolicyProvider>(new FixedPolicyProvider(policy))
-            .AddSingleton<ICommandTransactionFactory>(new NpgsqlCommandTransactionFactory(Configuration(postgres.GetConnectionString())))
+            .AddSingleton<ICommandTransactionFactory>(new NpgsqlCommandTransactionFactory(Configuration(postgres.ConnectionString)))
             .AddSingleton<ISubjectRoleLookup, FailClosedSubjectRoleLookup>()
             .AddSingleton<ICommandHandler<InsertCommand, int>, InsertAndFailHandler>()
             .AddScoped<CommandDispatcher>()
@@ -127,7 +114,7 @@ public sealed class PostgresTests
         var dispatcher = services.GetRequiredService<CommandDispatcher>();
         await Assert.ThrowsAsync<InvalidOperationException>(() => dispatcher.DispatchAsync<InsertCommand, int>(new InsertCommand(), TestContext.Current.CancellationToken));
 
-        await using var verify = new NpgsqlConnection(postgres.GetConnectionString());
+        await using var verify = new NpgsqlConnection(postgres.ConnectionString);
         await verify.OpenAsync(TestContext.Current.CancellationToken);
         await using var count = new NpgsqlCommand("select count(*) from dispatch_rows", verify);
         Assert.Equal(0L, await count.ExecuteScalarAsync(TestContext.Current.CancellationToken));
