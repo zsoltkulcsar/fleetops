@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from "react";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Clock3, FileUp, RefreshCw, Search, XCircle } from "lucide-react";
 import { Banner, Drawer, EmptyState, Panel, Toast } from "@fleetops/ui";
 import type { components } from "@fleetops/api-client";
@@ -37,9 +37,14 @@ function roleOwner(roles: string[]): DocumentOwnerType | null {
 export function Documents() {
   const heading = useRef<HTMLHeadingElement>(null);
   const session = useSession();
+  const client = useQueryClient();
   const [search, setSearch] = useState("");
   const [term, setTerm] = useState("");
+  const [filter, setFilter] = useState("queue");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [openId, setOpenId] = useState<string | null>(
+    new URLSearchParams(window.location.search).get("open"),
+  );
   const [toast, setToast] = useState(false);
   const canUpload = Boolean(roleOwner(session.data?.roles ?? []));
 
@@ -53,12 +58,41 @@ export function Documents() {
   }, [search]);
 
   const query = useInfiniteQuery({
-    queryKey: ["documents", term],
+    queryKey: ["documents", term, filter],
     initialPageParam: "",
-    queryFn: ({ pageParam }) => documentsApi.list({ cursor: pageParam || undefined, search: term }),
+    queryFn: ({ pageParam }) => documentsApi.list({ cursor: pageParam || undefined, search: term, filter }),
     getNextPageParam: (page) => page.nextCursor ?? undefined,
   });
   const documents = useMemo(() => query.data?.pages.flatMap((page) => page.items) ?? [], [query.data]);
+  const counts = useQuery({
+    queryKey: ["document-counts"],
+    queryFn: documentsApi.counts,
+    refetchInterval: 60_000,
+  });
+  useEffect(() => {
+    if (query.isSuccess && documents.length === 0 && counts.data?.queue === 0 && filter === "queue") {
+      setFilter("all");
+    }
+  }, [counts.data?.queue, documents.length, filter, query.isSuccess]);
+  useEffect(() => {
+    const open = () => document.getElementById("documents-search")?.focus();
+    window.addEventListener("fleetops:focus-search", open);
+    return () => window.removeEventListener("fleetops:focus-search", open);
+  }, []);
+  const refresh = () => {
+    void client.invalidateQueries({ queryKey: ["documents"] });
+    void client.invalidateQueries({ queryKey: ["document-counts"] });
+  };
+  const filterLabel = (value: string, label: string, count?: number) => (
+    <button
+      type="button"
+      className={filter === value ? "document-filter selected" : "document-filter"}
+      onClick={() => setFilter(value)}
+    >
+      {label}
+      {count === undefined ? "" : ` ${count}`}
+    </button>
+  );
 
   return (
     <div className="page documents-page">
@@ -86,62 +120,83 @@ export function Documents() {
         </Banner>
       )}
       <Panel
-        title={en.documents.panelTitle}
+        title={filter === "queue" ? en.documents.queue : en.documents.panelTitle}
         filters={
-          <label className="search-field">
-            <Search size={16} aria-hidden />
-            <span className="visually-hidden">{en.documents.searchLabel}</span>
-            <input
-              id="documents-search"
-              placeholder={en.documents.searchPlaceholder}
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-          </label>
+          <div className="document-filters">
+            {filterLabel("queue", en.documents.queue, counts.data?.queue)}
+            {filterLabel("all", en.documents.all)}
+            {filterLabel("expiring", en.documents.expiring, counts.data?.expiring)}
+            {filterLabel("expired", en.documents.expired, counts.data?.expired)}
+          </div>
         }
       >
         {query.isLoading ? (
           <div className="documents-loading">{en.documents.loading}</div>
         ) : !documents.length && !query.isError ? (
-          <EmptyState heading={term ? en.documents.noResults : en.documents.empty}>
-            {!term && en.documents.emptyBody}
+          <EmptyState
+            heading={
+              filter === "queue"
+                ? en.documents.nothingToVerify
+                : term
+                  ? en.documents.noResults
+                  : en.documents.empty
+            }
+          >
+            {!term && filter !== "queue" && en.documents.emptyBody}
           </EmptyState>
         ) : (
-          <div className="table-wrap" tabIndex={0} role="region" aria-label="Documents table">
-            <table>
-              <caption className="visually-hidden">{en.documents.tableCaption}</caption>
-              <thead>
-                <tr>
-                  <th>{en.documents.typeColumn}</th>
-                  <th>{en.documents.ownerColumn}</th>
-                  <th>{en.documents.numberColumn}</th>
-                  <th>{en.documents.issuedColumn}</th>
-                  <th>{en.documents.expiresColumn}</th>
-                  <th>{en.documents.statusColumn}</th>
-                  <th>{en.documents.uploadedColumn}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {documents.map((document) => {
-                  const Icon = statusIcons[document.status];
-                  return (
-                    <tr key={document.id}>
-                      <td>{en.documents.types[document.type]}</td>
-                      <td>{document.ownerName}</td>
-                      <td>{document.number ?? "—"}</td>
-                      <td className="tabular-nums">{formatDocumentDate(document.issuedAt)}</td>
-                      <td className="tabular-nums">{formatDocumentDate(document.expiresAt)}</td>
-                      <td>
-                        <span className={`document-status status-${document.status}`}>
-                          <Icon size={15} aria-hidden /> {en.documents.status[document.status]}
-                        </span>
-                      </td>
-                      <td className="tabular-nums">{formatDocumentDate(document.uploadedAt)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div
+            className={filter === "queue" ? "document-queue" : "table-wrap"}
+            tabIndex={0}
+            role="region"
+            aria-label="Documents table"
+          >
+            {filter === "queue"
+              ? documents.map((document) => (
+                  <QueueCard
+                    key={document.id}
+                    document={document}
+                    roles={session.data?.roles ?? []}
+                    onChanged={refresh}
+                  />
+                ))
+              : null}
+            {filter !== "queue" && (
+              <table>
+                <caption className="visually-hidden">{en.documents.tableCaption}</caption>
+                <thead>
+                  <tr>
+                    <th>{en.documents.typeColumn}</th>
+                    <th>{en.documents.ownerColumn}</th>
+                    <th>{en.documents.numberColumn}</th>
+                    <th>{en.documents.issuedColumn}</th>
+                    <th>{en.documents.expiresColumn}</th>
+                    <th>{en.documents.statusColumn}</th>
+                    <th>{en.documents.uploadedColumn}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {documents.map((document) => {
+                    const Icon = statusIcons[document.status];
+                    return (
+                      <tr key={document.id} onClick={() => setOpenId(document.id)} className="document-row">
+                        <td>{en.documents.types[document.type]}</td>
+                        <td>{document.ownerName}</td>
+                        <td>{document.number ?? "—"}</td>
+                        <td className="tabular-nums">{formatDocumentDate(document.issuedAt)}</td>
+                        <td className="tabular-nums">{formatDocumentDate(document.expiresAt)}</td>
+                        <td>
+                          <span className={`document-status status-${document.status}`}>
+                            <Icon size={15} aria-hidden /> {en.documents.status[document.status]}
+                          </span>
+                        </td>
+                        <td className="tabular-nums">{formatDocumentDate(document.uploadedAt)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
         )}
         {query.hasNextPage && (
@@ -162,9 +217,17 @@ export function Documents() {
         onSaved={() => {
           setDialogOpen(false);
           setToast(true);
-          void query.refetch();
+          refresh();
         }}
       />
+      {openId && (
+        <DocumentDetailDrawer
+          id={openId}
+          roles={session.data?.roles ?? []}
+          onClose={() => setOpenId(null)}
+          onChanged={refresh}
+        />
+      )}
       <Toast
         open={toast}
         onClose={() => setToast(false)}
@@ -174,6 +237,201 @@ export function Documents() {
         {en.documents.success}
       </Toast>
     </div>
+  );
+}
+
+function QueueCard({
+  document,
+  roles,
+  onChanged,
+}: {
+  document: components["schemas"]["DocumentListItem"];
+  roles: string[];
+  onChanged: () => void;
+}) {
+  const [reason, setReason] = useState("");
+  const [expiresAt, setExpiresAt] = useState("");
+  const [number, setNumber] = useState(document.number ?? "");
+  const [busy, setBusy] = useState(false);
+  const canDelete = roles.includes("hr");
+  const typeNeedsExpiry = [
+    "licence_c_ce",
+    "driver_card",
+    "code95",
+    "medical",
+    "adr_certificate",
+    "id_card",
+    "hu_report",
+    "sp_report",
+    "tacho_calibration",
+    "insurance",
+    "community_licence",
+  ].includes(document.type);
+  async function run(action: () => Promise<unknown>) {
+    setBusy(true);
+    try {
+      await action();
+      onChanged();
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <article className="queue-card">
+      <div className="queue-thumb">
+        <FileUp size={22} aria-hidden />
+        <span>{en.documents.types[document.type]}</span>
+      </div>
+      <div className="queue-card-body">
+        <strong>{en.documents.types[document.type]}</strong>
+        <span>{document.ownerName}</span>
+        <small>{formatDocumentDate(document.uploadedAt)}</small>
+      </div>
+      {document.canAct ? (
+        <form
+          className="queue-actions"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void run(() =>
+              documentsApi.verify(document.id, {
+                version: document.version,
+                expiresAt: expiresAt || null,
+                issuedAt: null,
+                number: number.trim() || null,
+                categories: null,
+              }),
+            );
+          }}
+        >
+          {typeNeedsExpiry && (
+            <label>
+              {en.documents.expires}
+              <input
+                type="date"
+                required
+                value={expiresAt}
+                onChange={(event) => setExpiresAt(event.target.value)}
+              />
+            </label>
+          )}
+          <label>
+            {en.documents.number}
+            <input value={number} onChange={(event) => setNumber(event.target.value)} />
+          </label>
+          <div className="queue-buttons">
+            <button className="ui-button primary" disabled={busy} type="submit">
+              {en.documents.verify}
+            </button>
+            <button
+              className="ui-button ghost"
+              disabled={busy || !reason.trim()}
+              type="button"
+              onClick={() =>
+                void run(() => documentsApi.reject(document.id, { version: document.version, reason }))
+              }
+            >
+              {en.documents.reject}
+            </button>
+          </div>
+          <label>
+            {en.documents.rejectReason}
+            <input value={reason} onChange={(event) => setReason(event.target.value)} />
+          </label>
+        </form>
+      ) : (
+        <p className="ui-muted">
+          {document.ownerType === "vehicle" ? en.documents.dispatchReadOnly : en.documents.readOnly}
+        </p>
+      )}
+      {canDelete && (
+        <div className="queue-delete">
+          <input
+            aria-label={en.documents.deleteReason}
+            placeholder={en.documents.deleteReason}
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+          />
+          <button
+            className="ui-button danger"
+            disabled={busy || !reason.trim()}
+            type="button"
+            onClick={() =>
+              void run(() => documentsApi.remove(document.id, { version: document.version, reason }))
+            }
+          >
+            {en.documents.deleteMisupload}
+          </button>
+        </div>
+      )}
+    </article>
+  );
+}
+
+function DocumentDetailDrawer({
+  id,
+  roles,
+  onClose,
+  onChanged,
+}: {
+  id: string;
+  roles: string[];
+  onClose: () => void;
+  onChanged: () => void;
+}) {
+  const detail = useQuery({ queryKey: ["document", id], queryFn: () => documentsApi.detail(id) });
+  const [checkedAt, setCheckedAt] = useState(new Date().toISOString().slice(0, 10));
+  if (!detail.data)
+    return (
+      <Drawer open title={en.documents.detail} onClose={onClose} closeLabel={en.documents.close}>
+        {en.documents.loading}
+      </Drawer>
+    );
+  const item = detail.data;
+  return (
+    <Drawer open title={item.ownerName} onClose={onClose} closeLabel={en.documents.close}>
+      <div className="document-detail">
+        <p>
+          <strong>{en.documents.types[item.type]}</strong>
+          <br />
+          {en.documents.status[item.status]}
+        </p>
+        {item.rejectReason && <p className="document-reject-reason">{item.rejectReason}</p>}
+        <ul>
+          {item.files.map((file) => (
+            <li key={file.id}>
+              <button
+                type="button"
+                className="document-link"
+                onClick={async () => {
+                  const link = await documentsApi.fileLink(item.id, file.id);
+                  window.open(link.url, "_blank", "noopener,noreferrer");
+                }}
+              >
+                {file.contentType === "application/pdf" ? "Open PDF" : `Open ${file.page}`}
+              </button>
+            </li>
+          ))}
+        </ul>
+        {item.type === "licence_c_ce" && item.status === "verified" && (
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              void documentsApi.sightCheck(item.id, { version: item.version, checkedAt }).then(onChanged);
+            }}
+          >
+            <label>
+              {en.documents.sightCheckDate}
+              <input type="date" value={checkedAt} onChange={(event) => setCheckedAt(event.target.value)} />
+            </label>
+            <p className="ui-muted">{en.documents.sightCheckNote}</p>
+            <button className="ui-button primary" type="submit">
+              {en.documents.recordSightCheck}
+            </button>
+          </form>
+        )}
+        {item.canAct && roles.includes("hr") && <p className="ui-muted">{en.documents.deleteAvailable}</p>}
+      </div>
+    </Drawer>
   );
 }
 

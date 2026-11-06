@@ -10,6 +10,9 @@ export type DocumentCreateRequest = components["schemas"]["DocumentCreateRequest
 export type UploadLinkResult = components["schemas"]["UploadLinkResult"];
 export type PeopleLookupResult = components["schemas"]["PeopleLookupResult"];
 export type VehicleListResult = components["schemas"]["VehicleListResult"];
+export type DocumentDetail = components["schemas"]["DocumentDetail"];
+export type DocumentCounts = components["schemas"]["DocumentCounts"];
+export type DocumentSearchResult = components["schemas"]["DocumentSearchResult"];
 
 export type ApiProblem = {
   code?: string;
@@ -54,11 +57,12 @@ export const documentTypes: Record<DocumentOwnerType, readonly DocumentType[]> =
 };
 
 export const documentsApi = {
-  list: (params: { cursor?: string; search?: string }) => {
+  list: (params: { cursor?: string; search?: string; filter?: string }) => {
     const query = new URLSearchParams();
     query.set("cursor", params.cursor ?? "");
     query.set("limit", "50");
     query.set("search", params.search ?? "");
+    query.set("filter", params.filter ?? "");
     return request<DocumentList>(`/api/v1/documents?${query.toString()}`);
   },
   people: (search: string) => {
@@ -79,4 +83,29 @@ export const documentsApi = {
       method: "POST",
       body: JSON.stringify(input),
     }),
+  counts: () => request<DocumentCounts>("/api/v1/documents/counts"),
+  detail: (id: string) => request<DocumentDetail>(`/api/v1/documents/${id}`),
+  fileLink: (id: string, fileId: string) =>
+    request<{ url: string; expiresAt: string }>(`/api/v1/documents/${id}/files/${fileId}/link`),
+  verify: (id: string, input: components["schemas"]["DocumentVerifyRequest"]) =>
+    request<DocumentDetail>(`/api/v1/documents/${id}/verify`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  reject: (id: string, input: components["schemas"]["DocumentRejectRequest"]) =>
+    request<DocumentDetail>(`/api/v1/documents/${id}/reject`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  remove: (id: string, input: components["schemas"]["DocumentDeleteRequest"]) =>
+    request<DocumentDetail>(`/api/v1/documents/${id}/delete`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  sightCheck: (id: string, input: components["schemas"]["DocumentSightCheckRequest"]) =>
+    request<DocumentDetail>(`/api/v1/documents/${id}/sight-check`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  searchAll: (q: string) => request<DocumentSearchResult>(`/api/v1/search?q=${encodeURIComponent(q)}`),
 };

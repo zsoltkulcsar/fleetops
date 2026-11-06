@@ -1,4 +1,5 @@
 using FleetOps.Kernel.Authorization;
+using FleetOps.Kernel;
 using FleetOps.Kernel.Files;
 using FleetOps.Modules.Documents;
 using FleetOps.People;
@@ -6,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FleetOps.Migrations;
 
-public sealed class EfDocumentStore(IObjectStore objects, IConfiguration configuration, ILogger<EfDocumentStore> logger, TimeProvider? time = null) : IDocumentStore
+public sealed class EfDocumentStore(IObjectStore objects, IConfiguration configuration, ILogger<EfDocumentStore> logger, ICompanyTimeService companyTime, TimeProvider? time = null) : IDocumentStore
 {
     private readonly TimeProvider clock = time ?? TimeProvider.System;
     private static readonly HashSet<string> ContentTypes = ["image/jpeg", "image/png", "image/webp", "image/heic", "application/pdf"];
@@ -53,10 +54,102 @@ public sealed class EfDocumentStore(IObjectStore objects, IConfiguration configu
         await db.SaveChangesAsync(cancellationToken);
         return await ReadDetailAsync(db, document.Id, cancellationToken) ?? throw new DocumentConflictException("not_found");
     }
+    public async Task<DocumentDetail> VerifyAsync(Guid id, int version, DateOnly? expiresAt, DateOnly? issuedAt, string? number, string[]? categories, AccessContext actor, CommandContext context, CancellationToken cancellationToken)
+    {
+        await using var db = CreateDb(context, actor.EmployeeId);
+        var document = await LockedDocumentAsync(db, id, cancellationToken) ?? throw new DocumentConflictException("not_found");
+        if (document.Version != version) throw new DocumentConflictException("version_conflict");
+        if (document.Status != DocumentStatus.Uploaded) throw new DocumentConflictException("state_conflict");
+        var catalog = DocumentsCatalog.Get(document.Type);
+        if (catalog.HasExpiry && expiresAt is null) throw new DocumentValidationException(["expiresAt"]);
+        if (expiresAt < issuedAt) throw new DocumentValidationException(["expiresAt"]);
+        if (document.Type != DocumentType.LicenceC_CE && categories is { Length: > 0 }) throw new DocumentValidationException(["categories"]);
+        var lockKey = $"{document.OwnerType}:{document.OwnerId}:{document.Type}";
+        await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({lockKey}, 0))", cancellationToken);
+        var previous = await db.Documents.FromSqlInterpolated($"SELECT * FROM fleetops.documents WHERE owner_id = {document.OwnerId} AND owner_type = {document.OwnerType.ToString()} AND type = {document.Type.ToString().ToSnakeCase()} AND status = {"Verified"} FOR UPDATE").SingleOrDefaultAsync(cancellationToken);
+        if (previous is not null) { previous.Status = DocumentStatus.Replaced; previous.Version++; }
+        document.Status = DocumentStatus.Verified;
+        document.VerifiedBy = actor.EmployeeId;
+        document.VerifiedAt = clock.GetUtcNow();
+        document.ExpiresAt = expiresAt;
+        document.IssuedAt = issuedAt;
+        document.Number = number;
+        document.Categories = categories ?? [];
+        document.ReplacesId = previous?.Id;
+        document.Version++;
+        await db.SaveChangesAsync(cancellationToken);
+        return await ReadDetailAsync(db, id, cancellationToken, actor) ?? throw new DocumentConflictException("not_found");
+    }
+    public async Task<DocumentDetail> RejectAsync(Guid id, int version, string reason, AccessContext actor, CommandContext context, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(reason)) throw new DocumentValidationException(["reason"]);
+        await using var db = CreateDb(context, actor.EmployeeId);
+        var document = await LockedDocumentAsync(db, id, cancellationToken) ?? throw new DocumentConflictException("not_found");
+        if (document.Version != version) throw new DocumentConflictException("version_conflict");
+        if (document.Status != DocumentStatus.Uploaded) throw new DocumentConflictException("state_conflict");
+        document.Status = DocumentStatus.Rejected;
+        document.RejectReason = reason.Trim();
+        document.Version++;
+        await db.SaveChangesAsync(cancellationToken);
+        return await ReadDetailAsync(db, id, cancellationToken, actor) ?? throw new DocumentConflictException("not_found");
+    }
+    public async Task<DocumentDetail> DeleteAsync(Guid id, int version, string reason, AccessContext actor, CommandContext context, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(reason)) throw new DocumentValidationException(["reason"]);
+        await using var db = CreateDb(context, actor.EmployeeId);
+        var document = await LockedDocumentAsync(db, id, cancellationToken) ?? throw new DocumentConflictException("not_found");
+        if (document.Version != version) throw new DocumentConflictException("version_conflict");
+        var files = await db.DocumentFiles.Where(x => x.DocumentId == id).OrderBy(x => x.SortOrder).ToListAsync(cancellationToken);
+        foreach (var file in files) await objects.DeleteAsync(file.ObjectKey, cancellationToken);
+        if (document.ReplacesId is Guid replacesId)
+        {
+            var previous = await db.Documents.SingleOrDefaultAsync(x => x.Id == replacesId && x.Status == DocumentStatus.Replaced, cancellationToken);
+            if (previous is not null) { previous.Status = DocumentStatus.Verified; previous.Version++; }
+        }
+        db.DocumentFiles.RemoveRange(files);
+        db.Documents.Remove(document);
+        db.AuditEntries.Add(new FleetOps.Modules.Audit.AuditEntry { Id = Guid.CreateVersion7(), EntityType = nameof(Document), EntityId = id, FieldName = "deleted", ActorId = actor.EmployeeId.ToString(), Reason = $"type={document.Type};owner={document.OwnerType}:{document.OwnerId};reason={reason.Trim()}", CreatedAt = clock.GetUtcNow() });
+        await db.SaveChangesAsync(cancellationToken);
+        return new DocumentDetail(id, document.OwnerType, document.OwnerId, "", document.Type, null, null, null, document.Status, document.CreatedAt, version, null, null, [], [], false);
+    }
+    public async Task<DocumentDetail> SightCheckAsync(Guid id, int version, DateOnly checkedAt, AccessContext actor, CommandContext context, CancellationToken cancellationToken)
+    {
+        var today = companyTime.ToCompanyDate(clock.GetUtcNow());
+        if (checkedAt > today) throw new DocumentValidationException(["checkedAt"]);
+        await using var db = CreateDb(context, actor.EmployeeId);
+        var document = await LockedDocumentAsync(db, id, cancellationToken) ?? throw new DocumentConflictException("not_found");
+        if (document.Version != version) throw new DocumentConflictException("version_conflict");
+        if (document.Type != DocumentType.LicenceC_CE || document.Status != DocumentStatus.Verified) throw new DocumentConflictException("state_conflict");
+        document.LastSightCheckAt = checkedAt;
+        document.Version++;
+        await db.SaveChangesAsync(cancellationToken);
+        return await ReadDetailAsync(db, id, cancellationToken, actor) ?? throw new DocumentConflictException("not_found");
+    }
     internal static void ValidateType(DocumentOwnerType ownerType, DocumentType type) { var catalog = DocumentsCatalog.Get(type); if (catalog.OwnerType != ownerType) throw new DocumentValidationException(["type"]); }
     private static async Task ValidateOwnerAsync(FleetOpsDbContext db, DocumentOwnerType ownerType, Guid ownerId, DocumentType type, CancellationToken cancellationToken)
     { if (ownerType == DocumentOwnerType.Employee) { if (!await db.Set<Employee>().AnyAsync(x => x.Id == ownerId && x.Status != EmployeeStatus.Left, cancellationToken)) throw new DocumentConflictException("owner_not_found"); } else { var vehicle = await db.Vehicles.SingleOrDefaultAsync(x => x.Id == ownerId, cancellationToken) ?? throw new DocumentConflictException("owner_not_found"); if (vehicle.Status == FleetOps.Modules.Fleet.VehicleStatus.Retired) throw new DocumentConflictException("state_conflict"); if (DocumentsCatalog.Get(type).TruckOnly && vehicle.Kind != FleetOps.Modules.Fleet.VehicleKind.Truck) throw new DocumentValidationException(["type"]); } }
     private FleetOpsDbContext CreateDb(CommandContext context, Guid actorId) { var options = new DbContextOptionsBuilder<FleetOpsDbContext>(); MigrationDbContextOptions.ConfigureRuntime(options, context.DbConnection); var db = new FleetOpsDbContext(options.Options) { AuditActorId = actorId }; db.Database.UseTransaction(context.DbTransaction); return db; }
-    public static async Task<DocumentDetail?> ReadDetailAsync(FleetOpsDbContext db, Guid id, CancellationToken cancellationToken)
-    { return await db.Documents.AsNoTracking().Where(x => x.Id == id).Select(x => new DocumentDetail(x.Id, x.OwnerType, x.OwnerId, x.OwnerType == DocumentOwnerType.Employee ? db.Set<Employee>().Where(e => e.Id == x.OwnerId).Select(e => e.FirstName + " " + e.LastName).FirstOrDefault() ?? "" : db.Vehicles.Where(v => v.Id == x.OwnerId).Select(v => v.Plate).FirstOrDefault() ?? "", x.Type, x.Number, x.IssuedAt, x.ExpiresAt, x.Status, x.CreatedAt, x.Version, x.VerifiedAt, x.RejectReason, x.Categories, x.Files.OrderBy(f => f.SortOrder).Select(f => new DocumentFileDetail(f.Id, f.Page, f.ContentType, f.SizeBytes)).ToList())).SingleOrDefaultAsync(cancellationToken); }
+    public static async Task<DocumentDetail?> ReadDetailAsync(FleetOpsDbContext db, Guid id, CancellationToken cancellationToken, AccessContext? actor = null)
+    {
+        return await db.Documents.AsNoTracking().Where(x => x.Id == id).Select(x => new DocumentDetail(
+            x.Id,
+            x.OwnerType,
+            x.OwnerId,
+            x.OwnerType == DocumentOwnerType.Employee
+                ? db.Set<Employee>().Where(e => e.Id == x.OwnerId).Select(e => e.FirstName + " " + e.LastName).FirstOrDefault() ?? ""
+                : db.Vehicles.Where(v => v.Id == x.OwnerId).Select(v => v.Plate).FirstOrDefault() ?? "",
+            x.Type,
+            x.Number,
+            x.IssuedAt,
+            x.ExpiresAt,
+            x.Status,
+            x.CreatedAt,
+            x.Version,
+            x.VerifiedAt,
+            x.RejectReason,
+            x.Categories,
+            x.Files.OrderBy(f => f.SortOrder).Select(f => new DocumentFileDetail(f.Id, f.Page, f.ContentType, f.SizeBytes)).ToList(),
+            actor != null && ((x.OwnerType == DocumentOwnerType.Vehicle && PermissionMatrix.Resolve("documents.vehicle.manage", actor.Roles)!.Cell == PermissionMatrix.Cell.Full) || (x.OwnerType == DocumentOwnerType.Employee && PermissionMatrix.Resolve("documents.driver.verify", actor.Roles)!.Cell == PermissionMatrix.Cell.Full)) && x.Status == DocumentStatus.Uploaded)).SingleOrDefaultAsync(cancellationToken);
+    }
+    private static Task<Document?> LockedDocumentAsync(FleetOpsDbContext db, Guid id, CancellationToken cancellationToken) => db.Documents.FromSqlInterpolated($"SELECT * FROM fleetops.documents WHERE id = {id} FOR UPDATE").SingleOrDefaultAsync(cancellationToken);
 }

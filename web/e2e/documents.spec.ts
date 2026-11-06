@@ -16,6 +16,7 @@ const row = (number = "DOC-1"): DocumentListItem => ({
   status: "uploaded",
   uploadedAt: "2026-11-06T10:00:00Z",
   version: 1,
+  canAct: false,
 });
 
 async function list(page: Page, items: DocumentListItem[] = [row()]) {
@@ -26,12 +27,20 @@ async function list(page: Page, items: DocumentListItem[] = [row()]) {
       body: JSON.stringify({ items, nextCursor: null }),
     }),
   );
+  await page.route("**/api/v1/documents/counts", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ queue: 0, expiring: 0, expired: 0 }),
+    }),
+  );
 }
 
 test("documents list shows rows with status text", async ({ page }) => {
   await list(page);
   await page.goto("/documents");
   await expect(page.getByText("KS-DC 1177")).toBeVisible();
+  await page.getByRole("button", { name: "All", exact: true }).click();
   await expect(page.locator("tbody").getByText("Uploaded")).toBeVisible();
 });
 
@@ -43,17 +52,23 @@ test("documents empty state offers the next step", async ({ page }) => {
 
 test("documents search goes to the server", async ({ page }) => {
   let search = "";
-  await page.route("**/api/v1/documents?*", (route) => {
-    search = new URL(route.request().url()).searchParams.get("search") ?? "";
+  await page.route("**/api/v1/search?*", (route) => {
+    search = new URL(route.request().url()).searchParams.get("q") ?? "";
     return route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ items: search ? [row("FOUND")] : [], nextCursor: null }),
+      body: JSON.stringify({
+        documents: search ? [{ ...row("FOUND"), ownerType: "vehicle" }] : [],
+        vehicles: [],
+        people: [],
+      }),
     });
   });
   await page.goto("/documents");
-  await page.getByPlaceholder("Search by number, plate or name").fill("FOUND");
-  await expect(page.getByText("FOUND")).toBeVisible();
+  await page
+    .getByRole("textbox", { name: "Search plate, name or document number", exact: true })
+    .fill("FOUND");
+  await expect(page.getByText(/FOUND/)).toBeVisible();
   expect(search).toBe("FOUND");
 });
 

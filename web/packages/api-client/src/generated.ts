@@ -299,6 +299,7 @@ export interface paths {
                     status?: components["schemas"]["DocumentStatus"];
                     search?: string;
                     cursor?: string;
+                    filter?: string;
                     limit?: number;
                 };
                 header?: never;
@@ -380,6 +381,278 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DocumentCounts"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/{id}/files/{fileId}/link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                    fileId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    q?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DocumentSearchResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/{id}/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DocumentVerifyRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DocumentDetail"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DocumentRejectRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DocumentDetail"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/{id}/delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DocumentDeleteRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DocumentDetail"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/{id}/sight-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DocumentSightCheckRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DocumentDetail"];
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -780,6 +1053,14 @@ export interface components {
             lastTachoDownloadAt: null | string;
             reason: null | string;
         };
+        DocumentCounts: {
+            /** Format: int32 */
+            queue: number;
+            /** Format: int32 */
+            expiring: number;
+            /** Format: int32 */
+            expired: number;
+        };
         DocumentCreateRequest: {
             ownerType: components["schemas"]["DocumentOwnerType"];
             /** Format: uuid */
@@ -792,6 +1073,11 @@ export interface components {
             expiresAt: null | string;
             categories: null | string[];
             files: components["schemas"]["ConfirmFileInput"][];
+        };
+        DocumentDeleteRequest: {
+            /** Format: int32 */
+            version: number;
+            reason: string;
         };
         DocumentDetail: {
             /** Format: uuid */
@@ -816,6 +1102,7 @@ export interface components {
             rejectReason: null | string;
             categories: string[];
             files: components["schemas"]["DocumentFileDetail"][];
+            canAct: boolean;
         };
         DocumentFileDetail: {
             /** Format: uuid */
@@ -845,6 +1132,7 @@ export interface components {
             uploadedAt: string;
             /** Format: int32 */
             version: number;
+            canAct: boolean;
         };
         DocumentListResult: {
             items: components["schemas"]["DocumentListItem"][];
@@ -852,6 +1140,29 @@ export interface components {
         };
         /** @enum {unknown} */
         DocumentOwnerType: "employee" | "vehicle";
+        DocumentRejectRequest: {
+            /** Format: int32 */
+            version: number;
+            reason: string;
+        };
+        DocumentSearchItem: {
+            /** Format: uuid */
+            id: string;
+            type: components["schemas"]["DocumentType"];
+            number: null | string;
+            ownerName: string;
+        };
+        DocumentSearchResult: {
+            documents: components["schemas"]["DocumentSearchItem"][];
+            vehicles: components["schemas"]["VehicleSearchItem"][];
+            people: components["schemas"]["PeopleSearchItem"][];
+        };
+        DocumentSightCheckRequest: {
+            /** Format: int32 */
+            version: number;
+            /** Format: date */
+            checkedAt: string;
+        };
         /** @enum {unknown} */
         DocumentStatus: "uploaded" | "verified" | "rejected" | "replaced";
         /** @enum {unknown} */
@@ -864,6 +1175,16 @@ export interface components {
             contentType: string;
             /** Format: int64 */
             sizeBytes: number;
+        };
+        DocumentVerifyRequest: {
+            /** Format: int32 */
+            version: number;
+            /** Format: date */
+            expiresAt?: null | string;
+            /** Format: date */
+            issuedAt?: null | string;
+            number?: null | string;
+            categories?: null | string[];
         };
         EditVehicleRequest: {
             /** Format: int32 */
@@ -909,6 +1230,11 @@ export interface components {
         };
         PeopleLookupResult: {
             items: components["schemas"]["PeopleLookupItem"][];
+        };
+        PeopleSearchItem: {
+            /** Format: uuid */
+            id: string;
+            name: string;
         };
         PrivacyRequest: {
             version: string;
@@ -1011,6 +1337,13 @@ export interface components {
         };
         /** @enum {unknown} */
         VehicleOwnership: "owned" | "leased" | "rented_in";
+        VehicleSearchItem: {
+            /** Format: uuid */
+            id: string;
+            plate: string;
+            make: string;
+            model: string;
+        };
         /** @enum {unknown} */
         VehicleStatus: "active" | "retired";
     };

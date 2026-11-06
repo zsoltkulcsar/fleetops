@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router";
 import { en } from "../i18n/en";
 import { useSession } from "../auth/AuthGate";
+import { useQuery } from "@tanstack/react-query";
+import { documentsApi } from "../documents/api";
 
 export type NavigationItem = { id: string; label: string; icon: typeof Bell };
 export const navigation: NavigationItem[] = [
@@ -23,6 +25,13 @@ function routeFor(id: string) {
 }
 export function NavigationLink({ item, compact = false }: { item: NavigationItem; compact?: boolean }) {
   const Icon = item.icon;
+  const counts = useQuery({
+    queryKey: ["document-counts"],
+    queryFn: documentsApi.counts,
+    enabled: item.id === "documents",
+    refetchInterval: 60_000,
+  });
+  const queue = counts.data?.queue ?? 0;
   return (
     <NavLink
       to={routeFor(item.id)}
@@ -31,6 +40,11 @@ export function NavigationLink({ item, compact = false }: { item: NavigationItem
     >
       <Icon size={18} aria-hidden />
       <span className={compact ? "visually-hidden" : undefined}>{item.label}</span>
+      {item.id === "documents" && queue > 0 && (
+        <span className="nav-badge" aria-label={`${queue} to verify`}>
+          {queue}
+        </span>
+      )}
     </NavLink>
   );
 }

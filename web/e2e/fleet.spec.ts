@@ -215,7 +215,7 @@ test("add vehicle creates and shows a success toast", async ({ page }) => {
   await list(page, []);
   await page.goto("/fleet");
   await page.getByRole("button", { name: "Add vehicle" }).first().click();
-  await page.getByLabel("Plate").fill("KS-DC 2002");
+  await page.getByLabel("Plate", { exact: true }).fill("KS-DC 2002");
   await page.getByLabel("Make").fill("MAN");
   await page.getByLabel("Model").fill("TGX");
   await page.getByLabel("Year").fill("2024");
@@ -236,7 +236,7 @@ test("add trailer sends a body the API accepts", async ({ page }) => {
   const drawerForm = page.getByRole("dialog").locator("form");
   await drawerForm.getByLabel("Kind").selectOption("trailer");
   await drawerForm.getByLabel("Trailer type").selectOption("box");
-  await page.getByLabel("Plate").fill("KS-DC 3003");
+  await page.getByLabel("Plate", { exact: true }).fill("KS-DC 3003");
   await page.getByLabel("Make").fill("SCHMITZ");
   await page.getByLabel("Model").fill("S.KO");
   await page.getByLabel("Year").fill("2024");
@@ -286,13 +286,13 @@ test("add vehicle shows a failure that has no field errors", async ({ page }) =>
   await list(page, []);
   await page.goto("/fleet");
   await page.getByRole("button", { name: "Add vehicle" }).first().click();
-  await page.getByLabel("Plate").fill("KS-DC 4004");
+  await page.getByLabel("Plate", { exact: true }).fill("KS-DC 4004");
   await page.route("**/api/v1/fleet/vehicles", (route) => route.fulfill({ status: 500 }));
   await page.getByRole("button", { name: "Add vehicle", exact: true }).last().click();
   await expect(
     page.getByText("Vehicle could not be saved. Check the connection and try again."),
   ).toBeVisible();
-  await expect(page.getByLabel("Plate")).toHaveValue("KS-DC 4004");
+  await expect(page.getByLabel("Plate", { exact: true })).toHaveValue("KS-DC 4004");
 });
 test("edit requires a reason", async ({ page }) => {
   await page.route("**/api/v1/fleet/vehicles/v-1", (route) =>

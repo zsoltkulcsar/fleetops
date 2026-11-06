@@ -244,7 +244,7 @@ public sealed class VehicleApiFactory : WebApplicationFactory<Program>, IAsyncLi
         {
             public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
             public bool IsEnabled(LogLevel logLevel) => true;
-            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) => items.Enqueue(formatter(state, exception));
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) => items.Enqueue($"{formatter(state, exception)} {exception}");
             private sealed class NullScope : IDisposable { public static readonly NullScope Instance = new(); public void Dispose() { } }
         }
     }
