@@ -6,6 +6,8 @@ public sealed class AuditEntry
     public string EntityType { get; set; } = "";
     public Guid EntityId { get; set; }
     public string FieldName { get; set; } = "";
+    public string? OldValue { get; set; }
+    public string? NewValue { get; set; }
     public string ActorId { get; set; } = "";
     public string Reason { get; set; } = "";
     public DateTimeOffset CreatedAt { get; set; }

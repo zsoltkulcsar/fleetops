@@ -4,10 +4,11 @@ namespace FleetOps.Api.Auth;
 
 internal static class Totp
 {
-    public static bool Verify(string secret, string code, DateTimeOffset now)
+    public static long? MatchedStep(string secret, string code, DateTimeOffset now)
     {
-        if (code.Length != 6 || !code.All(char.IsDigit)) return false;
+        if (string.IsNullOrWhiteSpace(secret) || code.Length != 6 || !code.All(char.IsDigit)) return null;
         var key = Decode(secret);
+        if (key.Length == 0) return null;
         var step = now.ToUnixTimeSeconds() / 30;
         Span<byte> counter = stackalloc byte[8];
         for (var candidate = step - 1; candidate <= step + 1; candidate++)
@@ -17,11 +18,12 @@ internal static class Totp
             var offset = hash[^1] & 0x0f;
             var value = ((hash[offset] & 0x7f) << 24) | (hash[offset + 1] << 16) | (hash[offset + 2] << 8) | hash[offset + 3];
             var expected = (value % 1_000_000).ToString("D6");
-            if (CryptographicOperations.FixedTimeEquals(System.Text.Encoding.ASCII.GetBytes(expected), System.Text.Encoding.ASCII.GetBytes(code)))
-                return true;
+            if (CryptographicOperations.FixedTimeEquals(System.Text.Encoding.ASCII.GetBytes(expected), System.Text.Encoding.ASCII.GetBytes(code))) return candidate;
         }
-        return false;
+        return null;
     }
+    public static bool Verify(string secret, string code, DateTimeOffset now)
+        => MatchedStep(secret, code, now).HasValue;
 
     private static byte[] Decode(string value)
     {

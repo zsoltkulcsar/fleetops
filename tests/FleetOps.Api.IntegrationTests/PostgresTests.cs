@@ -21,6 +21,8 @@ public sealed class PostgresTests
             await setup.OpenAsync(TestContext.Current.CancellationToken);
             await using var create = new NpgsqlCommand("create table context_rows (id integer not null)", setup);
             await create.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
+            await using var grant = new NpgsqlCommand("grant select, insert on table context_rows to fleetops_runtime", setup);
+            await grant.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
         }
         var precondition = new ContextPrecondition();
         var provider = new ServiceCollection()
@@ -100,6 +102,8 @@ public sealed class PostgresTests
             await setup.OpenAsync(TestContext.Current.CancellationToken);
             await using var command = new NpgsqlCommand("create table dispatch_rows (id integer not null)", setup);
             await command.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
+            await using var grant = new NpgsqlCommand("grant insert, select on table dispatch_rows to fleetops_runtime", setup);
+            await grant.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
         }
 
         var policy = new CommandPolicy("shifts.approve_reject", new[] { RoleCode.Dispatcher }.ToHashSet());

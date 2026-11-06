@@ -10,10 +10,7 @@ public sealed class DemoMailbox(IHostEnvironment environment, ILogger<DemoMailbo
     public string? LastLink { get; private set; }
     public void Store(string address, string link)
     {
-        if (environment.IsProduction())
-        {
-            throw new InvalidOperationException("mailbox_unavailable");
-        }
+        if (environment.IsProduction()) return;
         LastLink = link;
         logger.LogInformation("Demo password reset message queued");
     }

@@ -45,11 +45,7 @@ public static class AuthEndpoints
     {
         var normalized = input.Email.Trim().ToUpperInvariant();
         var user = await users.Users.SingleOrDefaultAsync(x => x.NormalizedEmail == normalized);
-        var locked = user is not null && user.AccessFailedCount >= 5 && IsLockedOut(user, time);
-        if (locked)
-        {
-            return Results.Json(new { code = "account_locked" }, statusCode: StatusCodes.Status423Locked);
-        }
+        var locked = user is not null && user.AccessFailedCount >= authOptions.Value.SecondFactorFailureLimit && IsLockedOut(user, time);
         if (user is not null && user.AccessFailedCount >= 5)
         {
             user.AccessFailedCount = 0;
@@ -62,27 +58,28 @@ public static class AuthEndpoints
             : DummyPasswordVerification(input.Password);
         if (!valid)
         {
-            if (user is not null)
+            if (user is not null && !locked)
             {
                 user.AccessFailedCount++;
-                if (user.AccessFailedCount >= 5)
+                if (user.AccessFailedCount >= authOptions.Value.SecondFactorFailureLimit)
                 {
                     user.LockoutEnd = time.GetUtcNow().Add(authOptions.Value.LockoutLifetime);
-                    user.AccessFailedCount = 5;
+                    user.AccessFailedCount = authOptions.Value.SecondFactorFailureLimit;
                     await users.UpdateAsync(user);
-                    return Results.Json(new { code = "account_locked" }, statusCode: StatusCodes.Status423Locked);
                 }
                 await users.UpdateAsync(user);
             }
             return Results.Json(new { code = "sign_in_failed" }, statusCode: StatusCodes.Status401Unauthorized);
         }
 
-        await users.ResetAccessFailedCountAsync(user!);
+        if (locked) return Results.Json(new { code = "account_locked" }, statusCode: StatusCodes.Status423Locked);
+
         var employee = await db.Employees.FindAsync([user!.EmployeeId], http.HttpContext?.RequestAborted ?? CancellationToken.None);
         if (employee is null || employee.Status != EmployeeStatus.Active)
         {
             return Results.Json(new { code = "sign_in_failed" }, statusCode: StatusCodes.Status401Unauthorized);
         }
+        await users.ResetAccessFailedCountAsync(user);
 
         var roles = AuthTokens.ParseRoles(employee.Roles);
         var requiresFactor = roles.Contains(RoleCode.Hr) || roles.Contains(RoleCode.Owner);
@@ -96,7 +93,7 @@ public static class AuthEndpoints
         var enrolled = user.TwoFactorEnabled && !string.IsNullOrWhiteSpace(authenticatorKey);
         var stage = requiresFactor
             ? enrolled ? SessionStage.PendingSecondFactor : SessionStage.PendingEnrolment
-            : await db.PrivacyAcknowledgements.AnyAsync(x => x.EmployeeId == employee.Id) ? SessionStage.Full : SessionStage.PendingPrivacy;
+            : await db.PrivacyAcknowledgements.AnyAsync(x => x.EmployeeId == employee.Id && x.Version == authOptions.Value.PrivacyVersion) ? SessionStage.Full : SessionStage.PendingPrivacy;
         var now = time.GetUtcNow();
         var raw = AuthTokens.New();
         db.OfficeSessions.Add(new OfficeSession
@@ -125,8 +122,9 @@ public static class AuthEndpoints
         [FromServices] FleetOpsDbContext db,
         [FromServices] UserManager<OfficeUser> users,
         [FromServices] IHttpContextAccessor http,
-        [FromServices] TimeProvider time) =>
-        CompleteFactor(input, db, users, http, time);
+        [FromServices] TimeProvider time,
+        [FromServices] IOptions<AuthOptions> options) =>
+        CompleteFactor(input, db, users, http, time, options);
 
     private static async Task<IResult> Enrol(
         [FromServices] FleetOpsDbContext db,
@@ -144,33 +142,39 @@ public static class AuthEndpoints
         return Results.Ok(new { secret, otpauthUri = uri });
     }
 
-    private static async Task<IResult> CompleteFactor(SecondFactorRequest input, FleetOpsDbContext db, UserManager<OfficeUser> users, IHttpContextAccessor http, TimeProvider time)
+    private static async Task<IResult> CompleteFactor(SecondFactorRequest input, FleetOpsDbContext db, UserManager<OfficeUser> users, IHttpContextAccessor http, TimeProvider time, IOptions<AuthOptions> options)
     {
         var session = await FindSession(db, http);
         var user = session is null ? null : await users.FindByIdAsync(session.UserId.ToString());
         var accepted = false;
         var authenticatorKey = user is null ? null : await users.GetAuthenticatorKeyAsync(user);
-        if (session is not null && user is not null && (session.Stage is SessionStage.PendingSecondFactor or SessionStage.PendingEnrolment) && !string.IsNullOrWhiteSpace(authenticatorKey))
+        if (session is not null && session.RevokedAt is null && user is not null && (session.Stage is SessionStage.PendingSecondFactor or SessionStage.PendingEnrolment) && session.FailedSecondFactorAttempts < options.Value.SecondFactorFailureLimit && !string.IsNullOrWhiteSpace(authenticatorKey))
         {
             var currentStep = time.GetUtcNow().ToUnixTimeSeconds() / 30;
             if (session.Stage == SessionStage.PendingEnrolment)
                 user.TwoFactorEnabled = true;
-            accepted = (!user.LastAcceptedTotpStep.HasValue || currentStep > user.LastAcceptedTotpStep.Value)
-                && Totp.Verify(authenticatorKey, input.Code, time.GetUtcNow());
+            var matched = Totp.MatchedStep(authenticatorKey, input.Code, time.GetUtcNow());
+            accepted = matched.HasValue && (!user.LastAcceptedTotpStep.HasValue || matched.Value > user.LastAcceptedTotpStep.Value);
             if (accepted)
             {
-                user.LastAcceptedTotpStep = currentStep;
+                user.LastAcceptedTotpStep = Totp.MatchedStep(authenticatorKey, input.Code, time.GetUtcNow());
+                session.FailedSecondFactorAttempts = 0;
             }
-            else if (session.Stage == SessionStage.PendingEnrolment)
-                user.TwoFactorEnabled = false;
+            else { session.FailedSecondFactorAttempts++; if (session.FailedSecondFactorAttempts >= 5) { session.RevokedAt = time.GetUtcNow(); user.AccessFailedCount = 5; } if (session.Stage == SessionStage.PendingEnrolment) user.TwoFactorEnabled = false; }
         }
         if (!accepted)
         {
+            if (session is not null) await db.SaveChangesAsync(http.HttpContext!.RequestAborted);
             return Results.Json(new { code = "second_factor_failed" }, statusCode: StatusCodes.Status401Unauthorized);
         }
-        session!.Stage = await db.PrivacyAcknowledgements.AnyAsync(x => x.EmployeeId == session.EmployeeId) ? SessionStage.Full : SessionStage.PendingPrivacy;
+        session!.Stage = await db.PrivacyAcknowledgements.AnyAsync(x => x.EmployeeId == session.EmployeeId && x.Version == options.Value.PrivacyVersion) ? SessionStage.Full : SessionStage.PendingPrivacy;
         session.StepUpAt = time.GetUtcNow();
         await db.SaveChangesAsync(http.HttpContext!.RequestAborted);
+        if (session.Stage == SessionStage.Full)
+        {
+            var raw = AuthTokens.New(); session.TokenHash = AuthTokens.Hash(raw); SetCookie(http.HttpContext!, raw);
+            await db.SaveChangesAsync(http.HttpContext!.RequestAborted);
+        }
         return Results.Ok(new { next = Next(session.Stage) });
     }
 
@@ -178,15 +182,18 @@ public static class AuthEndpoints
         [FromBody] PrivacyRequest input,
         [FromServices] FleetOpsDbContext db,
         [FromServices] IHttpContextAccessor http,
-        [FromServices] TimeProvider time)
+        [FromServices] TimeProvider time,
+        [FromServices] IOptions<AuthOptions> options)
     {
         var session = await FindSession(db, http);
         if (session is null || session.Stage != SessionStage.PendingPrivacy)
         {
             return Results.Unauthorized();
         }
-        db.PrivacyAcknowledgements.Add(new PrivacyAcknowledgement { Id = Guid.NewGuid(), EmployeeId = session.EmployeeId, Version = input.Version, AcknowledgedAt = time.GetUtcNow() });
+        db.PrivacyAcknowledgements.Add(new PrivacyAcknowledgement { Id = Guid.CreateVersion7(), EmployeeId = session.EmployeeId, Version = options.Value.PrivacyVersion, AcknowledgedAt = time.GetUtcNow() });
         session.Stage = SessionStage.Full;
+        await db.SaveChangesAsync(http.HttpContext!.RequestAborted);
+        var raw = AuthTokens.New(); session.TokenHash = AuthTokens.Hash(raw); SetCookie(http.HttpContext!, raw);
         await db.SaveChangesAsync(http.HttpContext!.RequestAborted);
         return Results.Ok(new { next = Next(session.Stage) });
     }
@@ -203,7 +210,7 @@ public static class AuthEndpoints
         {
             var raw = AuthTokens.New();
             db.PasswordResetTokens.Add(new PasswordResetToken { Id = Guid.NewGuid(), UserId = user.Id, TokenHash = AuthTokens.Hash(raw), ExpiresAt = time.GetUtcNow().Add(options.Value.ResetTokenLifetime) });
-            mailbox.Store(input.Email, raw);
+            mailbox.Store(user.Email ?? user.UserName ?? "", raw);
             await db.SaveChangesAsync();
         }
         return Results.Accepted(value: new { code = "reset_requested" });
@@ -227,13 +234,17 @@ public static class AuthEndpoints
         {
             return Results.Json(new { code = "reset_token_refused" }, statusCode: StatusCodes.Status401Unauthorized);
         }
-        var remove = await users.RemovePasswordAsync(user);
-        var add = remove.Succeeded ? await users.AddPasswordAsync(user, input.Password) : remove;
+        var passwordErrors = new List<IdentityError>();
+        foreach (var validator in users.PasswordValidators)
+            passwordErrors.AddRange((await validator.ValidateAsync(users, user, input.Password)).Errors);
+        if (passwordErrors.Count > 0) return Results.Json(new { code = "reset_password_refused" }, statusCode: StatusCodes.Status400BadRequest);
+        user.PasswordHash = users.PasswordHasher.HashPassword(user, input.Password);
+        var add = await users.UpdateAsync(user);
         if (!add.Succeeded)
         {
             return Results.Json(new { code = "reset_password_refused" }, statusCode: StatusCodes.Status400BadRequest);
         }
-        token.UsedAt = time.GetUtcNow();
+        foreach (var resetToken in await db.PasswordResetTokens.Where(x => x.UserId == user.Id && x.UsedAt == null).ToListAsync()) resetToken.UsedAt = time.GetUtcNow();
         var sessions = await db.OfficeSessions.Where(x => x.UserId == user.Id && x.RevokedAt == null).ToListAsync();
         foreach (var session in sessions)
         {
@@ -267,15 +278,14 @@ public static class AuthEndpoints
     {
         var session = await FindSession(db, http);
         var user = session is null ? null : await users.FindByIdAsync(session.UserId.ToString());
-        var currentStep = time.GetUtcNow().ToUnixTimeSeconds() / 30;
         var accepted = session is not null && session.Stage == SessionStage.Full && user is not null;
-        accepted = accepted && Totp.Verify(await users.GetAuthenticatorKeyAsync(user!) ?? "", input.Code, time.GetUtcNow())
-            && (!user!.LastAcceptedTotpStep.HasValue || user.LastAcceptedTotpStep.Value < currentStep);
+        var matched = user is null ? null : Totp.MatchedStep(await users.GetAuthenticatorKeyAsync(user) ?? "", input.Code, time.GetUtcNow());
+        accepted = accepted && matched.HasValue && (!user!.LastAcceptedTotpStep.HasValue || user.LastAcceptedTotpStep.Value < matched.Value);
         if (!accepted)
         {
             return Results.Json(new { code = "second_factor_failed" }, statusCode: StatusCodes.Status401Unauthorized);
         }
-        user!.LastAcceptedTotpStep = currentStep;
+        user!.LastAcceptedTotpStep = matched;
         session!.StepUpAt = time.GetUtcNow();
         await db.SaveChangesAsync();
         return Results.Ok();

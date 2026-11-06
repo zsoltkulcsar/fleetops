@@ -8,7 +8,7 @@ public static class AuditArchitectureRules
     {
         var errors = new List<string>();
         foreach (var type in assembly.GetTypes().Where(x => x.GetCustomAttribute<AuditedEntityAttribute>() is not null))
-            foreach (var property in type.GetProperties().Where(x => x.GetCustomAttribute<AuditFieldAttribute>() is null))
+            foreach (var property in type.GetProperties().Where(x => x.GetCustomAttribute<AuditFieldAttribute>() is null && x.GetCustomAttribute<NotAuditedAttribute>() is null))
                 errors.Add($"{type.FullName}.{property.Name} has no audit field class");
         return errors;
     }

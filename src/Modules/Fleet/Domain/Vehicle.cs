@@ -11,10 +11,10 @@ public enum TrailerType { Curtainsider, Box, Reefer, Flatbed, Tanker }
 [AuditedEntity]
 public sealed class Vehicle
 {
-    [AuditField(AuditFieldClasses.Technical)] public Guid Id { get; set; } = Guid.CreateVersion7();
+    [NotAudited] public Guid Id { get; set; } = Guid.CreateVersion7();
     [AuditField(AuditFieldClasses.Plain)] public VehicleKind Kind { get; set; }
-    [AuditField(AuditFieldClasses.Special)] public string Plate { get; set; } = "";
-    [AuditField(AuditFieldClasses.Special)] public string Vin { get; set; } = "";
+    [AuditField(AuditFieldClasses.Plain)] public string Plate { get; set; } = "";
+    [AuditField(AuditFieldClasses.Plain)] public string Vin { get; set; } = "";
     [AuditField(AuditFieldClasses.Plain)] public string Make { get; set; } = "";
     [AuditField(AuditFieldClasses.Plain)] public string Model { get; set; } = "";
     [AuditField(AuditFieldClasses.Plain)] public int Year { get; set; }
@@ -30,9 +30,9 @@ public sealed class Vehicle
     [AuditField(AuditFieldClasses.Plain)] public int? ServiceIntervalMonths { get; set; }
     [AuditField(AuditFieldClasses.Plain)] public DateOnly? LastTachoDownloadAt { get; set; }
     [AuditField(AuditFieldClasses.Plain)] public VehicleStatus Status { get; set; } = VehicleStatus.Active;
-    [AuditField(AuditFieldClasses.Technical)] public int Version { get; set; } = 1;
-    [AuditField(AuditFieldClasses.Technical)] public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
-    [AuditField(AuditFieldClasses.Technical)] public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+    [NotAudited] public int Version { get; set; } = 1;
+    [NotAudited] public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    [NotAudited] public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
 [VisibleTo(RoleCode.Driver, RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner)]

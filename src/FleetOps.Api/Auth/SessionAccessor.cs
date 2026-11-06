@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 
 namespace FleetOps.Api.Auth;
 
-public sealed class SessionAccessor(FleetOpsDbContext db, ICompanyTimeService clock, TimeProvider time, IOptions<AuthOptions> options) : IAccessContextAccessor, IStepUpContextAccessor
+public sealed class SessionAccessor(FleetOpsDbContext db, ICompanyTimeService clock, TimeProvider time, IOptions<AuthOptions> options, ILogger<SessionAccessor> logger) : IAccessContextAccessor, IStepUpContextAccessor
 {
     private readonly AuthOptions _options = options.Value;
     public AccessContext? Current { get; private set; }
@@ -27,22 +27,22 @@ public sealed class SessionAccessor(FleetOpsDbContext db, ICompanyTimeService cl
         if (session is null || session.RevokedAt is not null)
         {
             httpContext.Items["ProblemCode"] = "session_expired";
+            httpContext.Response.Cookies.Delete(AuthEndpoints.CookieName, new CookieOptions { Path = "/", Secure = true, HttpOnly = true, SameSite = SameSiteMode.Strict });
             return;
         }
-        if (session.Stage != SessionStage.Full)
-        {
-            return;
-        }
-
         var employee = await db.Employees.FindAsync([session.EmployeeId], httpContext.RequestAborted);
         var ended = employee?.EndDate is DateOnly end && clock.ToCompanyDate(now) > end;
-        if (employee is null || employee.Status != EmployeeStatus.Active || ended || now - session.LastSeenAt > _options.IdleSessionLifetime || now - session.CreatedAt > _options.AbsoluteSessionLifetime)
+        var pendingExpired = session.Stage != SessionStage.Full && now - session.CreatedAt > _options.PendingSessionLifetime;
+        if (employee is null || employee.Status != EmployeeStatus.Active || ended || pendingExpired || now - session.LastSeenAt > _options.IdleSessionLifetime || now - session.CreatedAt > _options.AbsoluteSessionLifetime)
         {
             session.RevokedAt = now;
             httpContext.Items["ProblemCode"] = "session_expired";
             await db.SaveChangesAsync(httpContext.RequestAborted);
+            httpContext.Response.Cookies.Delete(AuthEndpoints.CookieName, new CookieOptions { Path = "/", Secure = true, HttpOnly = true, SameSite = SameSiteMode.Strict });
             return;
         }
+
+        if (session.Stage != SessionStage.Full) return;
 
         if (now - session.LastSeenAt >= TimeSpan.FromMinutes(1))
         {
@@ -54,6 +54,14 @@ public sealed class SessionAccessor(FleetOpsDbContext db, ICompanyTimeService cl
         if (roles.Count == 0)
         {
             session.RevokedAt = now;
+            await db.SaveChangesAsync(httpContext.RequestAborted);
+            return;
+        }
+
+        var requiresFactor = roles.Contains(RoleCode.Hr) || roles.Contains(RoleCode.Owner);
+        if (requiresFactor && session.StepUpAt is null)
+        {
+            session.Stage = SessionStage.PendingSecondFactor;
             await db.SaveChangesAsync(httpContext.RequestAborted);
             return;
         }

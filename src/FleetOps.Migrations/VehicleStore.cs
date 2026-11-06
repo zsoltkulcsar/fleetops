@@ -12,14 +12,14 @@ public sealed class EfVehicleStore : IVehicleStore
         await using var db = CreateDb(context, actor.EmployeeId, input.Reason);
         if (await db.Vehicles.AnyAsync(x => x.Status != VehicleStatus.Retired && (x.Plate == input.Plate || x.Vin == input.Vin), cancellationToken))
             throw new VehicleConflictException("duplicate_vehicle");
-        var depot = await db.Depots.SingleOrDefaultAsync(cancellationToken) ?? new FleetOps.Modules.Setup.Depot { Id = Guid.CreateVersion7() };
-        if (db.Entry(depot).State == EntityState.Detached) db.Depots.Add(depot);
+        var depot = await db.Depots.SingleAsync(cancellationToken);
+        if (input.DepotId is Guid requestedDepot && requestedDepot != depot.Id) throw new VehicleValidationException(["depotId"]);
         var vehicle = new Vehicle { Kind = input.Kind, Plate = input.Plate, Vin = input.Vin, Make = input.Make, Model = input.Model,
             Year = input.Year, GrossWeightKg = input.GrossWeightKg, RequiredLicenceClass = input.RequiredLicenceClass, Ownership = input.Ownership,
             LeaseEndDate = input.LeaseEndDate, TrailerType = input.TrailerType, OdometerKm = input.OdometerKm, DepotId = input.DepotId ?? depot.Id,
             ServiceIntervalKm = input.ServiceIntervalKm, ServiceIntervalMonths = input.ServiceIntervalMonths, LastTachoDownloadAt = input.LastTachoDownloadAt };
         db.Vehicles.Add(vehicle);
-        await db.SaveChangesAsync(cancellationToken);
+        try { await db.SaveChangesAsync(cancellationToken); } catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: "23505" }) { throw new VehicleConflictException("duplicate_vehicle"); }
         return await Read(db, vehicle.Id, cancellationToken);
     }
 
@@ -28,6 +28,9 @@ public sealed class EfVehicleStore : IVehicleStore
         await using var db = CreateDb(context, actor.EmployeeId, input.Reason);
         var vehicle = await db.Vehicles.SingleOrDefaultAsync(x => x.Id == input.SubjectId, cancellationToken) ?? throw new VehicleConflictException("vehicle_not_found");
         if (vehicle.Version != input.Version) throw new VehicleConflictException("version_conflict");
+        if (vehicle.Status == VehicleStatus.Retired) throw new VehicleConflictException("state_conflict");
+        if (vehicle.Kind != input.Kind) throw new VehicleValidationException(["kind"]);
+        if (input.DepotId is Guid requestedDepot && !await db.Depots.AnyAsync(x => x.Id == requestedDepot, cancellationToken)) throw new VehicleValidationException(["depotId"]);
         if (vehicle.Plate != input.Plate && string.IsNullOrWhiteSpace(input.Reason)) throw new VehicleValidationException(["reason"]);
         if (await db.Vehicles.AnyAsync(x => x.Id != vehicle.Id && x.Status != VehicleStatus.Retired && (x.Plate == input.Plate || x.Vin == input.Vin), cancellationToken))
             throw new VehicleConflictException("duplicate_vehicle");
@@ -37,13 +40,15 @@ public sealed class EfVehicleStore : IVehicleStore
         vehicle.Ownership = input.Ownership; vehicle.LeaseEndDate = input.LeaseEndDate; vehicle.TrailerType = input.TrailerType; vehicle.OdometerKm = input.OdometerKm;
         vehicle.DepotId = input.DepotId ?? vehicle.DepotId; vehicle.ServiceIntervalKm = input.ServiceIntervalKm; vehicle.ServiceIntervalMonths = input.ServiceIntervalMonths;
         vehicle.LastTachoDownloadAt = input.LastTachoDownloadAt; vehicle.Version++; vehicle.UpdatedAt = DateTimeOffset.UtcNow;
-        await db.SaveChangesAsync(cancellationToken);
+        try { await db.SaveChangesAsync(cancellationToken); } catch (DbUpdateConcurrencyException) { throw new VehicleConflictException("version_conflict"); } catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: "23505" }) { throw new VehicleConflictException("duplicate_vehicle"); }
         return await Read(db, vehicle.Id, cancellationToken);
     }
 
-    private static FleetOpsDbContext CreateDb(CommandContext context, Guid actorId, string reason)
+    private static FleetOpsDbContext CreateDb(CommandContext context, Guid actorId, string? reason)
     {
-        var options = new DbContextOptionsBuilder<FleetOpsDbContext>().UseNpgsql(context.DbConnection).AddInterceptors(new AuditSaveChangesInterceptor()).Options;
+        var optionsBuilder = new DbContextOptionsBuilder<FleetOpsDbContext>();
+        MigrationDbContextOptions.ConfigureRuntime(optionsBuilder, context.DbConnection);
+        var options = optionsBuilder.Options;
         var db = new FleetOpsDbContext(options) { AuditActorId = actorId, AuditReason = reason };
         db.Database.UseTransaction(context.DbTransaction);
         return db;
@@ -51,10 +56,11 @@ public sealed class EfVehicleStore : IVehicleStore
 
     internal static async Task<VehicleDetail> Read(FleetOpsDbContext db, Guid id, CancellationToken cancellationToken)
     {
-        var vehicle = await db.Vehicles.SingleAsync(x => x.Id == id, cancellationToken);
+        var vehicle = await db.Vehicles.SingleOrDefaultAsync(x => x.Id == id, cancellationToken) ?? throw new VehicleConflictException("not_found");
         var history = await db.PlateHistories.Where(x => x.VehicleId == id).OrderBy(x => x.ChangedAt).Select(x => x.Plate).ToListAsync(cancellationToken);
         return new(vehicle.Id, vehicle.Kind, vehicle.Plate, vehicle.Vin, vehicle.Make, vehicle.Model, vehicle.Year, vehicle.GrossWeightKg,
             vehicle.Ownership, vehicle.LeaseEndDate, vehicle.TrailerType, vehicle.OdometerKm, vehicle.DepotId, vehicle.Status, vehicle.Version,
+            vehicle.RequiredLicenceClass, vehicle.ServiceIntervalKm, vehicle.ServiceIntervalMonths, vehicle.LastTachoDownloadAt,
             history, VehicleRules.Documents(vehicle.Kind, vehicle.GrossWeightKg));
     }
 
