@@ -231,6 +231,7 @@ test("a 401 on a later request returns to sign in with the expired notice", asyn
   await page.getByLabel("E-mail address").fill("demo@example.com");
   await page.getByLabel("Password").fill("correct password");
   await page.getByRole("button", { name: "Continue" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Attention" })).toBeVisible();
   await page.route("**/api/v1/fleet/vehicles", (route) =>
     route.fulfill({
       status: 401,
