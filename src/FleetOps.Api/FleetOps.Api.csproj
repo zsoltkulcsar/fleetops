@@ -6,10 +6,12 @@
     <ProjectReference Include="..\Modules\Identity\Identity.csproj" />
     <ProjectReference Include="..\Modules\People\People.csproj" />
     <ProjectReference Include="..\Modules\Fleet\Fleet.csproj" />
+    <ProjectReference Include="..\Modules\Documents\Documents.csproj" />
     <ProjectReference Include="..\Modules\Audit\Audit.csproj" />
     <ProjectReference Include="..\Modules\Setup\Setup.csproj" />
     <ProjectReference Include="..\FleetOps.Migrations\FleetOps.Migrations.csproj" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.14" />
     <PackageReference Include="Npgsql" Version="10.0.3" />
+    <PackageReference Include="AWSSDK.S3" Version="4.0.104.8" />
   </ItemGroup>
 </Project>

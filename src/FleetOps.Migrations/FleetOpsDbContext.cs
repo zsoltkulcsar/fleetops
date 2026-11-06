@@ -1,5 +1,6 @@
 using FleetOps.Modules.Audit;
 using FleetOps.Modules.Fleet;
+using FleetOps.Modules.Documents;
 using FleetOps.Modules.Setup;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
@@ -15,6 +16,9 @@ public sealed partial class FleetOpsDbContext(DbContextOptions<FleetOpsDbContext
     public DbSet<PlateHistory> PlateHistories => Set<PlateHistory>();
     public DbSet<Depot> Depots => Set<Depot>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
+    public DbSet<Document> Documents => Set<Document>();
+    public DbSet<DocumentFile> DocumentFiles => Set<DocumentFile>();
+    public DbSet<PendingFile> PendingFiles => Set<PendingFile>();
     public Guid AuditActorId { get; set; }
     public string AuditReason { get; set; } = "";
     public void AddAudit(AuditEntry entry) => AuditEntries.Add(entry);
@@ -108,6 +112,9 @@ public sealed partial class FleetOpsDbContext(DbContextOptions<FleetOpsDbContext
         modelBuilder.Entity<Depot>(entity => { entity.ToTable("depots"); entity.HasKey(x => x.Id); entity.Property(x => x.Id).HasColumnName("id"); entity.Property(x => x.Name).HasColumnName("name").IsRequired(); entity.Property(x => x.Address).HasColumnName("address").IsRequired(); });
         modelBuilder.Entity<Depot>().HasData(new Depot { Id = Guid.Parse("11111111-1111-1111-1111-111111111111"), Name = "Default depot", Address = "Default address" });
         modelBuilder.Entity<AuditEntry>(entity => { entity.ToTable("audit_entries"); entity.HasKey(x => x.Id); entity.Property(x => x.Id).HasColumnName("id"); entity.Property(x => x.EntityType).HasColumnName("entity_type").IsRequired(); entity.Property(x => x.EntityId).HasColumnName("entity_id"); entity.Property(x => x.FieldName).HasColumnName("field_name").IsRequired(); entity.Property(x => x.OldValue).HasColumnName("old_value"); entity.Property(x => x.NewValue).HasColumnName("new_value"); entity.Property(x => x.ActorId).HasColumnName("actor_id").IsRequired(); entity.Property(x => x.Reason).HasColumnName("reason").IsRequired(); entity.Property(x => x.CreatedAt).HasColumnName("created_at"); });
+        modelBuilder.Entity<Document>(entity => { entity.ToTable("documents"); entity.HasKey(x => x.Id); entity.Property(x => x.Id).HasColumnName("id"); entity.Property(x => x.OwnerType).HasColumnName("owner_type").HasConversion<string>(); entity.Property(x => x.OwnerId).HasColumnName("owner_id"); entity.Property(x => x.Type).HasColumnName("type").HasConversion(v => v == DocumentType.LicenceC_CE ? "licence_c_ce" : v.ToString().ToSnakeCase(), v => v == "licence_c_ce" ? DocumentType.LicenceC_CE : Enum.Parse<DocumentType>(v.Replace("_", ""), true)); entity.Property(x => x.Number).HasColumnName("number"); entity.Property(x => x.IssuedAt).HasColumnName("issued_at"); entity.Property(x => x.ExpiresAt).HasColumnName("expires_at"); entity.Property(x => x.Status).HasColumnName("status").HasConversion<string>(); entity.Property(x => x.VerifiedBy).HasColumnName("verified_by"); entity.Property(x => x.VerifiedAt).HasColumnName("verified_at"); entity.Property(x => x.RejectReason).HasColumnName("reject_reason"); entity.Property(x => x.ReplacesId).HasColumnName("replaces_id"); entity.Property(x => x.Categories).HasColumnName("categories"); entity.Property(x => x.LastSightCheckAt).HasColumnName("last_sight_check_at"); entity.Property(x => x.IssuedReason).HasColumnName("issued_reason").HasConversion<string>(); entity.Property(x => x.ImportAttested).HasColumnName("import_attested"); entity.Property(x => x.RetainUntil).HasColumnName("retain_until"); entity.Property(x => x.CreatedBy).HasColumnName("created_by"); entity.Property(x => x.CreatedAt).HasColumnName("created_at"); entity.Property(x => x.Version).HasColumnName("version").IsConcurrencyToken(); entity.HasIndex(x => new { x.OwnerType, x.OwnerId }); entity.HasIndex(x => x.Status); entity.HasIndex(x => x.Number); });
+        modelBuilder.Entity<DocumentFile>(entity => { entity.ToTable("document_files"); entity.HasKey(x => x.Id); entity.Property(x => x.Id).HasColumnName("id"); entity.Property(x => x.DocumentId).HasColumnName("document_id"); entity.Property(x => x.ObjectKey).HasColumnName("object_key"); entity.Property(x => x.ContentType).HasColumnName("content_type"); entity.Property(x => x.SizeBytes).HasColumnName("size_bytes"); entity.Property(x => x.Page).HasColumnName("page").HasConversion<string>(); entity.Property(x => x.SortOrder).HasColumnName("sort_order"); entity.HasIndex(x => x.DocumentId); });
+        modelBuilder.Entity<PendingFile>(entity => { entity.ToTable("pending_files"); entity.HasKey(x => x.Id); entity.Property(x => x.Id).HasColumnName("id"); entity.Property(x => x.ObjectKey).HasColumnName("object_key"); entity.Property(x => x.ActorId).HasColumnName("actor_id"); entity.Property(x => x.Purpose).HasColumnName("purpose"); entity.Property(x => x.ContentType).HasColumnName("content_type"); entity.Property(x => x.MaxSizeBytes).HasColumnName("max_size_bytes"); entity.Property(x => x.CreatedAt).HasColumnName("created_at"); entity.Property(x => x.ExpiresAt).HasColumnName("expires_at"); entity.Property(x => x.ConfirmedAt).HasColumnName("confirmed_at"); entity.HasIndex(x => x.ObjectKey).IsUnique(); });
         modelBuilder.Entity<MigrationMarker>(entity =>
         {
             entity.ToTable("migration_marker");

@@ -1,7 +1,9 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Collections.Concurrent;
 using FleetOps.Kernel.Authorization;
+using FleetOps.Kernel.Files;
 using FleetOps.Migrations;
 using FleetOps.Modules.Fleet;
 using Microsoft.AspNetCore.Hosting;
@@ -30,6 +32,7 @@ public sealed class VehicleApiFactory : WebApplicationFactory<Program>, IAsyncLi
     private static readonly HashSet<string> CountableTables =
     [
         "vehicles", "audit_entries", "vehicle_plate_history", "depots",
+        "documents", "document_files", "pending_files",
     ];
 
     private static int sequence;
@@ -38,6 +41,12 @@ public sealed class VehicleApiFactory : WebApplicationFactory<Program>, IAsyncLi
     private TestPostgres? postgres;
 
     public FakeTimeProvider Clock { get; } = new(DateTimeOffset.Parse("2026-11-06T10:00:00+00:00"));
+
+    public FakeObjectStore ObjectStore { get; } = new();
+
+    public bool UseRealObjectStore { get; set; }
+
+    public ConcurrentQueue<string>? LogItems { get; set; }
 
     /// <summary>When set, the next write command runs inside its transaction and then throws.</summary>
     public bool ThrowAfterWrite { get; set; }
@@ -67,13 +76,24 @@ public sealed class VehicleApiFactory : WebApplicationFactory<Program>, IAsyncLi
     {
         builder.UseSetting("ConnectionStrings:FleetOps", RuntimeConnectionString);
         builder.UseSetting("Auth:PublicOrigin", FleetRequestHeaders.Origin);
-        builder.ConfigureLogging(logging => logging.ClearProviders());
+        builder.ConfigureLogging(logging =>
+        {
+            logging.ClearProviders();
+            if (LogItems is not null)
+                logging.AddProvider(new CaptureProvider(LogItems));
+        });
         builder.ConfigureTestServices(services =>
         {
             services.AddSingleton<IAccessContextAccessor>(accessor);
             foreach (var descriptor in services.Where(service => service.ServiceType == typeof(TimeProvider)).ToList())
                 services.Remove(descriptor);
             services.AddSingleton<TimeProvider>(Clock);
+            foreach (var descriptor in services.Where(service => service.ServiceType == typeof(IObjectStore)).ToList())
+                services.Remove(descriptor);
+            if (!UseRealObjectStore)
+                services.AddSingleton<IObjectStore>(ObjectStore);
+            else
+                services.AddScoped<IObjectStore, FleetOps.Api.Files.S3ObjectStore>();
             services.AddScoped<IVehicleStore>(_ => ThrowAfterWrite
                 ? new FailingVehicleStore(new EfVehicleStore(Clock), () => ThrowAfterWrite = false)
                 : new EfVehicleStore(Clock));
@@ -85,6 +105,8 @@ public sealed class VehicleApiFactory : WebApplicationFactory<Program>, IAsyncLi
     public HttpClient AsOwner() => ClientAs(RoleCode.Owner);
 
     public HttpClient AsHr() => ClientAs(RoleCode.Hr);
+
+    public HttpClient AsHr(Guid employeeId) => ClientAs(employeeId, RoleCode.Hr);
 
     public HttpClient AsDriver() => ClientAs(RoleCode.Driver);
 
@@ -160,6 +182,12 @@ public sealed class VehicleApiFactory : WebApplicationFactory<Program>, IAsyncLi
         return ClientWithHeaders();
     }
 
+    private HttpClient ClientAs(Guid employeeId, RoleCode role)
+    {
+        accessor.Current = AccessContext.For(employeeId, role);
+        return ClientWithHeaders();
+    }
+
     private HttpClient ClientWithHeaders()
     {
         var client = CreateClient();
@@ -204,6 +232,20 @@ public sealed class VehicleApiFactory : WebApplicationFactory<Program>, IAsyncLi
             _ = await inner.UndoRetireAsync(command, actor, context, cancellationToken);
             clearFailure();
             throw new InvalidOperationException("after write");
+        }
+    }
+
+    private sealed class CaptureProvider(ConcurrentQueue<string> items) : ILoggerProvider
+    {
+        public ILogger CreateLogger(string categoryName) => new CaptureLogger(items);
+        public void Dispose() { }
+
+        private sealed class CaptureLogger(ConcurrentQueue<string> items) : ILogger
+        {
+            public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
+            public bool IsEnabled(LogLevel logLevel) => true;
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) => items.Enqueue(formatter(state, exception));
+            private sealed class NullScope : IDisposable { public static readonly NullScope Instance = new(); public void Dispose() { } }
         }
     }
 }

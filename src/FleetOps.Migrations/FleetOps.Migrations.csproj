@@ -4,6 +4,7 @@
     <ProjectReference Include="..\Modules\Identity\Identity.csproj" />
     <ProjectReference Include="..\Modules\People\People.csproj" />
     <ProjectReference Include="..\Modules\Fleet\Fleet.csproj" />
+    <ProjectReference Include="..\Modules\Documents\Documents.csproj" />
     <ProjectReference Include="..\Modules\Audit\Audit.csproj" />
     <ProjectReference Include="..\Modules\Setup\Setup.csproj" />
     <ProjectReference Include="..\Kernel\Kernel.csproj" />

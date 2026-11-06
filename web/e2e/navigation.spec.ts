@@ -4,7 +4,6 @@ const routes = [
   ["/", "Attention"],
   ["/timesheets", "Timesheets"],
   ["/people", "People"],
-  ["/documents", "Documents"],
   ["/payroll", "Payroll export"],
   ["/settings", "Settings"],
 ] as const;

@@ -8,6 +8,7 @@ import { AuthGate } from "./auth/AuthGate";
 import { installAuthExpiryHandler } from "./auth/api";
 import { Fleet } from "./fleet/Fleet";
 import { FleetRecord } from "./fleet/FleetRecord";
+import { Documents } from "./documents/Documents";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -46,7 +47,7 @@ createRoot(document.getElementById("app")!).render(
             <Route path="/fleet" element={<Fleet />} />
             <Route path="/fleet/:id" element={<FleetRecordRoute />} />
             <Route path="/people" element={page("people")} />
-            <Route path="/documents" element={page("documents")} />
+            <Route path="/documents" element={<Documents />} />
             <Route path="/payroll" element={page("payroll")} />
             <Route path="/settings" element={page("settings")} />
             {import.meta.env.DEV && <Route path="/__gallery" element={<DevGalleryRoute />} />}

@@ -311,6 +311,196 @@ namespace FleetOps.Migrations.Migrations
                     b.ToTable("audit_entries", "fleetops");
                 });
 
+            modelBuilder.Entity("FleetOps.Modules.Documents.Document", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.PrimitiveCollection<string[]>("Categories")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("categories");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateOnly?>("ExpiresAt")
+                        .HasColumnType("date")
+                        .HasColumnName("expires_at");
+
+                    b.Property<bool>("ImportAttested")
+                        .HasColumnType("boolean")
+                        .HasColumnName("import_attested");
+
+                    b.Property<DateOnly?>("IssuedAt")
+                        .HasColumnType("date")
+                        .HasColumnName("issued_at");
+
+                    b.Property<string>("IssuedReason")
+                        .HasColumnType("text")
+                        .HasColumnName("issued_reason");
+
+                    b.Property<DateOnly?>("LastSightCheckAt")
+                        .HasColumnType("date")
+                        .HasColumnName("last_sight_check_at");
+
+                    b.Property<string>("Number")
+                        .HasColumnType("text")
+                        .HasColumnName("number");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("owner_id");
+
+                    b.Property<string>("OwnerType")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("owner_type");
+
+                    b.Property<string>("RejectReason")
+                        .HasColumnType("text")
+                        .HasColumnName("reject_reason");
+
+                    b.Property<Guid?>("ReplacesId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("replaces_id");
+
+                    b.Property<DateOnly?>("RetainUntil")
+                        .HasColumnType("date")
+                        .HasColumnName("retain_until");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("type");
+
+                    b.Property<DateTimeOffset?>("VerifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("verified_at");
+
+                    b.Property<Guid?>("VerifiedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("verified_by");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Number");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("OwnerType", "OwnerId");
+
+                    b.ToTable("documents", "fleetops");
+                });
+
+            modelBuilder.Entity("FleetOps.Modules.Documents.DocumentFile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("content_type");
+
+                    b.Property<Guid>("DocumentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("document_id");
+
+                    b.Property<string>("ObjectKey")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("object_key");
+
+                    b.Property<string>("Page")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("page");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint")
+                        .HasColumnName("size_bytes");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DocumentId");
+
+                    b.ToTable("document_files", "fleetops");
+                });
+
+            modelBuilder.Entity("FleetOps.Modules.Documents.PendingFile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
+
+                    b.Property<DateTimeOffset?>("ConfirmedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("confirmed_at");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("content_type");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<long>("MaxSizeBytes")
+                        .HasColumnType("bigint")
+                        .HasColumnName("max_size_bytes");
+
+                    b.Property<string>("ObjectKey")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("object_key");
+
+                    b.Property<string>("Purpose")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("purpose");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ObjectKey")
+                        .IsUnique();
+
+                    b.ToTable("pending_files", "fleetops");
+                });
+
             modelBuilder.Entity("FleetOps.Modules.Fleet.PlateHistory", b =>
                 {
                     b.Property<Guid>("Id")
@@ -725,6 +915,15 @@ namespace FleetOps.Migrations.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("FleetOps.Modules.Documents.DocumentFile", b =>
+                {
+                    b.HasOne("FleetOps.Modules.Documents.Document", null)
+                        .WithMany("Files")
+                        .HasForeignKey("DocumentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", null)
@@ -774,6 +973,11 @@ namespace FleetOps.Migrations.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("FleetOps.Modules.Documents.Document", b =>
+                {
+                    b.Navigation("Files");
                 });
 #pragma warning restore 612, 618
         }

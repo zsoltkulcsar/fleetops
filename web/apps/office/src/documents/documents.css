@@ -1,0 +1,126 @@
+.documents-page {
+  max-width: 1180px;
+}
+.documents-page .search-field {
+  margin-left: auto;
+}
+.documents-page .search-field input {
+  min-width: 280px;
+}
+.documents-loading {
+  min-height: 180px;
+  display: grid;
+  place-items: center;
+  color: var(--ink-2);
+}
+.document-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.status-verified {
+  color: var(--good);
+}
+.status-rejected {
+  color: var(--crit);
+}
+.status-uploaded,
+.status-replaced {
+  color: var(--ink-2);
+}
+.document-form {
+  display: grid;
+  gap: 13px;
+}
+.document-form label,
+.document-form fieldset {
+  display: grid;
+  gap: 5px;
+  font-weight: 600;
+}
+.document-form fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+.document-form legend {
+  padding: 0;
+}
+.document-form input,
+.document-form select {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--ink);
+  padding: 8px 10px;
+  font-weight: 400;
+}
+.document-switch {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: var(--radius-control);
+  background: var(--surface-2);
+}
+.document-switch button {
+  flex: 1;
+  padding: 8px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--ink-2);
+}
+.document-switch button.selected {
+  background: var(--surface);
+  color: var(--accent);
+  font-weight: 700;
+}
+.lookup-results {
+  display: grid;
+  gap: 2px;
+  max-height: 160px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  padding: 4px;
+}
+.lookup-results button {
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  padding: 8px;
+  text-align: left;
+}
+.lookup-results button:hover,
+.lookup-results button:focus {
+  background: var(--accent-soft);
+}
+.document-file-fields,
+.document-date-fields {
+  display: grid;
+  gap: 10px;
+}
+.document-date-fields {
+  grid-template-columns: 1fr 1fr;
+}
+.document-hint,
+.document-file-fields p {
+  margin: -5px 0 0;
+  font-size: var(--type-caption);
+}
+.document-progress {
+  color: var(--accent);
+  font-weight: 600;
+}
+@media (max-width: 767px) {
+  .documents-page .search-field {
+    width: 100%;
+    margin-left: 0;
+  }
+  .documents-page .search-field input {
+    min-width: 0;
+    width: 100%;
+  }
+}

@@ -10,6 +10,9 @@ using FleetOps.Kernel;
 using FleetOps.Kernel.Authorization;
 using FleetOps.Migrations;
 using FleetOps.Modules.Fleet;
+using FleetOps.Modules.Documents;
+using FleetOps.Api.Files;
+using FleetOps.Kernel.Files;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.DataProtection;
@@ -62,6 +65,16 @@ builder.Services.AddScoped<QueryDispatcher>();
 builder.Services.AddScoped<IQueryHandler<GetVehicleQuery, VehicleDetail>, VehicleQueryHandler>();
 builder.Services.AddScoped<IQueryHandler<ListVehiclesQuery, VehicleListResult>, VehicleListQueryHandler>();
 builder.Services.AddScoped<IVehicleStore, EfVehicleStore>();
+builder.Services.Configure<StorageOptions>(builder.Configuration.GetSection("Storage"));
+builder.Services.AddScoped<IObjectStore, S3ObjectStore>();
+builder.Services.AddScoped<IDocumentStore, EfDocumentStore>();
+builder.Services.AddScoped<ICommandHandler<RequestEmployeeDocumentUploadCommand, UploadLinkResult>, RequestEmployeeDocumentUploadHandler>();
+builder.Services.AddScoped<ICommandHandler<RequestVehicleDocumentUploadCommand, UploadLinkResult>, RequestVehicleDocumentUploadHandler>();
+builder.Services.AddScoped<ICommandHandler<ConfirmEmployeeDocumentCommand, DocumentDetail>, ConfirmEmployeeDocumentHandler>();
+builder.Services.AddScoped<ICommandHandler<ConfirmVehicleDocumentCommand, DocumentDetail>, ConfirmVehicleDocumentHandler>();
+builder.Services.AddScoped<IQueryHandler<ListDocumentsQuery, DocumentListResult>, DocumentListQueryHandler>();
+builder.Services.AddScoped<IQueryHandler<GetDocumentQuery, DocumentDetail>, DocumentDetailQueryHandler>();
+builder.Services.AddScoped<IQueryHandler<LookupPeopleQuery, PeopleLookupResult>, PeopleLookupQueryHandler>();
 builder.Services.AddScoped<ICommandStatePrecondition<EditVehicleCommand>, RetiredVehicleEditPrecondition>();
 builder.Services.AddScoped<ICommandStatePrecondition<RetireVehicleCommand>, ActiveVehicleRetirePrecondition>();
 builder.Services.AddScoped<ICommandHandler<CreateVehicleCommand, VehicleDetail>, CreateVehicleHandler>();
@@ -84,14 +97,18 @@ app.UseExceptionHandler(new ExceptionHandlerOptions
         }
         if (exception is InvalidOperationException { Message: "mailbox_unavailable" }) { await Results.Json(new { code = "mailbox_unavailable" }, statusCode: 503).ExecuteAsync(context); return; }
         if (exception is VehicleValidationException validation) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "validation_error", ["fields"] = validation.Fields }).ExecuteAsync(context); return; }
+        if (exception is StorageUnavailableException) { await Results.Problem(statusCode: 503, extensions: new Dictionary<string, object?> { ["code"] = "storage_unavailable" }).ExecuteAsync(context); return; }
+        if (exception is DocumentValidationException documentValidation) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = documentValidation.Code, ["fields"] = documentValidation.Fields }).ExecuteAsync(context); return; }
         var jsonException = VehicleJsonException.Find(exception);
-        if (context.Request.Method is "POST" or "PUT" && context.Request.Path.StartsWithSegments("/api/v1/fleet/vehicles") && jsonException is not null)
+        if (context.Request.Method is "POST" or "PUT" && (context.Request.Path.StartsWithSegments("/api/v1/fleet/vehicles") || context.Request.Path.StartsWithSegments("/api/v1/documents")) && jsonException is not null)
         {
             var field = VehicleJsonException.FieldName(jsonException.Path);
             await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "validation_error", ["fields"] = field is null ? Array.Empty<string>() : new[] { field } }).ExecuteAsync(context); return;
         }
         if (exception is InvalidCursorException) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "invalid_cursor" }).ExecuteAsync(context); return; }
+        if (exception is DocumentInvalidCursorException) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "invalid_cursor" }).ExecuteAsync(context); return; }
         if (exception is VehicleConflictException conflict) { await Results.Problem(statusCode: conflict.Code is "duplicate_vehicle" or "version_conflict" or "state_conflict" or "undo_window_closed" or "plate_in_use" ? 409 : 404, extensions: new Dictionary<string, object?> { ["code"] = conflict.Code }).ExecuteAsync(context); return; }
+        if (exception is DocumentConflictException documentConflict) { await Results.Problem(statusCode: documentConflict.Code == "state_conflict" ? 409 : documentConflict.Code == "owner_not_found" ? 404 : 404, extensions: new Dictionary<string, object?> { ["code"] = documentConflict.Code }).ExecuteAsync(context); return; }
         try { app.Logger.LogError("Unhandled exception {ExceptionType} TraceId {TraceId}", exception?.GetType().Name ?? "Unknown", context.TraceIdentifier); } catch { }
         context.Response.StatusCode = 500; await Results.Problem(statusCode: 500).ExecuteAsync(context);
     }
@@ -128,6 +145,11 @@ app.MapGet("/api/v1/fleet/vehicles", async (string? cursor, int? limit, string? 
     return Results.Ok(await dispatcher.DispatchAsync<ListVehiclesQuery, VehicleListResult>(query, cancellationToken));
 }).Produces<VehicleListResult>();
 app.MapGet("/api/v1/fleet/vehicles/{id:guid}", async (Guid id, QueryDispatcher dispatcher, CancellationToken cancellationToken) => Results.Ok(await dispatcher.DispatchAsync<GetVehicleQuery, VehicleDetail>(new(id), cancellationToken))).Produces<VehicleDetail>();
+app.MapPost("/api/v1/documents/upload-links", async (DocumentUploadRequest request, HttpContext context, CommandDispatcher dispatcher, CancellationToken cancellationToken) => { context.Response.Headers.CacheControl = "no-store"; if (request.OwnerType == DocumentOwnerType.Employee) return Results.Ok(await dispatcher.DispatchAsync<RequestEmployeeDocumentUploadCommand, UploadLinkResult>(new(request.OwnerId, request.Type, request.ContentType, request.SizeBytes), cancellationToken)); return Results.Ok(await dispatcher.DispatchAsync<RequestVehicleDocumentUploadCommand, UploadLinkResult>(new(request.OwnerId, request.Type, request.ContentType, request.SizeBytes), cancellationToken)); }).Produces<UploadLinkResult>();
+app.MapPost("/api/v1/documents", async (DocumentCreateRequest request, HttpContext context, CommandDispatcher dispatcher, CancellationToken cancellationToken) => { context.Response.Headers.CacheControl = "no-store"; DocumentDetail result; if (request.OwnerType == DocumentOwnerType.Employee) result = await dispatcher.DispatchAsync<ConfirmEmployeeDocumentCommand, DocumentDetail>(new(request.OwnerId, request.OwnerId, request.Type, request.Number, request.IssuedAt, request.ExpiresAt, request.Categories, request.Files), cancellationToken); else result = await dispatcher.DispatchAsync<ConfirmVehicleDocumentCommand, DocumentDetail>(new(request.OwnerId, request.OwnerId, request.Type, request.Number, request.IssuedAt, request.ExpiresAt, request.Categories, request.Files), cancellationToken); return Results.Created($"/api/v1/documents/{result.Id}", result); }).Produces<DocumentDetail>(StatusCodes.Status201Created);
+app.MapGet("/api/v1/documents", async (DocumentOwnerType? ownerType, Guid? ownerId, DocumentStatus? status, string? search, string? cursor, int? limit, QueryDispatcher dispatcher, HttpContext context, CancellationToken cancellationToken) => { context.Response.Headers.CacheControl = "no-store"; return Results.Ok(await dispatcher.DispatchAsync<ListDocumentsQuery, DocumentListResult>(new(ownerType, ownerId, status, search, cursor, limit is null ? 50 : Math.Clamp(limit.Value, 1, 100)), cancellationToken)); }).Produces<DocumentListResult>();
+app.MapGet("/api/v1/documents/{id:guid}", async (Guid id, QueryDispatcher dispatcher, HttpContext context, CancellationToken cancellationToken) => { context.Response.Headers.CacheControl = "no-store"; return Results.Ok(await dispatcher.DispatchAsync<GetDocumentQuery, DocumentDetail>(new(id), cancellationToken)); }).Produces<DocumentDetail>();
+app.MapGet("/api/v1/people/lookup", async (string? search, QueryDispatcher dispatcher, HttpContext context, CancellationToken cancellationToken) => { context.Response.Headers.CacheControl = "no-store"; return Results.Ok(await dispatcher.DispatchAsync<LookupPeopleQuery, PeopleLookupResult>(new(search), cancellationToken)); }).Produces<PeopleLookupResult>();
 if (app.Environment.IsEnvironment("Testing"))
 {
     app.MapPost("/__tests/step-up-command", (IAccessContextAccessor access, IStepUpContextAccessor stepUp) => access.Current is null ? Results.Json(new { code = "not_signed_in" }, statusCode: 401) : stepUp.HasFreshStepUp ? Results.Ok(new { accepted = true }) : Results.Json(new { code = "step_up_required" }, statusCode: 403));
@@ -144,6 +166,8 @@ public sealed record EditVehicleRequest(int Version, VehicleKind Kind, string? P
 { public EditVehicleCommand ToCommand(Guid id) => new(id, Version, Kind, Plate, Vin, Make, Model, Year, GrossWeightKg, RequiredLicenceClass, Ownership, LeaseEndDate, TrailerType, OdometerKm, DepotId, ServiceIntervalKm, ServiceIntervalMonths, LastTachoDownloadAt, Reason); }
 public sealed record RetireVehicleRequest(int Version, RetiredReason RetiredReason);
 public sealed record UndoRetireVehicleRequest(int Version, string? Reason);
+public sealed record DocumentUploadRequest(DocumentOwnerType OwnerType, Guid OwnerId, DocumentType Type, string ContentType, long SizeBytes);
+public sealed record DocumentCreateRequest(DocumentOwnerType OwnerType, Guid OwnerId, DocumentType Type, string? Number, DateOnly? IssuedAt, DateOnly? ExpiresAt, string[]? Categories, IReadOnlyList<ConfirmFileInput> Files);
 public sealed class VehicleQueryHandler(IConfiguration configuration) : IQueryHandler<GetVehicleQuery, VehicleDetail>
 { public async Task<VehicleDetail> HandleAsync(GetVehicleQuery query, AccessContext actor, CancellationToken cancellationToken) => await EfVehicleStore.ReadByConnectionAsync(DatabaseConnectionString.Resolve(configuration) ?? throw new InvalidOperationException("Database is not configured."), query.SubjectId ?? throw new VehicleValidationException(["id"]), cancellationToken); }
 

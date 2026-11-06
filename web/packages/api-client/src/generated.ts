@@ -245,6 +245,184 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/documents/upload-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DocumentUploadRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UploadLinkResult"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    ownerType?: components["schemas"]["DocumentOwnerType"];
+                    ownerId?: string;
+                    status?: components["schemas"]["DocumentStatus"];
+                    search?: string;
+                    cursor?: string;
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DocumentListResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DocumentCreateRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DocumentDetail"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DocumentDetail"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/people/lookup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    search?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PeopleLookupResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/sign-in": {
         parameters: {
             query?: never;
@@ -570,6 +748,11 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        ConfirmFileInput: {
+            /** Format: uuid */
+            fileId: string;
+            page: components["schemas"]["DocumentFilePage"];
+        };
         CreateVehicleCommand: {
             kind: components["schemas"]["VehicleKind"];
             plate: null | string;
@@ -596,6 +779,91 @@ export interface components {
             /** Format: date */
             lastTachoDownloadAt: null | string;
             reason: null | string;
+        };
+        DocumentCreateRequest: {
+            ownerType: components["schemas"]["DocumentOwnerType"];
+            /** Format: uuid */
+            ownerId: string;
+            type: components["schemas"]["DocumentType"];
+            number: null | string;
+            /** Format: date */
+            issuedAt: null | string;
+            /** Format: date */
+            expiresAt: null | string;
+            categories: null | string[];
+            files: components["schemas"]["ConfirmFileInput"][];
+        };
+        DocumentDetail: {
+            /** Format: uuid */
+            id: string;
+            ownerType: components["schemas"]["DocumentOwnerType"];
+            /** Format: uuid */
+            ownerId: string;
+            ownerName: string;
+            type: components["schemas"]["DocumentType"];
+            number: null | string;
+            /** Format: date */
+            issuedAt: null | string;
+            /** Format: date */
+            expiresAt: null | string;
+            status: components["schemas"]["DocumentStatus"];
+            /** Format: date-time */
+            uploadedAt: string;
+            /** Format: int32 */
+            version: number;
+            /** Format: date-time */
+            verifiedAt: null | string;
+            rejectReason: null | string;
+            categories: string[];
+            files: components["schemas"]["DocumentFileDetail"][];
+        };
+        DocumentFileDetail: {
+            /** Format: uuid */
+            id: string;
+            page: components["schemas"]["DocumentFilePage"];
+            contentType: string;
+            /** Format: int64 */
+            sizeBytes: number;
+        };
+        /** @enum {unknown} */
+        DocumentFilePage: "front" | "back" | "page";
+        DocumentListItem: {
+            /** Format: uuid */
+            id: string;
+            ownerType: components["schemas"]["DocumentOwnerType"];
+            /** Format: uuid */
+            ownerId: string;
+            ownerName: string;
+            type: components["schemas"]["DocumentType"];
+            number: null | string;
+            /** Format: date */
+            issuedAt: null | string;
+            /** Format: date */
+            expiresAt: null | string;
+            status: components["schemas"]["DocumentStatus"];
+            /** Format: date-time */
+            uploadedAt: string;
+            /** Format: int32 */
+            version: number;
+        };
+        DocumentListResult: {
+            items: components["schemas"]["DocumentListItem"][];
+            nextCursor: null | string;
+        };
+        /** @enum {unknown} */
+        DocumentOwnerType: "employee" | "vehicle";
+        /** @enum {unknown} */
+        DocumentStatus: "uploaded" | "verified" | "rejected" | "replaced";
+        /** @enum {unknown} */
+        DocumentType: "licence_c_ce" | "driver_card" | "code95" | "medical" | "adr_certificate" | "id_card" | "employment_contract" | "registration" | "hu_report" | "sp_report" | "tacho_calibration" | "insurance" | "community_licence";
+        DocumentUploadRequest: {
+            ownerType: components["schemas"]["DocumentOwnerType"];
+            /** Format: uuid */
+            ownerId: string;
+            type: components["schemas"]["DocumentType"];
+            contentType: string;
+            /** Format: int64 */
+            sizeBytes: number;
         };
         EditVehicleRequest: {
             /** Format: int32 */
@@ -629,6 +897,19 @@ export interface components {
         ForgotRequest: {
             email: string;
         };
+        ObjectLink: {
+            url: string;
+            /** Format: date-time */
+            expiresAt: string;
+        };
+        PeopleLookupItem: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
+        PeopleLookupResult: {
+            items: components["schemas"]["PeopleLookupItem"][];
+        };
         PrivacyRequest: {
             version: string;
         };
@@ -660,6 +941,17 @@ export interface components {
             /** Format: int32 */
             version: number;
             reason: null | string;
+        };
+        UploadLinkResult: {
+            /** Format: uuid */
+            fileId: string;
+            url: components["schemas"]["ObjectLink"];
+            /** Format: date-time */
+            expiresAt: string;
+            requiredHeaders: components["schemas"]["UploadRequiredHeaders"];
+        };
+        UploadRequiredHeaders: {
+            "Content-Type": string;
         };
         VehicleDetail: {
             /** Format: uuid */
