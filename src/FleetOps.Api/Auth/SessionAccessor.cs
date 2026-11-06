@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 
 namespace FleetOps.Api.Auth;
 
-public sealed class SessionAccessor(FleetOpsDbContext db, ICompanyTimeService clock, TimeProvider time, IOptions<AuthOptions> options, ILogger<SessionAccessor> logger) : IAccessContextAccessor, IStepUpContextAccessor
+public sealed class SessionAccessor(FleetOpsDbContext db, ICompanyTimeService clock, TimeProvider time, IOptions<AuthOptions> options, IHostEnvironment environment, ILogger<SessionAccessor> logger) : IAccessContextAccessor, IStepUpContextAccessor
 {
     private readonly AuthOptions _options = options.Value;
     public AccessContext? Current { get; private set; }
@@ -58,7 +58,7 @@ public sealed class SessionAccessor(FleetOpsDbContext db, ICompanyTimeService cl
             return;
         }
 
-        var requiresFactor = roles.Contains(RoleCode.Hr) || roles.Contains(RoleCode.Owner);
+        var requiresFactor = SecondFactorPolicy.IsRequired(roles, _options, environment);
         if (requiresFactor && session.StepUpAt is null)
         {
             session.Stage = SessionStage.PendingSecondFactor;

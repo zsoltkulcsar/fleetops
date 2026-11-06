@@ -43,7 +43,8 @@ public static class AuthEndpoints
         [FromServices] IHttpContextAccessor http,
         [FromServices] TimeProvider time,
         [FromServices] IOptions<AuthOptions> authOptions,
-        [FromServices] ICompanyTimeService companyTime)
+        [FromServices] ICompanyTimeService companyTime,
+        [FromServices] IHostEnvironment environment)
     {
         var invalidFields = Validate(("email", input?.Email), ("password", input?.Password));
         if (invalidFields is not null) return invalidFields;
@@ -74,7 +75,7 @@ public static class AuthEndpoints
         await users.ResetAccessFailedCountAsync(user);
 
         var roles = AuthTokens.ParseRoles(employee.Roles);
-        var requiresFactor = roles.Contains(RoleCode.Hr) || roles.Contains(RoleCode.Owner);
+        var requiresFactor = SecondFactorPolicy.IsRequired(roles, authOptions.Value, environment);
         var authenticatorKey = await users.GetAuthenticatorKeyAsync(user);
         if (requiresFactor && (!user.TwoFactorEnabled || string.IsNullOrWhiteSpace(authenticatorKey)))
         {
