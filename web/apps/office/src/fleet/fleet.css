@@ -6,6 +6,14 @@
   gap: 8px;
   align-items: center;
 }
+.checkbox-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ink-2);
+  font-size: var(--type-table);
+  white-space: nowrap;
+}
 .fleet-filters select,
 .search-field input,
 .fleet-form input,
@@ -101,6 +109,23 @@
   display: flex;
   align-items: center;
   gap: 12px;
+}
+.record-retired-action {
+  display: flex;
+  justify-content: flex-end;
+  margin: 12px 0 16px;
+}
+.drawer-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 20px;
+  color: var(--ink-2);
+}
+.drawer-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 .fleet-tabs {
   display: flex;

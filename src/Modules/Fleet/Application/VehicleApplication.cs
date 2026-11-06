@@ -6,6 +6,8 @@ public interface IVehicleStore
 {
     Task<VehicleDetail> CreateAsync(CreateVehicleCommand command, AccessContext actor, CommandContext context, CancellationToken cancellationToken);
     Task<VehicleDetail> EditAsync(EditVehicleCommand command, AccessContext actor, CommandContext context, CancellationToken cancellationToken);
+    Task<VehicleDetail> RetireAsync(RetireVehicleCommand command, AccessContext actor, CommandContext context, CancellationToken cancellationToken);
+    Task<VehicleDetail> UndoRetireAsync(UndoRetireVehicleCommand command, AccessContext actor, CommandContext context, CancellationToken cancellationToken);
 }
 
 public sealed class CreateVehicleHandler(IVehicleStore store) : ICommandHandler<CreateVehicleCommand, VehicleDetail>
@@ -32,6 +34,26 @@ public sealed class EditVehicleHandler(IVehicleStore store) : ICommandHandler<Ed
             command.Ownership, command.LeaseEndDate, command.TrailerType, command.OdometerKm, command.Reason, command.ServiceIntervalKm, command.ServiceIntervalMonths, command.LastTachoDownloadAt, command.RequiredLicenceClass);
         if (command.SubjectId is not Guid) throw new VehicleValidationException(["id"]);
         return store.EditAsync(command, actor, context, cancellationToken);
+    }
+}
+
+public sealed class RetireVehicleHandler(IVehicleStore store) : ICommandHandler<RetireVehicleCommand, VehicleDetail>
+{
+    public Task<VehicleDetail> HandleAsync(RetireVehicleCommand command, AccessContext actor, CommandContext context, CancellationToken cancellationToken)
+    {
+        if (command.SubjectId is not Guid) throw new VehicleValidationException(["id"]);
+        if (!Enum.IsDefined(command.RetiredReason)) throw new VehicleValidationException(["retiredReason"]);
+        return store.RetireAsync(command, actor, context, cancellationToken);
+    }
+}
+
+public sealed class UndoRetireVehicleHandler(IVehicleStore store) : ICommandHandler<UndoRetireVehicleCommand, VehicleDetail>
+{
+    public Task<VehicleDetail> HandleAsync(UndoRetireVehicleCommand command, AccessContext actor, CommandContext context, CancellationToken cancellationToken)
+    {
+        if (command.SubjectId is not Guid) throw new VehicleValidationException(["id"]);
+        if (string.IsNullOrWhiteSpace(command.Reason)) throw new VehicleValidationException(["reason"]);
+        return store.UndoRetireAsync(command, actor, context, cancellationToken);
     }
 }
 

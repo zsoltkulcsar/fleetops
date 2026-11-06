@@ -6,6 +6,7 @@ namespace FleetOps.Modules.Fleet;
 public enum VehicleKind { Truck, Trailer }
 public enum VehicleOwnership { Owned, Leased, RentedIn }
 public enum VehicleStatus { Active, Retired }
+public enum RetiredReason { Sold, Scrapped, ReturnedLease }
 public enum TrailerType { Curtainsider, Box, Reefer, Flatbed, Tanker }
 
 [AuditedEntity]
@@ -30,6 +31,8 @@ public sealed class Vehicle
     [AuditField(AuditFieldClasses.Plain)] public int? ServiceIntervalMonths { get; set; }
     [AuditField(AuditFieldClasses.Plain)] public DateOnly? LastTachoDownloadAt { get; set; }
     [AuditField(AuditFieldClasses.Plain)] public VehicleStatus Status { get; set; } = VehicleStatus.Active;
+    [AuditField(AuditFieldClasses.Plain)] public RetiredReason? RetiredReason { get; set; }
+    [AuditField(AuditFieldClasses.Plain)] public DateTimeOffset? RetiredAt { get; set; }
     [NotAudited] public int Version { get; set; } = 1;
     [NotAudited] public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     [NotAudited] public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;

@@ -37,6 +37,8 @@ public sealed class VehicleApiFactory : WebApplicationFactory<Program>, IAsyncLi
     private readonly MutableAccessor accessor = new();
     private TestPostgres? postgres;
 
+    public FakeTimeProvider Clock { get; } = new(DateTimeOffset.Parse("2026-11-06T10:00:00+00:00"));
+
     /// <summary>When set, the next write command runs inside its transaction and then throws.</summary>
     public bool ThrowAfterWrite { get; set; }
 
@@ -69,9 +71,12 @@ public sealed class VehicleApiFactory : WebApplicationFactory<Program>, IAsyncLi
         builder.ConfigureTestServices(services =>
         {
             services.AddSingleton<IAccessContextAccessor>(accessor);
+            foreach (var descriptor in services.Where(service => service.ServiceType == typeof(TimeProvider)).ToList())
+                services.Remove(descriptor);
+            services.AddSingleton<TimeProvider>(Clock);
             services.AddScoped<IVehicleStore>(_ => ThrowAfterWrite
-                ? new FailingVehicleStore(new EfVehicleStore(), () => ThrowAfterWrite = false)
-                : new EfVehicleStore());
+                ? new FailingVehicleStore(new EfVehicleStore(Clock), () => ThrowAfterWrite = false)
+                : new EfVehicleStore(Clock));
         });
     }
 
@@ -181,6 +186,22 @@ public sealed class VehicleApiFactory : WebApplicationFactory<Program>, IAsyncLi
             EditVehicleCommand command, AccessContext actor, CommandContext context, CancellationToken cancellationToken)
         {
             _ = await inner.EditAsync(command, actor, context, cancellationToken);
+            clearFailure();
+            throw new InvalidOperationException("after write");
+        }
+
+        public async Task<VehicleDetail> RetireAsync(
+            RetireVehicleCommand command, AccessContext actor, CommandContext context, CancellationToken cancellationToken)
+        {
+            _ = await inner.RetireAsync(command, actor, context, cancellationToken);
+            clearFailure();
+            throw new InvalidOperationException("after write");
+        }
+
+        public async Task<VehicleDetail> UndoRetireAsync(
+            UndoRetireVehicleCommand command, AccessContext actor, CommandContext context, CancellationToken cancellationToken)
+        {
+            _ = await inner.UndoRetireAsync(command, actor, context, cancellationToken);
             clearFailure();
             throw new InvalidOperationException("after write");
         }

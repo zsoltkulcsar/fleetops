@@ -5,6 +5,7 @@ import type { components } from "@fleetops/api-client";
 
 type Vehicle = components["schemas"]["VehicleListItem"];
 type VehicleDetail = components["schemas"]["VehicleDetail"];
+type RetireVehicleRequest = components["schemas"]["RetireVehicleRequest"];
 const vehicle = (id: string, plate: string, status: Vehicle["status"] = "active"): Vehicle => ({
   id,
   kind: "truck",
@@ -26,11 +27,23 @@ const detail = (id = "00000000-0000-0000-0000-000000000001", plate = "KS-DC 1177
   odometerKm: 120000,
   depotId: "11111111-1111-1111-1111-111111111111",
   status: "active",
+  retiredReason: null,
+  retiredAt: null,
   serviceIntervalKm: 60000,
   serviceIntervalMonths: 12,
   lastTachoDownloadAt: null,
   plateHistory: [],
   requiredDocuments: [],
+});
+const retiredDetail = (
+  id = "v-retired",
+  plate = "KS-DC 1177",
+  retiredAt = "2026-11-01T10:00:00Z",
+): VehicleDetail => ({
+  ...detail(id, plate),
+  status: "retired",
+  retiredReason: "sold",
+  retiredAt,
 });
 async function list(
   page: Page,
@@ -310,6 +323,117 @@ test("edit conflict keeps the input and explains", async ({ page }) => {
     page.getByText("This vehicle changed elsewhere. Review your input and try again."),
   ).toBeVisible();
   await expect(page.getByLabel("Make")).toHaveValue("Changed");
+});
+test("retire dialog lists the effects and requires a reason", async ({ page }) => {
+  await page.route("**/api/v1/fleet/vehicles/v-retire", (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(detail("v-retire")) }),
+  );
+  let request: RetireVehicleRequest | undefined;
+  await page.route("**/api/v1/fleet/vehicles/v-retire/retire", (route) => {
+    request = JSON.parse(route.request().postData() ?? "{}");
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(retiredDetail()),
+    });
+  });
+  await page.goto("/fleet/v-retire");
+  await page.getByRole("button", { name: "Retire" }).click();
+  await expect(page.getByText("Leaves the active Fleet list.")).toBeVisible();
+  await expect(page.getByText("Becomes read-only.")).toBeVisible();
+  await page.getByRole("dialog").locator("select").selectOption("");
+  await page.getByRole("button", { name: "Confirm retirement" }).click();
+  await expect(page.getByText("Reason is required when retiring a vehicle.")).toBeVisible();
+  expect(request).toBeUndefined();
+  await page.getByRole("dialog").locator("select").selectOption("sold");
+  await page.getByRole("button", { name: "Confirm retirement" }).click();
+  await expect.poll(() => request).toBeDefined();
+  expect(request).toMatchObject({ retiredReason: "sold", version: 1 });
+});
+test("retired record is read only and shows its reason", async ({ page }) => {
+  await page.route("**/api/v1/fleet/vehicles/v-retired", (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(retiredDetail()) }),
+  );
+  await page.goto("/fleet/v-retired");
+  await expect(page.getByRole("button", { name: "Edit" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Retire" })).toHaveCount(0);
+  await expect(page.getByText("Retired: Sold on 01.11.2026.")).toBeVisible();
+});
+test("owner sees undo within the window", async ({ page }) => {
+  await page.route("**/api/v1/fleet/vehicles/v-retired", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(retiredDetail("v-retired", "KS-DC 1177", "2026-11-01T10:00:00Z")),
+    }),
+  );
+  await page.goto("/fleet/v-retired");
+  await expect(page.getByRole("button", { name: "Undo retire" })).toBeVisible();
+});
+test("undo is hidden after the window and for a dispatcher", async ({ page }) => {
+  await page.route("**/api/v1/fleet/vehicles/v-old", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(retiredDetail("v-old", "KS-DC 1177", "2026-10-01T10:00:00Z")),
+    }),
+  );
+  await page.route("**/api/v1/fleet/vehicles/v-retired", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(retiredDetail()),
+    }),
+  );
+  await page.goto("/fleet/v-old");
+  await expect(page.getByRole("button", { name: "Undo retire" })).toHaveCount(0);
+
+  await page.route("**/api/v1/auth/session", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ employeeId: "dispatcher", roles: ["dispatcher"] }),
+    }),
+  );
+  await page.goto("/fleet/v-retired");
+  await expect(page.getByRole("button", { name: "Undo retire" })).toHaveCount(0);
+});
+test("undo shows a message when the window closed", async ({ page }) => {
+  await page.route("**/api/v1/fleet/vehicles/v-closed", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(retiredDetail("v-closed")),
+    }),
+  );
+  await page.route("**/api/v1/fleet/vehicles/v-closed/undo-retire", (route) =>
+    route.fulfill({
+      status: 409,
+      contentType: "application/json",
+      body: JSON.stringify({ code: "undo_window_closed" }),
+    }),
+  );
+  await page.goto("/fleet/v-closed");
+  await page.getByRole("button", { name: "Undo retire" }).click();
+  await page.getByLabel("Reason").fill("try again");
+  await page.getByRole("button", { name: "Restore vehicle" }).click();
+  await expect(page.getByText("The 30-day undo window has closed.")).toBeVisible();
+});
+test("include retired sends the filter to the server", async ({ page }) => {
+  const urls: string[] = [];
+  await page.route("**/api/v1/fleet/vehicles?*", (route) => {
+    urls.push(route.request().url());
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ items: [], nextCursor: null }),
+    });
+  });
+  await page.goto("/fleet");
+  await page.getByLabel("Include retired").check();
+  await expect
+    .poll(() => urls.some((url) => new URL(url).searchParams.get("includeRetired") === "true"))
+    .toBe(true);
 });
 test("slash focuses the fleet search", async ({ page }) => {
   await list(page);

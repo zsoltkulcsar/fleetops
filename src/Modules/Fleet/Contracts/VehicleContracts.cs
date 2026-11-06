@@ -21,6 +21,8 @@ public sealed record VehicleDetail(
     int? OdometerKm,
     Guid DepotId,
     VehicleStatus Status,
+    RetiredReason? RetiredReason,
+    DateTimeOffset? RetiredAt,
     int Version,
     string? RequiredLicenceClass,
     int? ServiceIntervalKm,
@@ -95,6 +97,15 @@ public sealed record EditVehicleCommand(
     int? ServiceIntervalMonths,
     DateOnly? LastTachoDownloadAt,
     string? Reason) : ICommand<VehicleDetail>, IHasSubject, IHasReason;
+
+[CommandPolicy("vehicles.manage", HasStatePrecondition = true)]
+public sealed record RetireVehicleCommand(Guid? SubjectId, int Version, RetiredReason RetiredReason) : ICommand<VehicleDetail>, IHasSubject
+{
+    public string? Reason => RetiredReason.ToString();
+}
+
+[CommandPolicy("vehicles.retire.undo")]
+public sealed record UndoRetireVehicleCommand(Guid? SubjectId, int Version, string? Reason) : ICommand<VehicleDetail>, IHasSubject, IHasReason;
 
 public interface IHasReason
 {

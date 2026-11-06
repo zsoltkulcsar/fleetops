@@ -5,8 +5,9 @@ using Npgsql;
 
 namespace FleetOps.Migrations;
 
-public sealed class EfVehicleStore : IVehicleStore
+public sealed class EfVehicleStore(TimeProvider? time = null) : IVehicleStore
 {
+    private readonly TimeProvider clock = time ?? TimeProvider.System;
     public static async Task<VehicleListPage> ReadListByConnectionAsync(
         string connectionString,
         ListVehiclesQuery query,
@@ -73,6 +74,39 @@ public sealed class EfVehicleStore : IVehicleStore
         return await Read(db, vehicle.Id, cancellationToken);
     }
 
+    public async Task<VehicleDetail> RetireAsync(RetireVehicleCommand input, AccessContext actor, CommandContext context, CancellationToken cancellationToken)
+    {
+        await using var db = CreateDb(context, actor.EmployeeId, input.Reason);
+        var vehicle = await db.Vehicles.SingleOrDefaultAsync(x => x.Id == input.SubjectId, cancellationToken) ?? throw new VehicleConflictException("vehicle_not_found");
+        if (vehicle.Version != input.Version) throw new VehicleConflictException("version_conflict");
+        if (vehicle.Status == VehicleStatus.Retired) throw new VehicleConflictException("state_conflict");
+        vehicle.Status = VehicleStatus.Retired;
+        vehicle.RetiredReason = input.RetiredReason;
+        vehicle.RetiredAt = clock.GetUtcNow();
+        vehicle.Version++;
+        vehicle.UpdatedAt = clock.GetUtcNow();
+        try { await db.SaveChangesAsync(cancellationToken); } catch (DbUpdateConcurrencyException) { throw new VehicleConflictException("version_conflict"); }
+        return await Read(db, vehicle.Id, cancellationToken);
+    }
+
+    public async Task<VehicleDetail> UndoRetireAsync(UndoRetireVehicleCommand input, AccessContext actor, CommandContext context, CancellationToken cancellationToken)
+    {
+        await using var db = CreateDb(context, actor.EmployeeId, input.Reason);
+        var vehicle = await db.Vehicles.SingleOrDefaultAsync(x => x.Id == input.SubjectId, cancellationToken) ?? throw new VehicleConflictException("vehicle_not_found");
+        if (vehicle.Version != input.Version) throw new VehicleConflictException("version_conflict");
+        if (vehicle.Status != VehicleStatus.Retired || vehicle.RetiredAt is null) throw new VehicleConflictException("state_conflict");
+        if (clock.GetUtcNow() - vehicle.RetiredAt.Value >= TimeSpan.FromDays(30)) throw new VehicleConflictException("undo_window_closed");
+        if (await db.Vehicles.AnyAsync(x => x.Id != vehicle.Id && x.Status != VehicleStatus.Retired && (x.Plate == vehicle.Plate || x.Vin == vehicle.Vin), cancellationToken))
+            throw new VehicleConflictException("plate_in_use");
+        vehicle.Status = VehicleStatus.Active;
+        vehicle.RetiredReason = null;
+        vehicle.RetiredAt = null;
+        vehicle.Version++;
+        vehicle.UpdatedAt = clock.GetUtcNow();
+        try { await db.SaveChangesAsync(cancellationToken); } catch (DbUpdateConcurrencyException) { throw new VehicleConflictException("version_conflict"); } catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: "23505" }) { throw new VehicleConflictException("plate_in_use"); }
+        return await Read(db, vehicle.Id, cancellationToken);
+    }
+
     private static FleetOpsDbContext CreateDb(CommandContext context, Guid actorId, string? reason)
     {
         var optionsBuilder = new DbContextOptionsBuilder<FleetOpsDbContext>();
@@ -88,7 +122,7 @@ public sealed class EfVehicleStore : IVehicleStore
         var vehicle = await db.Vehicles.SingleOrDefaultAsync(x => x.Id == id, cancellationToken) ?? throw new VehicleConflictException("not_found");
         var history = await db.PlateHistories.Where(x => x.VehicleId == id).OrderBy(x => x.ChangedAt).Select(x => x.Plate).ToListAsync(cancellationToken);
         return new(vehicle.Id, vehicle.Kind, vehicle.Plate, vehicle.Vin, vehicle.Make, vehicle.Model, vehicle.Year, vehicle.GrossWeightKg,
-            vehicle.Ownership, vehicle.LeaseEndDate, vehicle.TrailerType, vehicle.OdometerKm, vehicle.DepotId, vehicle.Status, vehicle.Version,
+            vehicle.Ownership, vehicle.LeaseEndDate, vehicle.TrailerType, vehicle.OdometerKm, vehicle.DepotId, vehicle.Status, vehicle.RetiredReason, vehicle.RetiredAt, vehicle.Version,
             vehicle.RequiredLicenceClass, vehicle.ServiceIntervalKm, vehicle.ServiceIntervalMonths, vehicle.LastTachoDownloadAt,
             history, VehicleRules.Documents(vehicle.Kind, vehicle.GrossWeightKg));
     }

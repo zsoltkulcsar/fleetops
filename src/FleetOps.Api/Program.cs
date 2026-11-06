@@ -63,8 +63,11 @@ builder.Services.AddScoped<IQueryHandler<GetVehicleQuery, VehicleDetail>, Vehicl
 builder.Services.AddScoped<IQueryHandler<ListVehiclesQuery, VehicleListResult>, VehicleListQueryHandler>();
 builder.Services.AddScoped<IVehicleStore, EfVehicleStore>();
 builder.Services.AddScoped<ICommandStatePrecondition<EditVehicleCommand>, RetiredVehicleEditPrecondition>();
+builder.Services.AddScoped<ICommandStatePrecondition<RetireVehicleCommand>, ActiveVehicleRetirePrecondition>();
 builder.Services.AddScoped<ICommandHandler<CreateVehicleCommand, VehicleDetail>, CreateVehicleHandler>();
 builder.Services.AddScoped<ICommandHandler<EditVehicleCommand, VehicleDetail>, EditVehicleHandler>();
+builder.Services.AddScoped<ICommandHandler<RetireVehicleCommand, VehicleDetail>, RetireVehicleHandler>();
+builder.Services.AddScoped<ICommandHandler<UndoRetireVehicleCommand, VehicleDetail>, UndoRetireVehicleHandler>();
 
 var app = builder.Build();
 app.UseExceptionHandler(new ExceptionHandlerOptions
@@ -88,7 +91,7 @@ app.UseExceptionHandler(new ExceptionHandlerOptions
             await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "validation_error", ["fields"] = field is null ? Array.Empty<string>() : new[] { field } }).ExecuteAsync(context); return;
         }
         if (exception is InvalidCursorException) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "invalid_cursor" }).ExecuteAsync(context); return; }
-        if (exception is VehicleConflictException conflict) { await Results.Problem(statusCode: conflict.Code is "duplicate_vehicle" or "version_conflict" or "state_conflict" ? 409 : 404, extensions: new Dictionary<string, object?> { ["code"] = conflict.Code }).ExecuteAsync(context); return; }
+        if (exception is VehicleConflictException conflict) { await Results.Problem(statusCode: conflict.Code is "duplicate_vehicle" or "version_conflict" or "state_conflict" or "undo_window_closed" or "plate_in_use" ? 409 : 404, extensions: new Dictionary<string, object?> { ["code"] = conflict.Code }).ExecuteAsync(context); return; }
         try { app.Logger.LogError("Unhandled exception {ExceptionType} TraceId {TraceId}", exception?.GetType().Name ?? "Unknown", context.TraceIdentifier); } catch { }
         context.Response.StatusCode = 500; await Results.Problem(statusCode: 500).ExecuteAsync(context);
     }
@@ -106,6 +109,8 @@ app.MapGet("/healthz", async (IDatabaseHealth database, CancellationToken cancel
 AuthEndpoints.Map(app);
 app.MapPost("/api/v1/fleet/vehicles", async (CreateVehicleCommand command, CommandDispatcher dispatcher, CancellationToken cancellationToken) => { var result = await dispatcher.DispatchAsync<CreateVehicleCommand, VehicleDetail>(command, cancellationToken); return Results.Created($"/api/v1/fleet/vehicles/{result.Id}", result); }).Produces<VehicleDetail>(StatusCodes.Status201Created);
 app.MapPut("/api/v1/fleet/vehicles/{id:guid}", async (Guid id, EditVehicleRequest request, CommandDispatcher dispatcher, CancellationToken cancellationToken) => Results.Ok(await dispatcher.DispatchAsync<EditVehicleCommand, VehicleDetail>(request.ToCommand(id), cancellationToken))).Produces<VehicleDetail>();
+app.MapPost("/api/v1/fleet/vehicles/{id:guid}/retire", async (Guid id, RetireVehicleRequest request, CommandDispatcher dispatcher, CancellationToken cancellationToken) => Results.Ok(await dispatcher.DispatchAsync<RetireVehicleCommand, VehicleDetail>(new(id, request.Version, request.RetiredReason), cancellationToken))).Produces<VehicleDetail>();
+app.MapPost("/api/v1/fleet/vehicles/{id:guid}/undo-retire", async (Guid id, UndoRetireVehicleRequest request, CommandDispatcher dispatcher, CancellationToken cancellationToken) => Results.Ok(await dispatcher.DispatchAsync<UndoRetireVehicleCommand, VehicleDetail>(new(id, request.Version, request.Reason), cancellationToken))).Produces<VehicleDetail>();
 app.MapGet("/api/v1/fleet/vehicles", async (string? cursor, int? limit, string? search, string? kind, bool? includeRetired, QueryDispatcher dispatcher, CancellationToken cancellationToken) =>
 {
     VehicleKind? parsedKind = null;
@@ -137,6 +142,8 @@ public sealed class DatabaseHealth(IConfiguration configuration, ILogger<Databas
 }
 public sealed record EditVehicleRequest(int Version, VehicleKind Kind, string? Plate, string? Vin, string? Make, string? Model, int Year, int GrossWeightKg, string? RequiredLicenceClass, VehicleOwnership Ownership, DateOnly? LeaseEndDate, TrailerType? TrailerType, int? OdometerKm, Guid? DepotId, int? ServiceIntervalKm, int? ServiceIntervalMonths, DateOnly? LastTachoDownloadAt, string? Reason)
 { public EditVehicleCommand ToCommand(Guid id) => new(id, Version, Kind, Plate, Vin, Make, Model, Year, GrossWeightKg, RequiredLicenceClass, Ownership, LeaseEndDate, TrailerType, OdometerKm, DepotId, ServiceIntervalKm, ServiceIntervalMonths, LastTachoDownloadAt, Reason); }
+public sealed record RetireVehicleRequest(int Version, RetiredReason RetiredReason);
+public sealed record UndoRetireVehicleRequest(int Version, string? Reason);
 public sealed class VehicleQueryHandler(IConfiguration configuration) : IQueryHandler<GetVehicleQuery, VehicleDetail>
 { public async Task<VehicleDetail> HandleAsync(GetVehicleQuery query, AccessContext actor, CancellationToken cancellationToken) => await EfVehicleStore.ReadByConnectionAsync(DatabaseConnectionString.Resolve(configuration) ?? throw new InvalidOperationException("Database is not configured."), query.SubjectId ?? throw new VehicleValidationException(["id"]), cancellationToken); }
 

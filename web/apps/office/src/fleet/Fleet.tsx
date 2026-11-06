@@ -20,6 +20,7 @@ export function Fleet() {
   const [search, setSearch] = useState("");
   const [term, setTerm] = useState("");
   const [kind, setKind] = useState<Vehicle["kind"] | "">("");
+  const [includeRetired, setIncludeRetired] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [toast, setToast] = useState(false);
   useEffect(() => {
@@ -45,10 +46,15 @@ export function Fleet() {
     return () => document.removeEventListener("keydown", onKey);
   }, []);
   const query = useInfiniteQuery({
-    queryKey: ["fleet", "vehicles", term, kind],
+    queryKey: ["fleet", "vehicles", term, kind, includeRetired],
     initialPageParam: "",
     queryFn: ({ pageParam }) =>
-      fleetApi.list({ cursor: pageParam || undefined, search: term, kind: kind || undefined }),
+      fleetApi.list({
+        cursor: pageParam || undefined,
+        search: term,
+        kind: kind || undefined,
+        includeRetired,
+      }),
     getNextPageParam: (page) => page.nextCursor ?? undefined,
   });
   const vehicles = useMemo(() => query.data?.pages.flatMap((page) => page.items) ?? [], [query.data]);
@@ -99,6 +105,14 @@ export function Fleet() {
               <option value="truck">Trucks</option>
               <option value="trailer">Trailers</option>
             </select>
+            <label className="checkbox-field">
+              <input
+                type="checkbox"
+                checked={includeRetired}
+                onChange={(event) => setIncludeRetired(event.target.checked)}
+              />
+              {en.fleet.includeRetired}
+            </label>
           </div>
         }
       >

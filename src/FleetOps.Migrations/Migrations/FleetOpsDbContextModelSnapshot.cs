@@ -401,6 +401,14 @@ namespace FleetOps.Migrations.Migrations
                         .HasColumnType("text")
                         .HasColumnName("required_licence_class");
 
+                    b.Property<DateTimeOffset?>("RetiredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("retired_at");
+
+                    b.Property<string>("RetiredReason")
+                        .HasColumnType("text")
+                        .HasColumnName("retired_reason");
+
                     b.Property<int?>("ServiceIntervalKm")
                         .HasColumnType("integer")
                         .HasColumnName("service_interval_km");

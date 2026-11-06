@@ -6,6 +6,7 @@ export type VehicleDetail = components["schemas"]["VehicleDetail"];
 export type VehicleList = components["schemas"]["VehicleListResult"];
 export type VehicleInput = components["schemas"]["CreateVehicleCommand"];
 export type VehicleEditInput = components["schemas"]["EditVehicleRequest"];
+export type RetiredReason = Exclude<components["schemas"]["RetiredReason"], null>;
 export type ApiProblem = {
   code?: string;
   errors?: Record<string, string[] | string>;
@@ -41,12 +42,14 @@ export const fleetApi = {
     limit?: number;
     search?: string;
     kind?: components["schemas"]["VehicleKind"];
+    includeRetired?: boolean;
   }) => {
     const query = new URLSearchParams();
     query.set("cursor", params.cursor ?? "");
     query.set("limit", String(params.limit ?? 50));
     query.set("search", params.search ?? "");
     query.set("kind", params.kind ?? "");
+    query.set("includeRetired", String(params.includeRetired ?? false));
     return request<VehicleList>(`/api/v1/fleet/vehicles?${query.toString()}`);
   },
   detail: (id: string) => request<VehicleDetail>(`/api/v1/fleet/vehicles/${encodeURIComponent(id)}`),
@@ -55,6 +58,16 @@ export const fleetApi = {
   update: (id: string, input: VehicleEditInput) =>
     request<VehicleDetail>(`/api/v1/fleet/vehicles/${encodeURIComponent(id)}`, {
       method: "PUT",
+      body: JSON.stringify(input),
+    }),
+  retire: (id: string, input: components["schemas"]["RetireVehicleRequest"]) =>
+    request<VehicleDetail>(`/api/v1/fleet/vehicles/${encodeURIComponent(id)}/retire`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  undoRetire: (id: string, input: components["schemas"]["UndoRetireVehicleRequest"]) =>
+    request<VehicleDetail>(`/api/v1/fleet/vehicles/${encodeURIComponent(id)}/undo-retire`, {
+      method: "POST",
       body: JSON.stringify(input),
     }),
 };

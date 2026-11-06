@@ -16,3 +16,16 @@ public sealed class RetiredVehicleEditPrecondition : ICommandStatePrecondition<E
         return status is not string text || !text.Equals("Retired", StringComparison.OrdinalIgnoreCase);
     }
 }
+
+public sealed class ActiveVehicleRetirePrecondition : ICommandStatePrecondition<RetireVehicleCommand>
+{
+    public async Task<bool> CheckAsync(RetireVehicleCommand command, AccessContext actor, CommandContext context, CancellationToken cancellationToken)
+    {
+        await using var sql = context.DbConnection.CreateCommand();
+        sql.Transaction = context.DbTransaction;
+        sql.CommandText = "select status from fleetops.vehicles where id = @id";
+        var parameter = sql.CreateParameter(); parameter.ParameterName = "id"; parameter.Value = command.SubjectId ?? Guid.Empty; sql.Parameters.Add(parameter);
+        var status = await sql.ExecuteScalarAsync(cancellationToken);
+        return status is not string text || !text.Equals("Retired", StringComparison.OrdinalIgnoreCase);
+    }
+}

@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Pencil } from "lucide-react";
-import { Banner, EmptyState, Panel, Plate, StatusPill, Toast } from "@fleetops/ui";
+import { Banner, Drawer, EmptyState, Panel, Plate, StatusPill, Toast } from "@fleetops/ui";
+import { AuthRequestError } from "../auth/api";
 import { useSession } from "../auth/AuthGate";
 import { en } from "../i18n/en";
-import { fleetApi, type VehicleDetail } from "./api";
+import { fleetApi, type ApiProblem, type RetiredReason, type VehicleDetail } from "./api";
 import { VehicleForm } from "./VehicleForm";
 import "./fleet.css";
 
@@ -12,6 +13,15 @@ const statusPillFor: Record<VehicleDetail["status"], "usable" | "off-road"> = {
   active: "usable",
   retired: "off-road",
 };
+const retiredReasonLabel: Record<RetiredReason, string> = {
+  sold: en.fleet.retiredReason.sold,
+  scrapped: en.fleet.retiredReason.scrapped,
+  returned_lease: en.fleet.retiredReason.returned_lease,
+};
+function retiredDate(value: string): string {
+  const date = new Date(value);
+  return `${String(date.getUTCDate()).padStart(2, "0")}.${String(date.getUTCMonth() + 1).padStart(2, "0")}.${date.getUTCFullYear()}`;
+}
 export function FleetRecord({ id }: { id: string }) {
   const heading = useRef<HTMLHeadingElement>(null);
   const session = useSession();
@@ -19,7 +29,10 @@ export function FleetRecord({ id }: { id: string }) {
   const [tab, setTab] = useState("Overview");
   const [formOpen, setFormOpen] = useState(false);
   const [toast, setToast] = useState(false);
+  const [retireOpen, setRetireOpen] = useState(false);
+  const [undoOpen, setUndoOpen] = useState(false);
   const canEdit = Boolean(session.data?.roles.some((role) => role === "dispatcher" || role === "owner"));
+  const isOwner = Boolean(session.data?.roles.some((role) => role === "owner"));
   useEffect(() => {
     if (query.data) document.title = `${query.data.plate} · ${en.appName}`;
   }, [query.data]);
@@ -67,13 +80,33 @@ export function FleetRecord({ id }: { id: string }) {
         </div>
         <div className="record-actions">
           <StatusPill status={statusPillFor[vehicle.status]} label={en.fleet.status[vehicle.status]} />
-          {canEdit && (
+          {vehicle.status === "active" && canEdit && (
+            <button className="ui-button" onClick={() => setRetireOpen(true)}>
+              {en.fleet.retire.button}
+            </button>
+          )}
+          {vehicle.status === "active" && canEdit && (
             <button className="ui-button" onClick={() => setFormOpen(true)}>
               <Pencil size={16} aria-hidden /> Edit
             </button>
           )}
         </div>
       </div>
+      {vehicle.status === "retired" && vehicle.retiredReason && vehicle.retiredAt && (
+        <Banner label={en.fleet.status.retired}>
+          Retired: {retiredReasonLabel[vehicle.retiredReason]} on {retiredDate(vehicle.retiredAt)}.
+        </Banner>
+      )}
+      {vehicle.status === "retired" &&
+        isOwner &&
+        vehicle.retiredAt &&
+        Date.now() - new Date(vehicle.retiredAt).getTime() < 30 * 24 * 60 * 60 * 1000 && (
+          <div className="record-retired-action">
+            <button className="ui-button" onClick={() => setUndoOpen(true)}>
+              {en.fleet.undoRetire.button}
+            </button>
+          </div>
+        )}
       <div className="fleet-tabs" role="tablist" aria-label="Vehicle record sections">
         {["Overview", "Documents", "Maintenance", "Defects", "Drivers", "History"].map((name) => (
           <button
@@ -158,9 +191,169 @@ export function FleetRecord({ id }: { id: string }) {
           void query.refetch();
         }}
       />
+      <RetireDrawer
+        open={retireOpen}
+        vehicle={vehicle}
+        onClose={() => setRetireOpen(false)}
+        onSaved={() => {
+          setRetireOpen(false);
+          setToast(true);
+          void query.refetch();
+        }}
+      />
+      <UndoRetireDrawer
+        open={undoOpen}
+        vehicle={vehicle}
+        onClose={() => setUndoOpen(false)}
+        onSaved={() => {
+          setUndoOpen(false);
+          setToast(true);
+          void query.refetch();
+        }}
+      />
       <Toast open={toast} onClose={() => setToast(false)} dismissLabel="Dismiss" undoLabel="Undo">
         Vehicle saved successfully.
       </Toast>
     </div>
+  );
+}
+
+function RetireDrawer({
+  open,
+  vehicle,
+  onClose,
+  onSaved,
+}: {
+  open: boolean;
+  vehicle: VehicleDetail;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [reason, setReason] = useState<RetiredReason | "">("");
+  const [failure, setFailure] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const submit = async () => {
+    setSaving(true);
+    setFailure(null);
+    if (!reason) {
+      setFailure(en.fleet.retire.required);
+      setSaving(false);
+      return;
+    }
+    try {
+      await fleetApi.retire(vehicle.id, { version: vehicle.version, retiredReason: reason });
+      onSaved();
+    } catch {
+      setFailure(en.fleet.retire.failure);
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <Drawer open={open} title={en.fleet.retire.title} onClose={onClose} closeLabel={en.actions.close}>
+      {failure && (
+        <Banner kind="error" label={en.banner.error}>
+          {en.fleet.retire.failure}
+        </Banner>
+      )}
+      <div className="fleet-form">
+        <label>
+          {en.fleet.retire.reason}
+          <select
+            value={reason}
+            onChange={(event) => {
+              const value = event.target.value;
+              if (value === "sold" || value === "scrapped" || value === "returned_lease") setReason(value);
+            }}
+          >
+            <option value="">Select a reason</option>
+            <option value="sold">{en.fleet.retire.sold}</option>
+            <option value="scrapped">{en.fleet.retire.scrapped}</option>
+            <option value="returned_lease">{en.fleet.retire.returnedLease}</option>
+          </select>
+        </label>
+        <ul className="drawer-list">
+          <li>{en.fleet.retire.activeList}</li>
+          <li>{en.fleet.retire.readOnly}</li>
+          <li>{en.fleet.retire.historyStays}</li>
+        </ul>
+        <div className="drawer-actions">
+          <button type="button" className="ui-button" onClick={onClose}>
+            {en.fleet.retire.cancel}
+          </button>
+          <button type="button" className="ui-button primary" disabled={saving} onClick={() => void submit()}>
+            {en.fleet.retire.confirm}
+          </button>
+        </div>
+      </div>
+    </Drawer>
+  );
+}
+
+function UndoRetireDrawer({
+  open,
+  vehicle,
+  onClose,
+  onSaved,
+}: {
+  open: boolean;
+  vehicle: VehicleDetail;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [reason, setReason] = useState("");
+  const [failure, setFailure] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const submit = async () => {
+    if (!reason.trim()) {
+      setFailure(en.fleet.undoRetire.required);
+      return;
+    }
+    setSaving(true);
+    setFailure(null);
+    try {
+      await fleetApi.undoRetire(vehicle.id, { version: vehicle.version, reason });
+      onSaved();
+    } catch (error) {
+      const problem: ApiProblem = error instanceof AuthRequestError ? error.problem : {};
+      setFailure(
+        problem.code === "undo_window_closed"
+          ? en.fleet.undoRetire.windowClosed
+          : problem.code === "plate_in_use"
+            ? en.fleet.undoRetire.plateInUse
+            : en.fleet.undoRetire.failure,
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <Drawer open={open} title={en.fleet.undoRetire.title} onClose={onClose} closeLabel={en.actions.close}>
+      {failure && (
+        <Banner kind="error" label={en.banner.error}>
+          {failure}
+        </Banner>
+      )}
+      <form
+        className="fleet-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void submit();
+        }}
+      >
+        <label>
+          {en.fleet.undoRetire.reason}
+          <textarea value={reason} onChange={(event) => setReason(event.target.value)} required />
+        </label>
+        <div className="drawer-actions">
+          <button type="button" className="ui-button" onClick={onClose}>
+            {en.fleet.undoRetire.cancel}
+          </button>
+          <button type="submit" className="ui-button primary" disabled={saving}>
+            {en.fleet.undoRetire.confirm}
+          </button>
+        </div>
+      </form>
+    </Drawer>
   );
 }

@@ -45,6 +45,7 @@ public static class PermissionMatrix
         E("documents.driver.upload", Cell.Own, Cell.None, Cell.Full, Cell.View), E("documents.driver.verify", Cell.None, Cell.None, Cell.Full, Cell.View),
         E("documents.driver.delete", Cell.None, Cell.None, Cell.Full, Cell.None), E("documents.medical.view", Cell.Own, Cell.Mask, Cell.Full, Cell.Full),
         E("documents.vehicle.manage", Cell.None, Cell.Full, Cell.View, Cell.View), E("vehicles.manage", Cell.None, Cell.Full, Cell.View, Cell.Full), E("vehicles.view", Cell.None, Cell.Full, Cell.View, Cell.View), E("fleet.manage", Cell.None, Cell.Full, Cell.View, Cell.View), E("defects.report", Cell.Own, Cell.None, Cell.None, Cell.None),
+        E("vehicles.retire.undo", Cell.None, Cell.None, Cell.None, Cell.Full),
         E("schedule.view", Cell.Own, Cell.Full, Cell.View, Cell.Full), E("schedule.request_change", Cell.Own, Cell.Full, Cell.None, Cell.Full),
         E("schedule.edit", Cell.None, Cell.Full, Cell.View, Cell.Full),
         E("override.manage", Cell.None, Cell.Full, Cell.None, Cell.Full), E("absences.vacation.request", Cell.Own, Cell.None, Cell.Full, Cell.View),

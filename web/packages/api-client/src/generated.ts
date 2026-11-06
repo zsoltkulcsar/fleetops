@@ -163,6 +163,88 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/fleet/vehicles/{id}/retire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RetireVehicleRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["VehicleDetail"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fleet/vehicles/{id}/undo-retire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UndoRetireVehicleRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["VehicleDetail"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/sign-in": {
         parameters: {
             query?: never;
@@ -558,6 +640,13 @@ export interface components {
             token: string;
             password: string;
         };
+        /** @enum {unknown} */
+        RetiredReason: "sold" | "scrapped" | "returned_lease" | null;
+        RetireVehicleRequest: {
+            /** Format: int32 */
+            version: number;
+            retiredReason: components["schemas"]["RetiredReason"];
+        };
         SecondFactorRequest: {
             code: string;
         };
@@ -567,6 +656,11 @@ export interface components {
         };
         /** @enum {unknown} */
         TrailerType: "curtainsider" | "box" | "reefer" | "flatbed" | "tanker" | null;
+        UndoRetireVehicleRequest: {
+            /** Format: int32 */
+            version: number;
+            reason: null | string;
+        };
         VehicleDetail: {
             /** Format: uuid */
             id: string;
@@ -588,6 +682,9 @@ export interface components {
             /** Format: uuid */
             depotId: string;
             status: components["schemas"]["VehicleStatus"];
+            retiredReason: null | components["schemas"]["RetiredReason"];
+            /** Format: date-time */
+            retiredAt: null | string;
             /** Format: int32 */
             version: number;
             requiredLicenceClass: null | string;
