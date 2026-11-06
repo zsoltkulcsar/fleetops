@@ -12,8 +12,10 @@ using Xunit;
 
 namespace FleetOps.Tests;
 
-public sealed partial class SignInTests(AuthApiFactory fixture) : IClassFixture<AuthApiFactory>
+public sealed partial class SignInTests : IClassFixture<AuthApiFactory>
 {
+    private static readonly DateTimeOffset DefaultTestTime = new(2026, 11, 6, 10, 0, 0, TimeSpan.Zero);
+
     private const string SessionPath = "/api/v1/auth/session";
     private const string SignInPath = "/api/v1/auth/sign-in";
     private const string SecondFactorPath = "/api/v1/auth/second-factor";
@@ -23,7 +25,13 @@ public sealed partial class SignInTests(AuthApiFactory fixture) : IClassFixture<
     private const string ResetPath = "/api/v1/auth/reset-password";
     private const string StepUpProbePath = "/__tests/step-up-command";
 
-    private readonly AuthApiFactory factory = fixture;
+    private readonly AuthApiFactory factory;
+
+    public SignInTests(AuthApiFactory fixture)
+    {
+        factory = fixture;
+        factory.Clock.SetUtcNow(DefaultTestTime);
+    }
 
     // ------------------------------------------------------------------ cookie and password basics
 

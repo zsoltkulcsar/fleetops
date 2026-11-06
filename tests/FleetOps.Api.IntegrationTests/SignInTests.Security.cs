@@ -489,6 +489,7 @@ public sealed partial class SignInTests
     [InlineData("past end date")]
     public async Task Expired_session_clears_the_cookie(string expirationCase)
     {
+        factory.Clock.SetUtcNow(new DateTimeOffset(2026, 11, 6, 10, 0, 0, TimeSpan.Zero));
         var employee = await factory.CreateEmployee(expirationCase == "pending expiry" ? ["hr"] : ["dispatcher"],
             endDate: expirationCase == "past end date" ? new DateOnly(2026, 11, 6) : null);
         using var client = factory.Client;
