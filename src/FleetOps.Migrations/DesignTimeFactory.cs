@@ -8,7 +8,15 @@ public sealed class DesignTimeFactory : IDesignTimeDbContextFactory<FleetOpsDbCo
     public FleetOpsDbContext CreateDbContext(string[] args)
     {
         var options = new DbContextOptionsBuilder<FleetOpsDbContext>();
-        options.UseNpgsql();
+        if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("FLEETOPS_DATABASE_MIGRATION_URL")))
+        {
+            options.UseNpgsql(npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "fleetops"));
+        }
+        else
+        {
+            MigrationDbContextOptions.Configure(options, ResolveConnectionString());
+        }
+
         return new FleetOpsDbContext(options.Options);
     }
 

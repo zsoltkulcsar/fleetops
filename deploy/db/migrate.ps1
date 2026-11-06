@@ -7,6 +7,6 @@ $caPath = (Join-Path $repoRoot 'deploy/db/supabase-ca.crt')
 $env:FLEETOPS_DATABASE_MIGRATION_URL = $env:FLEETOPS_DATABASE_MIGRATION_URL.Replace('deploy/db/supabase-ca.crt', $caPath)
 Push-Location $repoRoot
 try {
-  dotnet ef database update --project 'src/FleetOps.Migrations/FleetOps.Migrations.csproj' --startup-project 'src/FleetOps.Migrations/FleetOps.Migrations.csproj' --connection $env:FLEETOPS_DATABASE_MIGRATION_URL
+  dotnet ef database update --project 'src/FleetOps.Migrations/FleetOps.Migrations.csproj' --startup-project 'src/FleetOps.Migrations/FleetOps.Migrations.csproj'
 } finally { Pop-Location }
 if ($LASTEXITCODE) { throw "Migration failed with exit code $LASTEXITCODE" }
