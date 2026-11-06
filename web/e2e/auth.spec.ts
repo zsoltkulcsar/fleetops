@@ -238,6 +238,7 @@ test("a 401 on a later request returns to sign in with the expired notice", asyn
       body: JSON.stringify({ code: "session_expired" }),
     }),
   );
+  signedIn = false;
   await page.evaluate(() => fetch("/api/v1/fleet/vehicles"));
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
   await expect(
