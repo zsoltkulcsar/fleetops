@@ -1,12 +1,22 @@
+using FleetOps.Modules.Audit;
+using FleetOps.Modules.Fleet;
+using FleetOps.Modules.Setup;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 
 namespace FleetOps.Migrations;
 
-public sealed partial class FleetOpsDbContext(DbContextOptions<FleetOpsDbContext> options) : IdentityDbContext<FleetOps.Identity.OfficeUser, IdentityRole<Guid>, Guid>(options)
+public sealed partial class FleetOpsDbContext(DbContextOptions<FleetOpsDbContext> options) : IdentityDbContext<FleetOps.Identity.OfficeUser, IdentityRole<Guid>, Guid>(options), IAuditDbContext
 {
     public DbSet<MigrationMarker> MigrationMarkers => Set<MigrationMarker>();
+    public DbSet<Vehicle> Vehicles => Set<Vehicle>();
+    public DbSet<PlateHistory> PlateHistories => Set<PlateHistory>();
+    public DbSet<Depot> Depots => Set<Depot>();
+    public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
+    public Guid AuditActorId { get; set; }
+    public string AuditReason { get; set; } = "";
+    public void AddAudit(AuditEntry entry) => AuditEntries.Add(entry);
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -90,6 +100,10 @@ public sealed partial class FleetOpsDbContext(DbContextOptions<FleetOpsDbContext
         modelBuilder.Entity<FleetOps.Identity.OfficeSession>(entity => { entity.ToTable("sessions"); entity.HasKey(x => x.Id); entity.HasIndex(x => x.TokenHash).IsUnique(); entity.Property(x => x.UserId).HasColumnName("user_id"); entity.Property(x => x.EmployeeId).HasColumnName("employee_id"); entity.Property(x => x.TokenHash).HasColumnName("token_hash"); entity.Property(x => x.Device).HasColumnName("device"); entity.Property(x => x.Stage).HasColumnName("stage").HasConversion<string>(); entity.Property(x => x.CreatedAt).HasColumnName("created_at"); entity.Property(x => x.LastSeenAt).HasColumnName("last_seen_at"); entity.Property(x => x.RevokedAt).HasColumnName("revoked_at"); entity.Property(x => x.StepUpAt).HasColumnName("step_up_at"); });
         modelBuilder.Entity<FleetOps.Identity.PrivacyAcknowledgement>(entity => { entity.ToTable("privacy_acknowledgements"); entity.HasKey(x => x.Id); entity.Property(x => x.EmployeeId).HasColumnName("employee_id"); entity.Property(x => x.Version).HasColumnName("version"); entity.Property(x => x.AcknowledgedAt).HasColumnName("acknowledged_at"); });
         modelBuilder.Entity<FleetOps.Identity.PasswordResetToken>(entity => { entity.ToTable("password_reset_tokens"); entity.HasKey(x => x.Id); entity.HasIndex(x => x.TokenHash).IsUnique(); entity.Property(x => x.UserId).HasColumnName("user_id"); entity.Property(x => x.TokenHash).HasColumnName("token_hash"); entity.Property(x => x.ExpiresAt).HasColumnName("expires_at"); entity.Property(x => x.UsedAt).HasColumnName("used_at"); });
+        modelBuilder.Entity<Vehicle>(entity => { entity.ToTable("vehicles"); entity.HasKey(x => x.Id); entity.Property(x => x.Id).HasColumnName("id"); entity.Property(x => x.Kind).HasColumnName("kind").HasConversion<string>(); entity.Property(x => x.Plate).HasColumnName("plate").HasMaxLength(12).IsRequired(); entity.Property(x => x.Vin).HasColumnName("vin").HasMaxLength(17).IsRequired(); entity.Property(x => x.Make).HasColumnName("make").IsRequired(); entity.Property(x => x.Model).HasColumnName("model").IsRequired(); entity.Property(x => x.Ownership).HasColumnName("ownership").HasConversion<string>(); entity.Property(x => x.Status).HasColumnName("status").HasConversion<string>(); entity.Property(x => x.Version).HasColumnName("version").IsConcurrencyToken(); entity.HasIndex(x => x.Plate).IsUnique().HasFilter("status = 'Active'"); entity.HasIndex(x => x.Vin).IsUnique().HasFilter("status = 'Active'"); });
+        modelBuilder.Entity<PlateHistory>(entity => { entity.ToTable("vehicle_plate_history"); entity.HasKey(x => x.Id); entity.Property(x => x.Id).HasColumnName("id"); entity.Property(x => x.VehicleId).HasColumnName("vehicle_id"); entity.Property(x => x.Plate).HasColumnName("plate").IsRequired(); });
+        modelBuilder.Entity<Depot>(entity => { entity.ToTable("depots"); entity.HasKey(x => x.Id); entity.Property(x => x.Id).HasColumnName("id"); entity.Property(x => x.Name).HasColumnName("name").IsRequired(); entity.Property(x => x.Address).HasColumnName("address").IsRequired(); });
+        modelBuilder.Entity<AuditEntry>(entity => { entity.ToTable("audit_entries"); entity.HasKey(x => x.Id); entity.Property(x => x.Id).HasColumnName("id"); entity.Property(x => x.EntityType).HasColumnName("entity_type").IsRequired(); entity.Property(x => x.EntityId).HasColumnName("entity_id"); entity.Property(x => x.FieldName).HasColumnName("field_name").IsRequired(); entity.Property(x => x.ActorId).HasColumnName("actor_id").IsRequired(); entity.Property(x => x.Reason).HasColumnName("reason").IsRequired(); entity.Property(x => x.CreatedAt).HasColumnName("created_at"); });
         modelBuilder.Entity<MigrationMarker>(entity =>
         {
             entity.ToTable("migration_marker");

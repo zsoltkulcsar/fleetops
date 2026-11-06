@@ -28,10 +28,6 @@ public sealed class AuthApiFactory : WebApplicationFactory<Program>, IAsyncLifet
     public async ValueTask InitializeAsync()
     {
         _postgres = await TestPostgres.StartAsync(nameof(SignInTests));
-        await using var connection = new Npgsql.NpgsqlConnection(ConnectionString);
-        await connection.OpenAsync();
-        await using var db = CreateDb(ConnectionString);
-        await db.Database.MigrateAsync();
     }
 
     public new async ValueTask DisposeAsync()
@@ -113,12 +109,6 @@ public sealed class AuthApiFactory : WebApplicationFactory<Program>, IAsyncLifet
         return client.SendAsync(request);
     }
 
-    private FleetOpsDbContext CreateDb(string connectionString)
-    {
-        var options = new DbContextOptionsBuilder<FleetOpsDbContext>();
-        MigrationDbContextOptions.Configure(options, connectionString);
-        return new FleetOpsDbContext(options.Options);
-    }
 }
 
 public sealed class FakeTimeProvider(DateTimeOffset initial) : TimeProvider

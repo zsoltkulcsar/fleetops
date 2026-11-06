@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
-using Testcontainers.PostgreSql;
 using Xunit;
 
 namespace FleetOps.Tests;

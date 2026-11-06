@@ -16,7 +16,7 @@ public sealed class PostgresTests
     public async Task Real_postgres_transaction_context_commits_isolates_and_rolls_back()
     {
         await using var postgres = await TestPostgres.StartAsync(nameof(PostgresTests), TestContext.Current.CancellationToken);
-        await using (var setup = new NpgsqlConnection(postgres.ConnectionString))
+        await using (var setup = new NpgsqlConnection(postgres.AdminConnectionString))
         {
             await setup.OpenAsync(TestContext.Current.CancellationToken);
             await using var create = new NpgsqlCommand("create table context_rows (id integer not null)", setup);
@@ -68,7 +68,7 @@ public sealed class PostgresTests
     public async Task Runtime_role_can_read_the_marker_but_cannot_execute_schema_ddl()
     {
         await using var postgres = await TestPostgres.StartAsync(nameof(PostgresTests), TestContext.Current.CancellationToken);
-        var admin = new NpgsqlConnectionStringBuilder(postgres.ConnectionString);
+        var admin = new NpgsqlConnectionStringBuilder(postgres.AdminConnectionString);
         var migrator = new NpgsqlConnectionStringBuilder(admin.ConnectionString)
         { Username = "fleetops_migrator", Password = "migrator-password" };
         var options = new DbContextOptionsBuilder<FleetOpsDbContext>();
@@ -95,7 +95,7 @@ public sealed class PostgresTests
     public async Task Real_dispatcher_rolls_back_handler_failure_on_postgres()
     {
         await using var postgres = await TestPostgres.StartAsync(nameof(PostgresTests), TestContext.Current.CancellationToken);
-        await using (var setup = new NpgsqlConnection(postgres.ConnectionString))
+        await using (var setup = new NpgsqlConnection(postgres.AdminConnectionString))
         {
             await setup.OpenAsync(TestContext.Current.CancellationToken);
             await using var command = new NpgsqlCommand("create table dispatch_rows (id integer not null)", setup);
