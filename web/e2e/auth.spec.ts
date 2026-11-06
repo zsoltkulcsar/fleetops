@@ -298,7 +298,7 @@ test("sign in screens have no WCAG violations in both themes", async ({ page }) 
 });
 test("loading never flashes the shell", async ({ page }) => {
   await page.route("**/api/v1/auth/session", async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
     await route.fulfill({ status: 401, body: JSON.stringify({ code: "no_session" }) });
   });
   await page.goto("/");

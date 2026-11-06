@@ -1,13 +1,26 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router";
+import { BrowserRouter, Navigate, Route, Routes, useParams } from "react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { DevGalleryRoute, OfficePage, Shell } from "./shell/Shell";
 import "./shell/shell.css";
 import { AuthGate } from "./auth/AuthGate";
 import { installAuthExpiryHandler } from "./auth/api";
+import { Fleet } from "./fleet/Fleet";
+import { FleetRecord } from "./fleet/FleetRecord";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error) => {
+        const status = (error as { status?: unknown }).status;
+        if (typeof status === "number" && status >= 400 && status < 500) return false;
+        return failureCount < 1;
+      },
+      retryDelay: 100,
+    },
+  },
+});
 installAuthExpiryHandler();
 const page = (section: string) => <OfficePage section={section} />;
 function CanonicalRedirect() {
@@ -30,7 +43,8 @@ createRoot(document.getElementById("app")!).render(
           >
             <Route path="/" element={page("attention")} />
             <Route path="/timesheets" element={page("timesheets")} />
-            <Route path="/fleet" element={page("fleet")} />
+            <Route path="/fleet" element={<Fleet />} />
+            <Route path="/fleet/:id" element={<FleetRecordRoute />} />
             <Route path="/people" element={page("people")} />
             <Route path="/documents" element={page("documents")} />
             <Route path="/payroll" element={page("payroll")} />
@@ -43,3 +57,8 @@ createRoot(document.getElementById("app")!).render(
     </QueryClientProvider>
   </React.StrictMode>,
 );
+
+function FleetRecordRoute() {
+  const { id = "" } = useParams();
+  return <FleetRecord id={id} />;
+}
