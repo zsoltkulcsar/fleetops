@@ -1,10 +1,7 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0.302 AS build
 WORKDIR /src
-COPY ["src/FleetOps.Api/FleetOps.Api.csproj", "src/FleetOps.Api/"]
-COPY ["src/Kernel/Kernel.csproj", "src/Kernel/"]
-RUN dotnet restore "src/FleetOps.Api/FleetOps.Api.csproj"
 COPY . .
-RUN dotnet publish "src/FleetOps.Api/FleetOps.Api.csproj" -c Release -o /app/publish --no-restore
+RUN dotnet publish "src/FleetOps.Api/FleetOps.Api.csproj" -c Release -o /app/publish
 FROM mcr.microsoft.com/dotnet/aspnet:10.0.14
 WORKDIR /app
 # Vercel only reached the container on port 80: a non-root image on 8080 returned FUNCTION_INVOCATION_FAILED.
