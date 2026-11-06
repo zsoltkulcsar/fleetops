@@ -253,7 +253,7 @@ function RetireDrawer({
     <Drawer open={open} title={en.fleet.retire.title} onClose={onClose} closeLabel={en.actions.close}>
       {failure && (
         <Banner kind="error" label={en.banner.error}>
-          {en.fleet.retire.failure}
+          {failure}
         </Banner>
       )}
       <div className="fleet-form">
