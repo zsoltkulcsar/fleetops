@@ -72,7 +72,7 @@ const tsFiles = walk(path.join(root, 'web', 'e2e')).filter((f) => f.endsWith('.t
 for (const file of tsFiles) {
   const text = fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
   for (const match of text.matchAll(/\btest\(\s*(["'`])(.+?)\1\s*,/g)) {
-    const body = block(text, match.index);
+    const body = block(text, text.indexOf('=>', match.index));
     const line = lineOf(text, match.index);
     if (/expect\(true\)|expect\(1\)\.toBe\(1\)/.test(body)) report(file, line, match[2], 'placeholder assertion');
     if (!/expect\s*[.(]|\bexpect[A-Z]\w*\(|\bassert[A-Z]\w*\(/.test(body)) report(file, line, match[2], 'no assertion');
