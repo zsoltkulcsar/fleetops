@@ -66,4 +66,18 @@ export const en = {
     undo: "Undo",
     triggerRenderFailure: "Trigger render failure",
   },
+  fleet: {
+    kind: { truck: "Truck", trailer: "Trailer" },
+    status: { active: "Active", retired: "Retired" },
+    ownership: { owned: "Owned", leased: "Leased", rented_in: "Rented in" },
+    trailerType: {
+      curtainsider: "Curtainsider",
+      box: "Box",
+      reefer: "Reefer",
+      flatbed: "Flatbed",
+      tanker: "Tanker",
+    },
+    confirmationRequired: "Confirmation required",
+    confirmationNotRequired: "Confirmation not required",
+  },
 } as const;

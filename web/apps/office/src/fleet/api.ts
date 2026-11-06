@@ -1,33 +1,17 @@
 import { AuthRequestError } from "../auth/api";
+import type { components } from "@fleetops/api-client";
 
-export type Vehicle = {
-  id: string;
-  kind: string | number;
-  plate: string;
-  make: string;
-  model: string;
-  year: number;
-  status: string;
-  ownership: string | number;
-  version: number;
+export type Vehicle = components["schemas"]["VehicleListItem"];
+export type VehicleDetail = components["schemas"]["VehicleDetail"];
+export type VehicleList = components["schemas"]["VehicleListResult"];
+export type VehicleInput = components["schemas"]["CreateVehicleCommand"];
+export type VehicleEditInput = components["schemas"]["EditVehicleRequest"];
+export type ApiProblem = {
+  code?: string;
+  errors?: Record<string, string[] | string>;
+  fields?: string[];
+  detail?: string;
 };
-export type VehicleDetail = Vehicle & {
-  vin?: string | null;
-  grossWeightKg?: number | null;
-  requiredLicenceClass?: string | null;
-  leaseEndDate?: string | null;
-  trailerType?: string | number | null;
-  odometerKm?: number | null;
-  depotId?: string | null;
-  serviceIntervalKm?: number | null;
-  serviceIntervalMonths?: number | null;
-  lastTachoDownloadAt?: string | null;
-  requiredDocuments?: Array<{ name: string; status: string; expiryDate?: string | null }>;
-  plateHistory?: Array<{ plate: string; from?: string | null; to?: string | null }>;
-};
-export type VehicleList = { items: Vehicle[]; nextCursor?: string | null };
-export type VehicleInput = Record<string, unknown>;
-export type ApiProblem = { code?: string; errors?: Record<string, string[] | string>; detail?: string };
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
@@ -52,7 +36,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const fleetApi = {
-  list: (params: { cursor?: string; limit?: number; search?: string; kind?: string }) => {
+  list: (params: {
+    cursor?: string;
+    limit?: number;
+    search?: string;
+    kind?: components["schemas"]["VehicleKind"];
+  }) => {
     const query = new URLSearchParams();
     query.set("cursor", params.cursor ?? "");
     query.set("limit", String(params.limit ?? 50));
@@ -63,7 +52,7 @@ export const fleetApi = {
   detail: (id: string) => request<VehicleDetail>(`/api/v1/fleet/vehicles/${encodeURIComponent(id)}`),
   create: (input: VehicleInput) =>
     request<VehicleDetail>("/api/v1/fleet/vehicles", { method: "POST", body: JSON.stringify(input) }),
-  update: (id: string, input: VehicleInput) =>
+  update: (id: string, input: VehicleEditInput) =>
     request<VehicleDetail>(`/api/v1/fleet/vehicles/${encodeURIComponent(id)}`, {
       method: "PUT",
       body: JSON.stringify(input),

@@ -64,7 +64,9 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["VehicleListResult"];
+                    };
                 };
             };
         };
@@ -82,12 +84,14 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description OK */
-                200: {
+                /** @description Created */
+                201: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["VehicleDetail"];
+                    };
                 };
             };
         };
@@ -120,7 +124,9 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["VehicleDetail"];
+                    };
                 };
             };
         };
@@ -144,7 +150,9 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["VehicleDetail"];
+                    };
                 };
             };
         };
@@ -542,6 +550,10 @@ export interface components {
         PrivacyRequest: {
             version: string;
         };
+        RequiredDocument: {
+            type: string;
+            needsConfirmation: boolean;
+        };
         ResetRequest: {
             token: string;
             password: string;
@@ -553,9 +565,65 @@ export interface components {
             email: string;
             password: string;
         };
-        TrailerType: number;
-        VehicleKind: number;
-        VehicleOwnership: number;
+        /** @enum {unknown} */
+        TrailerType: "curtainsider" | "box" | "reefer" | "flatbed" | "tanker" | null;
+        VehicleDetail: {
+            /** Format: uuid */
+            id: string;
+            kind: components["schemas"]["VehicleKind"];
+            plate: string;
+            vin: string;
+            make: string;
+            model: string;
+            /** Format: int32 */
+            year: number;
+            /** Format: int32 */
+            grossWeightKg: number;
+            ownership: components["schemas"]["VehicleOwnership"];
+            /** Format: date */
+            leaseEndDate: null | string;
+            trailerType: null | components["schemas"]["TrailerType"];
+            /** Format: int32 */
+            odometerKm: null | number;
+            /** Format: uuid */
+            depotId: string;
+            status: components["schemas"]["VehicleStatus"];
+            /** Format: int32 */
+            version: number;
+            requiredLicenceClass: null | string;
+            /** Format: int32 */
+            serviceIntervalKm: null | number;
+            /** Format: int32 */
+            serviceIntervalMonths: null | number;
+            /** Format: date */
+            lastTachoDownloadAt: null | string;
+            plateHistory: string[];
+            requiredDocuments: components["schemas"]["RequiredDocument"][];
+        };
+        /** @enum {unknown} */
+        VehicleKind: "truck" | "trailer";
+        VehicleListItem: {
+            /** Format: uuid */
+            id: string;
+            kind: components["schemas"]["VehicleKind"];
+            plate: string;
+            make: string;
+            model: string;
+            /** Format: int32 */
+            year: number;
+            status: components["schemas"]["VehicleStatus"];
+            ownership: components["schemas"]["VehicleOwnership"];
+            /** Format: int32 */
+            version: number;
+        };
+        VehicleListResult: {
+            items: components["schemas"]["VehicleListItem"][];
+            nextCursor: null | string;
+        };
+        /** @enum {unknown} */
+        VehicleOwnership: "owned" | "leased" | "rented_in";
+        /** @enum {unknown} */
+        VehicleStatus: "active" | "retired";
     };
     responses: never;
     parameters: never;

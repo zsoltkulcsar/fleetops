@@ -1,4 +1,6 @@
 using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using FleetOps.Kernel.Authorization;
 using FleetOps.Migrations;
 using FleetOps.Modules.Fleet;
@@ -20,6 +22,10 @@ namespace FleetOps.Tests;
 public sealed class VehicleApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     public static readonly Guid ActorId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+    public static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower, allowIntegerValues: false) },
+    };
 
     private static readonly HashSet<string> CountableTables =
     [
@@ -100,7 +106,7 @@ public sealed class VehicleApiFactory : WebApplicationFactory<Program>, IAsyncLi
             "/api/v1/fleet/vehicles",
             new
             {
-                kind = 0,
+                kind = "truck",
                 plate,
                 vin,
                 make = "MAN",
@@ -108,9 +114,9 @@ public sealed class VehicleApiFactory : WebApplicationFactory<Program>, IAsyncLi
                 year = 2020,
                 grossWeightKg,
                 requiredLicenceClass = "C",
-                ownership = 0,
+                ownership = "owned",
                 leaseEndDate = (DateOnly?)null,
-                trailerType = (int?)null,
+                trailerType = (string?)null,
                 odometerKm = 1000,
                 depotId = (Guid?)null,
                 serviceIntervalKm = 50000,
@@ -120,7 +126,7 @@ public sealed class VehicleApiFactory : WebApplicationFactory<Program>, IAsyncLi
             },
             TestContext.Current.CancellationToken);
         response.EnsureSuccessStatusCode();
-        return (await response.Content.ReadFromJsonAsync<VehicleDetail>(cancellationToken: TestContext.Current.CancellationToken))!;
+        return (await response.Content.ReadFromJsonAsync<VehicleDetail>(JsonOptions, TestContext.Current.CancellationToken))!;
     }
 
     public async Task<long> CountRows(string table)

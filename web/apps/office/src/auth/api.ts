@@ -1,6 +1,11 @@
 export type NextStep = "done" | "second_factor" | "enrol_second_factor" | "privacy_notice";
 export type Session = { employeeId: string; roles: string[] };
-export type Problem = { code?: string };
+export type Problem = {
+  code?: string;
+  detail?: string;
+  errors?: Record<string, string[] | string>;
+  fields?: string[];
+};
 
 export function installAuthExpiryHandler() {
   const originalFetch = window.fetch.bind(window);

@@ -1,2 +1,2 @@
 export { apiClient, createApiClient } from "./client";
-export type { paths } from "./generated";
+export type { components, paths } from "./generated";

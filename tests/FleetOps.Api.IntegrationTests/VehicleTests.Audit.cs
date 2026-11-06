@@ -327,10 +327,10 @@ public sealed partial class VehicleTests
         string? plate = null,
         string? vin = null,
         string make = "MAN",
-        int kind = 0,
-        int? trailerType = null,
+        string kind = "truck",
+        string? trailerType = null,
         int? odometerKm = 1000,
-        int ownership = 0,
+        string ownership = "owned",
         string? leaseEndDate = null,
         string? reason = "reason") => new()
     {
@@ -347,8 +347,8 @@ public sealed partial class VehicleTests
         ["trailerType"] = trailerType,
         ["odometerKm"] = odometerKm,
         ["depotId"] = (Guid?)null,
-        ["serviceIntervalKm"] = kind == 1 ? null : 50000,
-        ["serviceIntervalMonths"] = kind == 1 ? null : 12,
+        ["serviceIntervalKm"] = kind == "trailer" ? null : 50000,
+        ["serviceIntervalMonths"] = kind == "trailer" ? null : 12,
         ["lastTachoDownloadAt"] = (string?)null,
         ["reason"] = reason,
     };
@@ -361,17 +361,17 @@ public sealed partial class VehicleTests
         string? plate = null,
         string? vin = null,
         string make = "MAN",
-        int kind = 0,
-        int? trailerType = null,
+        string kind = "truck",
+        string? trailerType = null,
         int? odometerKm = 1000,
-        int ownership = 0,
+        string ownership = "owned",
         string? leaseEndDate = null,
         string? reason = "reason") =>
         PostBody(client, ValidCreateBody(plate, vin, make, kind, trailerType, odometerKm, ownership, leaseEndDate, reason));
 
     private async Task<VehicleDetail> CreateTrailer(HttpClient client)
     {
-        using var response = await Post(client, kind: 1, trailerType: 1, odometerKm: null);
+        using var response = await Post(client, kind: "trailer", trailerType: "curtainsider", odometerKm: null);
         response.EnsureSuccessStatusCode();
         return await ReadDetail(response);
     }
@@ -380,7 +380,7 @@ public sealed partial class VehicleTests
     private static Dictionary<string, object?> EditBody(VehicleDetail vehicle, int? version = null, string? reason = "edit reason") => new()
     {
         ["version"] = version ?? vehicle.Version,
-        ["kind"] = (int)vehicle.Kind,
+        ["kind"] = vehicle.Kind == VehicleKind.Truck ? "truck" : "trailer",
         ["plate"] = vehicle.Plate,
         ["vin"] = vehicle.Vin,
         ["make"] = vehicle.Make,
@@ -388,9 +388,9 @@ public sealed partial class VehicleTests
         ["year"] = vehicle.Year,
         ["grossWeightKg"] = vehicle.GrossWeightKg,
         ["requiredLicenceClass"] = vehicle.RequiredLicenceClass,
-        ["ownership"] = (int)vehicle.Ownership,
+        ["ownership"] = vehicle.Ownership switch { VehicleOwnership.Owned => "owned", VehicleOwnership.Leased => "leased", _ => "rented_in" },
         ["leaseEndDate"] = vehicle.LeaseEndDate,
-        ["trailerType"] = (int?)vehicle.TrailerType,
+        ["trailerType"] = vehicle.TrailerType switch { TrailerType.Curtainsider => "curtainsider", TrailerType.Box => "box", TrailerType.Reefer => "reefer", TrailerType.Flatbed => "flatbed", TrailerType.Tanker => "tanker", _ => null },
         ["odometerKm"] = vehicle.OdometerKm,
         ["depotId"] = vehicle.DepotId,
         ["serviceIntervalKm"] = vehicle.ServiceIntervalKm,
@@ -440,7 +440,7 @@ public sealed partial class VehicleTests
     }
 
     private static async Task<VehicleDetail> ReadDetail(HttpResponseMessage response) =>
-        (await response.Content.ReadFromJsonAsync<VehicleDetail>(cancellationToken: TestContext.Current.CancellationToken))!;
+        (await response.Content.ReadFromJsonAsync<VehicleDetail>(VehicleApiFactory.JsonOptions, TestContext.Current.CancellationToken))!;
 
     // ------------------------------------------------------------------ helpers: reading responses
 

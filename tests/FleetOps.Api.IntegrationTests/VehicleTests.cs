@@ -216,7 +216,7 @@ public sealed partial class VehicleTests : IAsyncLifetime
     {
         using var client = factory.AsOwner();
 
-        using var response = await Post(client, ownership: 1, leaseEndDate: "2030-01-01");
+        using var response = await Post(client, ownership: "leased", leaseEndDate: "2030-01-01");
 
         var vehicle = await ReadDetail(response);
         Assert.Equal(VehicleOwnership.Leased, vehicle.Ownership);
@@ -239,7 +239,7 @@ public sealed partial class VehicleTests : IAsyncLifetime
     {
         using var client = factory.AsOwner();
 
-        using var response = await Post(client, trailerType: 1);
+        using var response = await Post(client, trailerType: "curtainsider");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Contains("trailerType", await Fields(response));
@@ -250,7 +250,7 @@ public sealed partial class VehicleTests : IAsyncLifetime
     {
         using var client = factory.AsOwner();
 
-        using var response = await Post(client, kind: 1, trailerType: 1, odometerKm: 1);
+        using var response = await Post(client, kind: "trailer", trailerType: "curtainsider", odometerKm: 1);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Contains("odometerKm", await Fields(response));
@@ -261,7 +261,7 @@ public sealed partial class VehicleTests : IAsyncLifetime
     {
         using var client = factory.AsOwner();
         var before = await factory.CountRows("vehicles");
-        var trailer = ValidCreateBody(kind: 1, trailerType: 1, odometerKm: null);
+        var trailer = ValidCreateBody(kind: "trailer", trailerType: "curtainsider", odometerKm: null);
         trailer["serviceIntervalKm"] = 50000;
         trailer["serviceIntervalMonths"] = null;
 
@@ -279,7 +279,7 @@ public sealed partial class VehicleTests : IAsyncLifetime
     {
         using var client = factory.AsOwner();
 
-        using var response = await Post(client, kind: 1, trailerType: null, odometerKm: null);
+        using var response = await Post(client, kind: "trailer", trailerType: null, odometerKm: null);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Contains("trailerType", await Fields(response));
@@ -291,9 +291,9 @@ public sealed partial class VehicleTests : IAsyncLifetime
         using var client = factory.AsOwner();
         var before = await factory.CountRows("vehicles");
 
-        using var unknownKind = await Post(client, kind: 99);
-        using var unknownOwnership = await Post(client, ownership: 99);
-        using var unknownTrailerType = await Post(client, kind: 1, trailerType: 99, odometerKm: null);
+        using var unknownKind = await Post(client, kind: "plane");
+        using var unknownOwnership = await Post(client, ownership: "borrowed");
+        using var unknownTrailerType = await Post(client, kind: "trailer", trailerType: "unknown", odometerKm: null);
 
         Assert.Equal(HttpStatusCode.BadRequest, unknownKind.StatusCode);
         Assert.Contains("kind", await Fields(unknownKind));
@@ -539,7 +539,7 @@ public sealed partial class VehicleTests : IAsyncLifetime
     public async Task Read_then_write_keeps_every_field()
     {
         using var client = factory.AsOwner();
-        var createBody = ValidCreateBody(ownership: 1, leaseEndDate: "2031-05-17");
+        var createBody = ValidCreateBody(ownership: "leased", leaseEndDate: "2031-05-17");
         createBody["year"] = 2019;
         createBody["grossWeightKg"] = 12000;
         createBody["requiredLicenceClass"] = "CE";
@@ -613,8 +613,8 @@ public sealed partial class VehicleTests : IAsyncLifetime
         using var client = factory.AsOwner();
         var truck = await factory.CreateTruck(client);
         var asTrailer = EditBody(truck);
-        asTrailer["kind"] = (int)VehicleKind.Trailer;
-        asTrailer["trailerType"] = 1;
+        asTrailer["kind"] = "trailer";
+        asTrailer["trailerType"] = "box";
         asTrailer["odometerKm"] = null;
         asTrailer["serviceIntervalKm"] = null;
         asTrailer["serviceIntervalMonths"] = null;

@@ -215,7 +215,7 @@ public sealed class VehicleListTests : IAsyncLifetime
         var path = query.Count == 0 ? VehiclesPath : $"{VehiclesPath}?{string.Join('&', query)}";
         using var response = await client.GetAsync(path, TestContext.Current.CancellationToken);
         response.EnsureSuccessStatusCode();
-        return (await response.Content.ReadFromJsonAsync<VehicleListResult>(cancellationToken: TestContext.Current.CancellationToken))!;
+        return (await response.Content.ReadFromJsonAsync<VehicleListResult>(VehicleApiFactory.JsonOptions, TestContext.Current.CancellationToken))!;
     }
 
     private async Task<List<VehicleListItem>> ReadAll(HttpClient client, int limit, string? cursor = null)
@@ -240,7 +240,7 @@ public sealed class VehicleListTests : IAsyncLifetime
     {
         using var response = await client.PostAsJsonAsync(VehiclesPath, new
         {
-            kind = 1,
+            kind = "trailer",
             plate,
             vin = factory.NextVin(),
             make = "SCHMITZ",
@@ -248,9 +248,9 @@ public sealed class VehicleListTests : IAsyncLifetime
             year = 2020,
             grossWeightKg = 8000,
             requiredLicenceClass = (string?)null,
-            ownership = 0,
+            ownership = "owned",
             leaseEndDate = (DateOnly?)null,
-            trailerType = 1,
+            trailerType = "curtainsider",
             odometerKm = (int?)null,
             depotId = (Guid?)null,
             serviceIntervalKm = (int?)null,
@@ -259,7 +259,7 @@ public sealed class VehicleListTests : IAsyncLifetime
             reason = "list fixture",
         }, TestContext.Current.CancellationToken);
         response.EnsureSuccessStatusCode();
-        var detail = (await response.Content.ReadFromJsonAsync<VehicleDetail>(cancellationToken: TestContext.Current.CancellationToken))!;
+        var detail = (await response.Content.ReadFromJsonAsync<VehicleDetail>(VehicleApiFactory.JsonOptions, TestContext.Current.CancellationToken))!;
         return new(detail.Id, detail.Kind, detail.Plate, detail.Make, detail.Model, detail.Year, detail.Status, detail.Ownership, detail.Version);
     }
 

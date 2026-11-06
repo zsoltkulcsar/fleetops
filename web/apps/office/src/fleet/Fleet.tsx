@@ -4,9 +4,14 @@ import { Plus, Search } from "lucide-react";
 import { Banner, EmptyState, Panel, Plate, StatusPill, Toast } from "@fleetops/ui";
 import { useSession } from "../auth/AuthGate";
 import { en } from "../i18n/en";
-import { fleetApi } from "./api";
+import { fleetApi, type Vehicle } from "./api";
 import { VehicleForm } from "./VehicleForm";
 import "./fleet.css";
+
+const statusPillFor: Record<Vehicle["status"], "usable" | "off-road"> = {
+  active: "usable",
+  retired: "off-road",
+};
 
 export function Fleet() {
   const heading = useRef<HTMLHeadingElement>(null);
@@ -14,7 +19,7 @@ export function Fleet() {
   const canEdit = Boolean(session.data?.roles.some((role) => role === "dispatcher" || role === "owner"));
   const [search, setSearch] = useState("");
   const [term, setTerm] = useState("");
-  const [kind, setKind] = useState("");
+  const [kind, setKind] = useState<Vehicle["kind"] | "">("");
   const [formOpen, setFormOpen] = useState(false);
   const [toast, setToast] = useState(false);
   useEffect(() => {
@@ -82,7 +87,14 @@ export function Fleet() {
                 onChange={(event) => setSearch(event.target.value)}
               />
             </label>
-            <select aria-label="Vehicle kind" value={kind} onChange={(event) => setKind(event.target.value)}>
+            <select
+              aria-label="Vehicle kind"
+              value={kind}
+              onChange={(event) => {
+                const nextKind = event.target.value;
+                if (nextKind === "" || nextKind === "truck" || nextKind === "trailer") setKind(nextKind);
+              }}
+            >
               <option value="">All vehicles</option>
               <option value="truck">Trucks</option>
               <option value="trailer">Trailers</option>
@@ -128,7 +140,7 @@ export function Fleet() {
                     <td>
                       <Plate>{vehicle.plate}</Plate>
                     </td>
-                    <td>{String(vehicle.kind).replace(/^./, (letter) => letter.toUpperCase())}</td>
+                    <td>{en.fleet.kind[vehicle.kind]}</td>
                     <td>
                       <strong>
                         {vehicle.make} {vehicle.model}
@@ -137,13 +149,11 @@ export function Fleet() {
                     <td className="tabular-nums">{vehicle.year}</td>
                     <td>
                       <StatusPill
-                        status={vehicle.status as never}
-                        label={vehicle.status
-                          .replaceAll("-", " ")
-                          .replace(/^./, (letter) => letter.toUpperCase())}
+                        status={statusPillFor[vehicle.status]}
+                        label={en.fleet.status[vehicle.status]}
                       />
                     </td>
-                    <td>{String(vehicle.ownership).replace(/^./, (letter) => letter.toUpperCase())}</td>
+                    <td>{en.fleet.ownership[vehicle.ownership]}</td>
                   </tr>
                 ))}
               </tbody>

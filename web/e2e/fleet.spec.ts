@@ -1,8 +1,11 @@
 import { test, expect } from "./fixtures";
 import type { Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import type { components } from "@fleetops/api-client";
 
-const vehicle = (id: string, plate: string, status = "usable") => ({
+type Vehicle = components["schemas"]["VehicleListItem"];
+type VehicleDetail = components["schemas"]["VehicleDetail"];
+const vehicle = (id: string, plate: string, status: Vehicle["status"] = "active"): Vehicle => ({
   id,
   kind: "truck",
   plate,
@@ -13,16 +16,27 @@ const vehicle = (id: string, plate: string, status = "usable") => ({
   ownership: "owned",
   version: 1,
 });
-const detail = (id = "v-1", plate = "KS-DC 1177") => ({
+const detail = (id = "00000000-0000-0000-0000-000000000001", plate = "KS-DC 1177"): VehicleDetail => ({
   ...vehicle(id, plate),
   vin: "WDB00000000000001",
   grossWeightKg: 40000,
   requiredLicenceClass: "C+E",
+  leaseEndDate: null,
+  trailerType: null,
   odometerKm: 120000,
+  depotId: "11111111-1111-1111-1111-111111111111",
+  status: "active",
   serviceIntervalKm: 60000,
+  serviceIntervalMonths: 12,
+  lastTachoDownloadAt: null,
   plateHistory: [],
+  requiredDocuments: [],
 });
-async function list(page: Page, items = [vehicle("v-1", "KS-DC 1177")], nextCursor: string | null = null) {
+async function list(
+  page: Page,
+  items: Vehicle[] = [vehicle("00000000-0000-0000-0000-000000000001", "KS-DC 1177")],
+  nextCursor: string | null = null,
+) {
   await page.route("**/api/v1/fleet/vehicles?*", (route) =>
     route.fulfill({
       status: 200,
@@ -36,7 +50,20 @@ test("fleet lists vehicles with plate and status", async ({ page }) => {
   await list(page);
   await page.goto("/fleet");
   await expect(page.getByText("KS-DC 1177")).toBeVisible();
-  await expect(page.getByText("usable")).toBeVisible();
+  await expect(page.getByText("Active")).toBeVisible();
+});
+test("fleet list shows labels for wire values", async ({ page }) => {
+  await list(page, [
+    {
+      ...vehicle("wire-1", "B-TR 1001", "retired"),
+      kind: "trailer",
+      ownership: "rented_in",
+    },
+  ]);
+  await page.goto("/fleet");
+  await expect(page.getByText("Rented in")).toBeVisible();
+  await expect(page.getByText("Trailer")).toBeVisible();
+  await expect(page.getByText("Retired")).toBeVisible();
 });
 test("load more appends the next page by cursor", async ({ page }) => {
   let calls = 0;
@@ -138,6 +165,33 @@ test("record deep link loads directly", async ({ page }) => {
   await expect(page.getByText("KS-DC 1177")).toBeVisible();
   await expect(page.getByRole("tab", { name: "Overview" })).toBeVisible();
 });
+test("vehicle record shows plate history and required documents", async ({ page }) => {
+  await page.route("**/api/v1/fleet/vehicles/v-wire", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ...detail("v-wire"),
+        plateHistory: ["B-XY 1", "B-XY 2"],
+        requiredDocuments: [
+          { type: "registration", needsConfirmation: false },
+          { type: "insurance", needsConfirmation: true },
+        ],
+      }),
+    }),
+  );
+  await page.goto("/fleet/v-wire");
+  await page.getByRole("tab", { name: "History" }).click();
+  await expect(page.getByText("B-XY 1")).toBeVisible();
+  await expect(page.getByText("B-XY 2")).toBeVisible();
+  await page.getByRole("tab", { name: "Documents" }).click();
+  const registration = page.getByRole("listitem").filter({ hasText: "registration" });
+  const insurance = page.getByRole("listitem").filter({ hasText: "insurance" });
+  await expect(registration).toBeVisible();
+  await expect(insurance).toBeVisible();
+  await expect(insurance).toContainText("Confirmation required");
+  await expect(registration).not.toContainText("Confirmation required");
+});
 test("unknown vehicle shows a not found panel", async ({ page }) => {
   await page.route("**/api/v1/fleet/vehicles/unknown", (route) => route.fulfill({ status: 404, body: "{}" }));
   await page.goto("/fleet/unknown");
@@ -161,6 +215,44 @@ test("add vehicle creates and shows a success toast", async ({ page }) => {
   await page.getByRole("button", { name: "Add vehicle", exact: true }).last().click();
   await expect(page.getByTestId("toast")).toContainText("Vehicle added successfully.");
 });
+test("add trailer sends a body the API accepts", async ({ page }) => {
+  await list(page, []);
+  await page.goto("/fleet");
+  await page.getByRole("button", { name: "Add vehicle" }).first().click();
+  await page.getByLabel("Kind").selectOption("trailer");
+  await page.getByLabel("Trailer type").selectOption("box");
+  await page.getByLabel("Plate").fill("KS-DC 3003");
+  await page.getByLabel("Make").fill("SCHMITZ");
+  await page.getByLabel("Model").fill("S.KO");
+  await page.getByLabel("Year").fill("2024");
+  await page.getByLabel("Gross weight (kg)").fill("8000");
+  let body: Record<string, unknown> | undefined;
+  await page.route("**/api/v1/fleet/vehicles", (route) => {
+    body = JSON.parse(route.request().postData() ?? "{}");
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(detail("v-trailer", "KS-DC 3003")),
+    });
+  });
+  await page.getByRole("button", { name: "Add vehicle", exact: true }).last().click();
+  await expect.poll(() => body).toBeDefined();
+  expect(body?.kind).toBe("trailer");
+  expect(body?.trailerType).toBe("box");
+  expect(body?.ownership).toBe("owned");
+  for (const field of [
+    "vin",
+    "requiredLicenceClass",
+    "leaseEndDate",
+    "odometerKm",
+    "depotId",
+    "serviceIntervalKm",
+    "serviceIntervalMonths",
+    "lastTachoDownloadAt",
+  ]) {
+    expect(body?.[field]).toBeNull();
+  }
+});
 test("add vehicle shows field errors from the server", async ({ page }) => {
   await list(page, []);
   await page.goto("/fleet");
@@ -174,6 +266,18 @@ test("add vehicle shows field errors from the server", async ({ page }) => {
   );
   await page.getByRole("button", { name: "Add vehicle", exact: true }).last().click();
   await expect(page.getByText("Plate is required")).toBeVisible();
+});
+test("add vehicle shows a failure that has no field errors", async ({ page }) => {
+  await list(page, []);
+  await page.goto("/fleet");
+  await page.getByRole("button", { name: "Add vehicle" }).first().click();
+  await page.getByLabel("Plate").fill("KS-DC 4004");
+  await page.route("**/api/v1/fleet/vehicles", (route) => route.fulfill({ status: 500 }));
+  await page.getByRole("button", { name: "Add vehicle", exact: true }).last().click();
+  await expect(
+    page.getByText("Vehicle could not be saved. Check the connection and try again."),
+  ).toBeVisible();
+  await expect(page.getByLabel("Plate")).toHaveValue("KS-DC 4004");
 });
 test("edit requires a reason", async ({ page }) => {
   await page.route("**/api/v1/fleet/vehicles/v-1", (route) =>

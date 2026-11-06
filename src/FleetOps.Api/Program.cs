@@ -28,7 +28,11 @@ builder.Services.PostConfigure<LoggerFilterOptions>(options =>
     options.Rules.Add(new LoggerFilterRule(null, "Npgsql", LogLevel.None, null));
 });
 builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context => context.ProblemDetails.Extensions.TryAdd("code", context.HttpContext.Items["ProblemCode"] ?? "unexpected_error"));
-builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.NumberHandling = JsonNumberHandling.Strict);
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.NumberHandling = JsonNumberHandling.Strict;
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower, allowIntegerValues: false));
+});
 builder.Services.AddOpenApi();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddDbContext<FleetOpsDbContext>(options =>
@@ -77,6 +81,12 @@ app.UseExceptionHandler(new ExceptionHandlerOptions
         }
         if (exception is InvalidOperationException { Message: "mailbox_unavailable" }) { await Results.Json(new { code = "mailbox_unavailable" }, statusCode: 503).ExecuteAsync(context); return; }
         if (exception is VehicleValidationException validation) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "validation_error", ["fields"] = validation.Fields }).ExecuteAsync(context); return; }
+        var jsonException = VehicleJsonException.Find(exception);
+        if (context.Request.Method is "POST" or "PUT" && context.Request.Path.StartsWithSegments("/api/v1/fleet/vehicles") && jsonException is not null)
+        {
+            var field = VehicleJsonException.FieldName(jsonException.Path);
+            await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "validation_error", ["fields"] = field is null ? Array.Empty<string>() : new[] { field } }).ExecuteAsync(context); return;
+        }
         if (exception is InvalidCursorException) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "invalid_cursor" }).ExecuteAsync(context); return; }
         if (exception is VehicleConflictException conflict) { await Results.Problem(statusCode: conflict.Code is "duplicate_vehicle" or "version_conflict" or "state_conflict" ? 409 : 404, extensions: new Dictionary<string, object?> { ["code"] = conflict.Code }).ExecuteAsync(context); return; }
         try { app.Logger.LogError("Unhandled exception {ExceptionType} TraceId {TraceId}", exception?.GetType().Name ?? "Unknown", context.TraceIdentifier); } catch { }
@@ -94,21 +104,25 @@ app.Use(async (context, next) =>
 });
 app.MapGet("/healthz", async (IDatabaseHealth database, CancellationToken cancellationToken) => await database.IsHealthyAsync(cancellationToken) ? Results.Ok(new { api = "ok", database = "ok" }) : Results.Problem(statusCode: 503, title: "Service unavailable", detail: "Database unavailable", extensions: new Dictionary<string, object?> { ["code"] = "database_unavailable", ["database"] = "unavailable" }));
 AuthEndpoints.Map(app);
-app.MapPost("/api/v1/fleet/vehicles", async (CreateVehicleCommand command, CommandDispatcher dispatcher, CancellationToken cancellationToken) => { var result = await dispatcher.DispatchAsync<CreateVehicleCommand, VehicleDetail>(command, cancellationToken); return Results.Created($"/api/v1/fleet/vehicles/{result.Id}", result); });
-app.MapPut("/api/v1/fleet/vehicles/{id:guid}", async (Guid id, EditVehicleRequest request, CommandDispatcher dispatcher, CancellationToken cancellationToken) => Results.Ok(await dispatcher.DispatchAsync<EditVehicleCommand, VehicleDetail>(request.ToCommand(id), cancellationToken)));
+app.MapPost("/api/v1/fleet/vehicles", async (CreateVehicleCommand command, CommandDispatcher dispatcher, CancellationToken cancellationToken) => { var result = await dispatcher.DispatchAsync<CreateVehicleCommand, VehicleDetail>(command, cancellationToken); return Results.Created($"/api/v1/fleet/vehicles/{result.Id}", result); }).Produces<VehicleDetail>(StatusCodes.Status201Created);
+app.MapPut("/api/v1/fleet/vehicles/{id:guid}", async (Guid id, EditVehicleRequest request, CommandDispatcher dispatcher, CancellationToken cancellationToken) => Results.Ok(await dispatcher.DispatchAsync<EditVehicleCommand, VehicleDetail>(request.ToCommand(id), cancellationToken))).Produces<VehicleDetail>();
 app.MapGet("/api/v1/fleet/vehicles", async (string? cursor, int? limit, string? search, string? kind, bool? includeRetired, QueryDispatcher dispatcher, CancellationToken cancellationToken) =>
 {
     VehicleKind? parsedKind = null;
     if (!string.IsNullOrWhiteSpace(kind))
     {
-        if (!Enum.TryParse<VehicleKind>(kind, true, out var value) || !Enum.IsDefined(value))
-            throw new VehicleValidationException(["kind"]);
+        var value = kind.Trim().ToLowerInvariant() switch
+        {
+            "truck" => VehicleKind.Truck,
+            "trailer" => VehicleKind.Trailer,
+            _ => throw new VehicleValidationException(["kind"])
+        };
         parsedKind = value;
     }
     var query = new ListVehiclesQuery(cursor, limit is null ? 50 : Math.Clamp(limit.Value, 1, 100), search, parsedKind?.ToString(), includeRetired == true);
     return Results.Ok(await dispatcher.DispatchAsync<ListVehiclesQuery, VehicleListResult>(query, cancellationToken));
-});
-app.MapGet("/api/v1/fleet/vehicles/{id:guid}", async (Guid id, QueryDispatcher dispatcher, CancellationToken cancellationToken) => Results.Ok(await dispatcher.DispatchAsync<GetVehicleQuery, VehicleDetail>(new(id), cancellationToken)));
+}).Produces<VehicleListResult>();
+app.MapGet("/api/v1/fleet/vehicles/{id:guid}", async (Guid id, QueryDispatcher dispatcher, CancellationToken cancellationToken) => Results.Ok(await dispatcher.DispatchAsync<GetVehicleQuery, VehicleDetail>(new(id), cancellationToken))).Produces<VehicleDetail>();
 if (app.Environment.IsEnvironment("Testing"))
 {
     app.MapPost("/__tests/step-up-command", (IAccessContextAccessor access, IStepUpContextAccessor stepUp) => access.Current is null ? Results.Json(new { code = "not_signed_in" }, statusCode: 401) : stepUp.HasFreshStepUp ? Results.Ok(new { accepted = true }) : Results.Json(new { code = "step_up_required" }, statusCode: 403));
@@ -160,3 +174,28 @@ public sealed class VehicleListQueryHandler(IConfiguration configuration, IDataP
     }
 }
 public partial class Program { }
+
+internal static class VehicleJsonException
+{
+    public static JsonException? Find(Exception? exception)
+    {
+        while (exception is not null)
+        {
+            if (exception is JsonException found)
+                return found;
+
+            exception = exception.InnerException;
+        }
+
+        return null;
+    }
+
+    public static string? FieldName(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path) || !path.StartsWith("$.", StringComparison.Ordinal))
+            return null;
+
+        var field = path[2..].Split('.', '[', StringSplitOptions.RemoveEmptyEntries)[0];
+        return string.IsNullOrWhiteSpace(field) ? null : field;
+    }
+}

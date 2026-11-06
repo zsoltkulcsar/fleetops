@@ -4,14 +4,14 @@ import { ArrowLeft, Pencil } from "lucide-react";
 import { Banner, EmptyState, Panel, Plate, StatusPill, Toast } from "@fleetops/ui";
 import { useSession } from "../auth/AuthGate";
 import { en } from "../i18n/en";
-import { fleetApi } from "./api";
+import { fleetApi, type VehicleDetail } from "./api";
 import { VehicleForm } from "./VehicleForm";
 import "./fleet.css";
 
-const labelFor = (value: string | number | undefined) =>
-  String(value ?? "")
-    .replaceAll("-", " ")
-    .replace(/^./, (letter) => letter.toUpperCase());
+const statusPillFor: Record<VehicleDetail["status"], "usable" | "off-road"> = {
+  active: "usable",
+  retired: "off-road",
+};
 export function FleetRecord({ id }: { id: string }) {
   const heading = useRef<HTMLHeadingElement>(null);
   const session = useSession();
@@ -66,7 +66,7 @@ export function FleetRecord({ id }: { id: string }) {
           </h1>
         </div>
         <div className="record-actions">
-          <StatusPill status={vehicle.status as never} label={labelFor(vehicle.status)} />
+          <StatusPill status={statusPillFor[vehicle.status]} label={en.fleet.status[vehicle.status]} />
           {canEdit && (
             <button className="ui-button" onClick={() => setFormOpen(true)}>
               <Pencil size={16} aria-hidden /> Edit
@@ -95,7 +95,7 @@ export function FleetRecord({ id }: { id: string }) {
               ["Year", vehicle.year],
               ["Gross weight", vehicle.grossWeightKg ? `${vehicle.grossWeightKg} kg` : "Not set"],
               ["Licence class", vehicle.requiredLicenceClass],
-              ["Ownership", labelFor(vehicle.ownership)],
+              ["Ownership", en.fleet.ownership[vehicle.ownership]],
               ["Odometer", vehicle.odometerKm ? `${vehicle.odometerKm.toLocaleString()} km` : "Not set"],
               [
                 "Service interval",
@@ -110,16 +110,29 @@ export function FleetRecord({ id }: { id: string }) {
           </dl>
         </Panel>
       )}
+      {tab === "Documents" && (
+        <Panel title="Required documents">
+          <ul className="history-list">
+            {vehicle.requiredDocuments.map((document) => (
+              <li key={document.type}>
+                <span>{document.type}</span>
+                <span>
+                  {document.needsConfirmation
+                    ? en.fleet.confirmationRequired
+                    : en.fleet.confirmationNotRequired}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Panel>
+      )}
       {tab === "History" && (
         <Panel title="Plate history">
           {vehicle.plateHistory?.length ? (
             <ul className="history-list">
-              {vehicle.plateHistory.map((entry) => (
-                <li key={`${entry.plate}-${entry.from}`}>
-                  <Plate>{entry.plate}</Plate>
-                  <span>
-                    {entry.from ?? "Unknown"} to {entry.to ?? "Present"}
-                  </span>
+              {vehicle.plateHistory.map((plate) => (
+                <li key={plate}>
+                  <Plate>{plate}</Plate>
                 </li>
               ))}
             </ul>
