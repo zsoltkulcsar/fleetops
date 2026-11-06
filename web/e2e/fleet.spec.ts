@@ -61,9 +61,10 @@ test("fleet list shows labels for wire values", async ({ page }) => {
     },
   ]);
   await page.goto("/fleet");
-  await expect(page.getByText("Rented in")).toBeVisible();
-  await expect(page.getByText("Trailer")).toBeVisible();
-  await expect(page.getByText("Retired")).toBeVisible();
+  const row = page.locator("tbody tr");
+  await expect(row.getByRole("cell", { name: "Rented in", exact: true })).toBeVisible();
+  await expect(row.getByRole("cell", { name: "Trailer", exact: true })).toBeVisible();
+  await expect(row.getByRole("cell", { name: "Retired", exact: true })).toBeVisible();
 });
 test("load more appends the next page by cursor", async ({ page }) => {
   let calls = 0;
@@ -155,7 +156,7 @@ test("row opens the record at its own url", async ({ page }) => {
   await list(page);
   await page.goto("/fleet");
   await page.locator("tbody tr").click();
-  await expect(page).toHaveURL(/\/fleet\/v-1$/);
+  await expect(page).toHaveURL(/\/fleet\/00000000-0000-0000-0000-000000000001$/);
 });
 test("record deep link loads directly", async ({ page }) => {
   await page.route("**/api/v1/fleet/vehicles/v-1", (route) =>
@@ -219,8 +220,9 @@ test("add trailer sends a body the API accepts", async ({ page }) => {
   await list(page, []);
   await page.goto("/fleet");
   await page.getByRole("button", { name: "Add vehicle" }).first().click();
-  await page.getByLabel("Kind").selectOption("trailer");
-  await page.getByLabel("Trailer type").selectOption("box");
+  const drawerForm = page.getByRole("dialog").locator("form");
+  await drawerForm.getByLabel("Kind").selectOption("trailer");
+  await drawerForm.getByLabel("Trailer type").selectOption("box");
   await page.getByLabel("Plate").fill("KS-DC 3003");
   await page.getByLabel("Make").fill("SCHMITZ");
   await page.getByLabel("Model").fill("S.KO");
@@ -296,7 +298,7 @@ test("edit conflict keeps the input and explains", async ({ page }) => {
   await page.getByRole("button", { name: "Edit" }).click();
   await page.getByLabel("Make").fill("Changed");
   await page.getByLabel("Reason").fill("Correction");
-  await page.route("**/api/v1/fleet/vehicles/v-1", (route) =>
+  await page.route("**/api/v1/fleet/vehicles/00000000-0000-0000-0000-000000000001", (route) =>
     route.fulfill({
       status: 409,
       contentType: "application/json",

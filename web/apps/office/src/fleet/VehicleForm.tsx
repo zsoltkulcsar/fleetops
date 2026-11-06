@@ -106,7 +106,11 @@ export function VehicleForm({
     setFailure(null);
     setConflict(false);
     if (!reason.trim()) {
-      setErrors({ reason: "Reason is required." });
+      setErrors({
+        reason: isEdit
+          ? "Reason is required when editing a vehicle."
+          : "Reason is required when adding a vehicle.",
+      });
       return;
     }
     const input: VehicleInput = {
