@@ -7,6 +7,35 @@ namespace FleetOps.Migrations;
 
 public sealed class EfVehicleStore : IVehicleStore
 {
+    public static async Task<VehicleListPage> ReadListByConnectionAsync(
+        string connectionString,
+        ListVehiclesQuery query,
+        VehicleListCursor? cursor,
+        CancellationToken cancellationToken)
+    {
+        var options = new DbContextOptionsBuilder<FleetOpsDbContext>().UseNpgsql(connectionString).Options;
+        await using var db = new FleetOpsDbContext(options);
+        var vehicles = db.Vehicles.AsNoTracking().AsQueryable();
+        if (!query.IncludeRetired)
+            vehicles = vehicles.Where(vehicle => vehicle.Status != VehicleStatus.Retired);
+        if (query.Kind is not null)
+            vehicles = vehicles.Where(vehicle => vehicle.Kind == Enum.Parse<VehicleKind>(query.Kind));
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var search = query.Search.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("%", "\\%", StringComparison.Ordinal).Replace("_", "\\_", StringComparison.Ordinal);
+            vehicles = vehicles.Where(vehicle => EF.Functions.ILike(vehicle.Plate, $"%{search}%", "\\"));
+        }
+        if (cursor is not null)
+            vehicles = vehicles.Where(vehicle => string.Compare(vehicle.Plate, cursor.Plate) > 0 || (vehicle.Plate == cursor.Plate && vehicle.Id.CompareTo(cursor.Id) > 0));
+        var rows = await vehicles.OrderBy(vehicle => vehicle.Plate).ThenBy(vehicle => vehicle.Id).Take(query.Limit + 1)
+            .Select(vehicle => new VehicleListItem(vehicle.Id, vehicle.Kind, vehicle.Plate, vehicle.Make, vehicle.Model, vehicle.Year, vehicle.Status, vehicle.Ownership, vehicle.Version))
+            .ToListAsync(cancellationToken);
+        var hasNext = rows.Count > query.Limit;
+        if (hasNext)
+            rows.RemoveAt(rows.Count - 1);
+        return new(rows, hasNext ? new VehicleListCursor(rows[^1].Plate, rows[^1].Id) : null);
+    }
+
     public async Task<VehicleDetail> CreateAsync(CreateVehicleCommand input, AccessContext actor, CommandContext context, CancellationToken cancellationToken)
     {
         await using var db = CreateDb(context, actor.EmployeeId, input.Reason);

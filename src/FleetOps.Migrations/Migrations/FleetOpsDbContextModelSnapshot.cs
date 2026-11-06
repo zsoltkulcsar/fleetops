@@ -441,11 +441,15 @@ namespace FleetOps.Migrations.Migrations
 
                     b.HasIndex("Plate")
                         .IsUnique()
+                        .HasDatabaseName("IX_vehicles_plate")
                         .HasFilter("status = 'Active'");
 
                     b.HasIndex("Vin")
                         .IsUnique()
                         .HasFilter("status = 'Active'");
+
+                    b.HasIndex("Plate", "Id")
+                        .HasDatabaseName("IX_vehicles_list_plate_id");
 
                     b.ToTable("vehicles", "fleetops");
                 });

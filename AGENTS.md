@@ -19,6 +19,8 @@ If you cannot finish something, say so by name. An honest "not done" is a good r
 
 ## Tests must be able to fail
 
+When a contract lists test names, those tests do not exist yet. Listing them means: create them now. "The tests are absent" is never a result, because writing them is the task.
+
 A test is real only if breaking the behaviour it names makes it fail. People will break the code on purpose to check. So:
 
 - Never write `Assert.True(true)`, `expect(true)`, an empty body, or a test with no assertion.
