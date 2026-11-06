@@ -38,9 +38,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - name: Fail on placeholder tests
-        run: |
-          ! grep -rnE "Assert.True(true)|Assert.False(false)|expect(true).toBe(true)|[Fact(Skip" tests web/e2e --include=*.cs --include=*.ts
+      - uses: actions/setup-node@v7
+        with: { node-version: '24' }
+      - name: Fail on tests that cannot fail
+        run: node scripts/check-test-integrity.mjs
 
   architecture:
     runs-on: ubuntu-latest
