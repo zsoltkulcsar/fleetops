@@ -246,6 +246,54 @@ public sealed partial class SignInTests
     }
 
     [Fact]
+    public async Task Future_window_totp_code_cannot_be_replayed_at_sign_in()
+    {
+        var employee = await factory.CreateEmployee(["hr"]);
+        using var first = factory.PlainClient();
+        using var signIn = await factory.SignIn(first, employee);
+        Assert.Equal("enrol_second_factor", NextOf(await BodyOf(signIn)));
+        var pendingToken = SessionCookieValue(signIn);
+        using var enrol = await factory.Send(first, HttpMethod.Post, "/api/v1/auth/second-factor/enrol", sessionToken: pendingToken);
+        Assert.Equal(HttpStatusCode.OK, enrol.StatusCode);
+
+        var currentStep = factory.Clock.GetUtcNow().ToUnixTimeSeconds() / 30;
+        factory.Clock.Advance(TimeSpan.FromSeconds(30));
+        var futureCode = await factory.CurrentTotp(employee);
+        var futureStep = factory.Clock.GetUtcNow().ToUnixTimeSeconds() / 30;
+        factory.Clock.Advance(TimeSpan.FromSeconds(-30));
+        using var firstFactor = await factory.Send(first, HttpMethod.Post, SecondFactorPath, new AuthEndpoints.SecondFactorRequest(futureCode), sessionToken: pendingToken);
+
+        using var second = factory.PlainClient();
+        using var secondSignIn = await factory.SignIn(second, employee);
+        using var replay = await factory.Send(second, HttpMethod.Post, SecondFactorPath, new AuthEndpoints.SecondFactorRequest(futureCode));
+
+        Assert.Equal(HttpStatusCode.OK, firstFactor.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, replay.StatusCode);
+        Assert.Equal("second_factor_failed", CodeOf(await BodyOf(replay)));
+        Assert.Equal(currentStep + 1, futureStep);
+        Assert.Equal(futureStep, (await LoadUser(employee)).LastAcceptedTotpStep);
+    }
+
+    [Fact]
+    public async Task Future_window_step_up_code_cannot_be_reused()
+    {
+        var employee = await factory.CreateEmployee(["hr"]);
+        using var client = factory.Client;
+        var currentStep = factory.Clock.GetUtcNow().ToUnixTimeSeconds() / 30;
+        await CompleteSignIn(client, employee);
+        factory.Clock.Advance(TimeSpan.FromSeconds(30));
+        var futureCode = await factory.CurrentTotp(employee);
+
+        using var firstUse = await factory.Send(client, HttpMethod.Post, StepUpPath, new AuthEndpoints.SecondFactorRequest(futureCode));
+        using var secondUse = await factory.Send(client, HttpMethod.Post, StepUpPath, new AuthEndpoints.SecondFactorRequest(futureCode));
+
+        Assert.Equal(HttpStatusCode.OK, firstUse.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, secondUse.StatusCode);
+        Assert.Equal("second_factor_failed", CodeOf(await BodyOf(secondUse)));
+        Assert.Equal(currentStep + 1, (await LoadUser(employee)).LastAcceptedTotpStep);
+    }
+
+    [Fact]
     public async Task Step_up_expires_after_its_window()
     {
         var employee = await factory.CreateEmployee(["hr"]);
@@ -431,6 +479,87 @@ public sealed partial class SignInTests
         Assert.Equal("session_expired", CodeOf(await BodyOf(privacyVariant)));
         Assert.Equal(before.RevokedAt, after.RevokedAt);
         Assert.Equal(before.FailedSecondFactorAttempts, after.FailedSecondFactorAttempts);
+    }
+
+    [Theory]
+    [InlineData("idle")]
+    [InlineData("absolute lifetime")]
+    [InlineData("pending expiry")]
+    [InlineData("suspended employee")]
+    [InlineData("past end date")]
+    public async Task Expired_session_clears_the_cookie(string expirationCase)
+    {
+        var employee = await factory.CreateEmployee(expirationCase == "pending expiry" ? ["hr"] : ["dispatcher"],
+            endDate: expirationCase == "past end date" ? new DateOnly(2026, 11, 6) : null);
+        using var client = factory.Client;
+        using var signIn = await factory.SignIn(client, employee);
+        Assert.Equal(HttpStatusCode.OK, signIn.StatusCode);
+
+        switch (expirationCase)
+        {
+            case "idle":
+                await CompleteSignIn(client, employee);
+                factory.Clock.Advance(TimeSpan.FromMinutes(30) + TimeSpan.FromSeconds(1));
+                break;
+            case "absolute lifetime":
+                await CompleteSignIn(client, employee);
+                for (var step = 0; step < 28; step++)
+                {
+                    factory.Clock.Advance(TimeSpan.FromMinutes(25));
+                    using var keepAlive = await factory.Send(client, HttpMethod.Get, SessionPath);
+                    Assert.Equal(HttpStatusCode.OK, keepAlive.StatusCode);
+                }
+
+                factory.Clock.Advance(TimeSpan.FromMinutes(20) + TimeSpan.FromSeconds(1));
+                break;
+            case "pending expiry":
+                factory.Clock.Advance(TimeSpan.FromMinutes(10) + TimeSpan.FromSeconds(1));
+                break;
+            case "suspended employee":
+                await CompleteSignIn(client, employee);
+                await Mutate(async db =>
+                {
+                    var record = await db.Employees.FindAsync(employee.EmployeeId);
+                    record!.Status = EmployeeStatus.Suspended;
+                    await db.SaveChangesAsync();
+                });
+                break;
+            case "past end date":
+                await CompleteSignIn(client, employee);
+                factory.Clock.SetUtcNow(new DateTimeOffset(2026, 11, 6, 23, 1, 0, TimeSpan.Zero));
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(expirationCase));
+        }
+
+        using var response = await factory.Send(client, HttpMethod.Get, SessionPath);
+        var cookie = SessionCookies(response).Single();
+        var expiryText = cookie.Split(';', StringSplitOptions.TrimEntries)
+            .Single(part => part.StartsWith("expires=", StringComparison.OrdinalIgnoreCase))[8..];
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal("session_expired", CodeOf(await BodyOf(response)));
+        Assert.True(DateTimeOffset.TryParse(expiryText, out var expiry));
+        Assert.True(expiry < factory.Clock.GetUtcNow());
+    }
+
+    [Fact]
+    public async Task Dead_cookie_does_not_block_auth_routes_in_any_case()
+    {
+        var employee = await factory.CreateEmployee(["dispatcher"]);
+        using var client = factory.PlainClient();
+        using var signIn = await factory.SignIn(client, employee);
+        var token = SessionCookieValue(signIn);
+        await RevokeLatestSession(employee);
+        var credentials = new AuthEndpoints.SignInRequest(employee.Email!, AuthApiFactory.Password);
+
+        using var signInWithDeadCookie = await factory.Send(client, HttpMethod.Post, "/API/V1/AUTH/SIGN-IN", credentials, sessionToken: token);
+        using var forgotWithDeadCookie = await factory.Send(client, HttpMethod.Post, "/API/V1/AUTH/FORGOT-PASSWORD", new AuthEndpoints.ForgotRequest(employee.Email!), sessionToken: token);
+        using var signOutWithDeadCookie = await factory.Send(client, HttpMethod.Post, "/API/V1/AUTH/SIGN-OUT", sessionToken: token);
+
+        Assert.Equal(HttpStatusCode.OK, signInWithDeadCookie.StatusCode);
+        Assert.Equal(HttpStatusCode.Accepted, forgotWithDeadCookie.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, signOutWithDeadCookie.StatusCode);
     }
 
     [Fact]
@@ -852,6 +981,36 @@ public sealed partial class SignInTests
 
     private static bool ClearsSessionCookie(HttpResponseMessage response) =>
         SessionCookies(response).Any(value => value.Contains("expires=Thu, 01 Jan 1970", StringComparison.OrdinalIgnoreCase));
+
+    [Fact]
+    public async Task Session_token_rotates_when_second_factor_completes_sign_in()
+    {
+        var employee = await factory.CreateEmployee(["hr"]);
+        using var enrolClient = factory.Client;
+        using var firstSignIn = await factory.SignIn(enrolClient, employee);
+        using var enrol = await factory.Send(enrolClient, HttpMethod.Post, "/api/v1/auth/second-factor/enrol");
+        using var firstFactor = await factory.Send(enrolClient, HttpMethod.Post, SecondFactorPath, new AuthEndpoints.SecondFactorRequest(await factory.CurrentTotp(employee)));
+        using var privacy = await factory.Send(enrolClient, HttpMethod.Post, PrivacyPath, new AuthEndpoints.PrivacyRequest("placeholder-v1"));
+        Assert.Equal(HttpStatusCode.OK, privacy.StatusCode);
+
+        using var client = factory.PlainClient();
+        using var signIn = await factory.SignIn(client, employee);
+        var pendingToken = SessionCookieValue(signIn);
+        factory.Clock.Advance(TimeSpan.FromSeconds(30));
+        using var secondFactor = await factory.Send(client, HttpMethod.Post, SecondFactorPath, new AuthEndpoints.SecondFactorRequest(await factory.CurrentTotp(employee)), sessionToken: pendingToken);
+        var fullToken = SessionCookieValue(secondFactor);
+        using var withOldToken = await factory.Send(client, HttpMethod.Get, SessionPath, sessionToken: pendingToken);
+
+        Assert.Equal(HttpStatusCode.OK, signIn.StatusCode);
+        Assert.Equal("second_factor", NextOf(await BodyOf(signIn)));
+        Assert.Equal(HttpStatusCode.OK, secondFactor.StatusCode);
+        Assert.Equal("done", NextOf(await BodyOf(secondFactor)));
+        Assert.NotEqual(pendingToken, fullToken);
+        var rotatedSession = await Db(db => db.OfficeSessions.SingleAsync(row => row.UserId == employee.Id && row.TokenHash == HashOf(fullToken)));
+        Assert.Equal(HashOf(fullToken), rotatedSession.TokenHash);
+        Assert.Equal(HttpStatusCode.Unauthorized, withOldToken.StatusCode);
+        Assert.Equal("session_expired", CodeOf(await BodyOf(withOldToken)));
+    }
 
     private sealed class ThrowingMailbox : IMailbox
     {

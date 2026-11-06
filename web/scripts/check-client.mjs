@@ -15,7 +15,7 @@ const child = spawn(
     "--urls",
     `http://127.0.0.1:${port}`,
   ],
-  { stdio: "ignore", windowsHide: true },
+  { stdio: "ignore", windowsHide: true, env: { ...process.env, ASPNETCORE_ENVIRONMENT: "Development" } },
 );
 const stop = () => child.kill();
 process.on("exit", stop);
