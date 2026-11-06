@@ -1,5 +1,6 @@
 using FleetOps.Kernel.Authorization;
 using FleetOps.Modules.Fleet;
+using FleetOps.Kernel;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
@@ -29,7 +30,7 @@ public sealed class EfVehicleStore(TimeProvider? time = null) : IVehicleStore
         if (cursor is not null)
             vehicles = vehicles.Where(vehicle => string.Compare(vehicle.Plate, cursor.Plate) > 0 || (vehicle.Plate == cursor.Plate && vehicle.Id.CompareTo(cursor.Id) > 0));
         var rows = await vehicles.OrderBy(vehicle => vehicle.Plate).ThenBy(vehicle => vehicle.Id).Take(query.Limit + 1)
-            .Select(vehicle => new VehicleListItem(vehicle.Id, vehicle.Kind, vehicle.Plate, vehicle.Make, vehicle.Model, vehicle.Year, vehicle.Status, vehicle.Ownership, vehicle.Version))
+            .Select(vehicle => new VehicleListItem(vehicle.Id, vehicle.Kind, vehicle.Plate, vehicle.Make, vehicle.Model, vehicle.Year, vehicle.Status, vehicle.Ownership, vehicle.Version, ReadinessShownStatus.Active, false, Array.Empty<ReadinessCause>()))
             .ToListAsync(cancellationToken);
         var hasNext = rows.Count > query.Limit;
         if (hasNext)
@@ -107,6 +108,19 @@ public sealed class EfVehicleStore(TimeProvider? time = null) : IVehicleStore
         return await Read(db, vehicle.Id, cancellationToken);
     }
 
+    public async Task<VehicleDetail> SetOffRoadAsync(SetVehicleOffRoadCommand input, AccessContext actor, CommandContext context, CancellationToken cancellationToken)
+    {
+        await using var db = CreateDb(context, actor.EmployeeId, input.Reason);
+        var vehicle = await db.Vehicles.SingleOrDefaultAsync(x => x.Id == input.SubjectId, cancellationToken) ?? throw new VehicleConflictException("vehicle_not_found");
+        if (vehicle.Version != input.Version) throw new VehicleConflictException("version_conflict");
+        if (vehicle.Status == VehicleStatus.Retired) throw new VehicleConflictException("state_conflict");
+        vehicle.ManualOffRoad = input.ManualOffRoad;
+        vehicle.Version++;
+        vehicle.UpdatedAt = clock.GetUtcNow();
+        await db.SaveChangesAsync(cancellationToken);
+        return await Read(db, vehicle.Id, cancellationToken);
+    }
+
     private static FleetOpsDbContext CreateDb(CommandContext context, Guid actorId, string? reason)
     {
         var optionsBuilder = new DbContextOptionsBuilder<FleetOpsDbContext>();
@@ -124,7 +138,7 @@ public sealed class EfVehicleStore(TimeProvider? time = null) : IVehicleStore
         return new(vehicle.Id, vehicle.Kind, vehicle.Plate, vehicle.Vin, vehicle.Make, vehicle.Model, vehicle.Year, vehicle.GrossWeightKg,
             vehicle.Ownership, vehicle.LeaseEndDate, vehicle.TrailerType, vehicle.OdometerKm, vehicle.DepotId, vehicle.Status, vehicle.RetiredReason, vehicle.RetiredAt, vehicle.Version,
             vehicle.RequiredLicenceClass, vehicle.ServiceIntervalKm, vehicle.ServiceIntervalMonths, vehicle.LastTachoDownloadAt,
-            history, VehicleRules.Documents(vehicle.Kind, vehicle.GrossWeightKg));
+            history, VehicleRules.Documents(vehicle.Kind, vehicle.GrossWeightKg), vehicle.Status == VehicleStatus.Retired ? ReadinessShownStatus.Retired : ReadinessShownStatus.Active, false, []);
     }
 
     public static async Task<VehicleDetail> ReadByConnectionAsync(string connectionString, Guid id, CancellationToken cancellationToken)

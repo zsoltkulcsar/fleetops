@@ -70,4 +70,9 @@ export const fleetApi = {
       method: "POST",
       body: JSON.stringify(input),
     }),
+  setOffRoad: (id: string, input: { version: number; manualOffRoad: boolean; reason: string | null }) =>
+    request<VehicleDetail>(`/api/v1/fleet/vehicles/${encodeURIComponent(id)}/off-road`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
 };

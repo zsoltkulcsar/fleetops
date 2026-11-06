@@ -122,6 +122,7 @@ public sealed partial class FleetOpsDbContext(DbContextOptions<FleetOpsDbContext
             entity.Property(x => x.Id).HasColumnName("id");
             entity.Property(x => x.Name).HasColumnName("name").HasMaxLength(100).IsRequired();
         });
+        modelBuilder.Entity<Vehicle>().Property(x => x.ManualOffRoad).HasColumnName("manual_off_road").HasDefaultValue(false);
     }
 }
 public sealed class MigrationMarker { public int Id { get; set; } public string Name { get; set; } = "solution-skeleton"; }

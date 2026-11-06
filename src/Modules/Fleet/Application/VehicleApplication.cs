@@ -8,6 +8,7 @@ public interface IVehicleStore
     Task<VehicleDetail> EditAsync(EditVehicleCommand command, AccessContext actor, CommandContext context, CancellationToken cancellationToken);
     Task<VehicleDetail> RetireAsync(RetireVehicleCommand command, AccessContext actor, CommandContext context, CancellationToken cancellationToken);
     Task<VehicleDetail> UndoRetireAsync(UndoRetireVehicleCommand command, AccessContext actor, CommandContext context, CancellationToken cancellationToken);
+    Task<VehicleDetail> SetOffRoadAsync(SetVehicleOffRoadCommand command, AccessContext actor, CommandContext context, CancellationToken cancellationToken) => throw new NotSupportedException();
 }
 
 public sealed class CreateVehicleHandler(IVehicleStore store) : ICommandHandler<CreateVehicleCommand, VehicleDetail>
@@ -54,6 +55,16 @@ public sealed class UndoRetireVehicleHandler(IVehicleStore store) : ICommandHand
         if (command.SubjectId is not Guid) throw new VehicleValidationException(["id"]);
         if (string.IsNullOrWhiteSpace(command.Reason)) throw new VehicleValidationException(["reason"]);
         return store.UndoRetireAsync(command, actor, context, cancellationToken);
+    }
+}
+
+public sealed class SetVehicleOffRoadHandler(IVehicleStore store) : ICommandHandler<SetVehicleOffRoadCommand, VehicleDetail>
+{
+    public Task<VehicleDetail> HandleAsync(SetVehicleOffRoadCommand command, AccessContext actor, CommandContext context, CancellationToken cancellationToken)
+    {
+        if (command.SubjectId is not Guid) throw new VehicleValidationException(["id"]);
+        if (string.IsNullOrWhiteSpace(command.Reason)) throw new VehicleValidationException(["reason"]);
+        return store.SetOffRoadAsync(command, actor, context, cancellationToken);
     }
 }
 

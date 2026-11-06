@@ -11,6 +11,7 @@ using FleetOps.Kernel.Authorization;
 using FleetOps.Migrations;
 using FleetOps.Modules.Fleet;
 using FleetOps.Modules.Documents;
+using FleetOps.Modules.Readiness;
 using FleetOps.Api.Files;
 using FleetOps.Kernel.Files;
 using Microsoft.AspNetCore.Diagnostics;
@@ -56,6 +57,7 @@ builder.Services.AddScoped<IStepUpContextAccessor>(services => services.GetRequi
 builder.Services.AddSingleton<IMailbox, DemoMailbox>();
 builder.Services.AddSingleton<ICompanyTimeService>(_ => new CompanyTimeService(CompanyTimeService.Resolve(builder.Configuration["Company:Timezone"] ?? "Europe/Berlin")));
 builder.Services.AddSingleton<IDatabaseHealth, DatabaseHealth>();
+builder.Services.AddScoped<IReadiness, EfReadinessStore>();
 builder.Services.AddSingleton<ICommandPolicyProvider, DefaultCommandPolicyProvider>();
 builder.Services.AddDataProtection();
 builder.Services.AddSingleton<ICommandTransactionFactory, NpgsqlCommandTransactionFactory>();
@@ -84,12 +86,15 @@ builder.Services.AddScoped<IQueryHandler<LookupPeopleQuery, PeopleLookupResult>,
 builder.Services.AddScoped<IQueryHandler<GetDocumentCountsQuery, DocumentCounts>, DocumentCountsQueryHandler>();
 builder.Services.AddScoped<IQueryHandler<SearchDocumentsQuery, DocumentSearchResult>, SearchDocumentsQueryHandler>();
 builder.Services.AddScoped<IQueryHandler<GetDocumentFileLinkQuery, DocumentFileLinkResult>, DocumentFileLinkQueryHandler>();
+builder.Services.AddScoped<IQueryHandler<GetReadinessSummaryQuery, ReadinessSummary>, ReadinessSummaryQueryHandler>();
+builder.Services.AddScoped<IQueryHandler<ListDriverReadinessQuery, DriverReadinessList>, DriverReadinessQueryHandler>();
 builder.Services.AddScoped<ICommandStatePrecondition<EditVehicleCommand>, RetiredVehicleEditPrecondition>();
 builder.Services.AddScoped<ICommandStatePrecondition<RetireVehicleCommand>, ActiveVehicleRetirePrecondition>();
 builder.Services.AddScoped<ICommandHandler<CreateVehicleCommand, VehicleDetail>, CreateVehicleHandler>();
 builder.Services.AddScoped<ICommandHandler<EditVehicleCommand, VehicleDetail>, EditVehicleHandler>();
 builder.Services.AddScoped<ICommandHandler<RetireVehicleCommand, VehicleDetail>, RetireVehicleHandler>();
 builder.Services.AddScoped<ICommandHandler<UndoRetireVehicleCommand, VehicleDetail>, UndoRetireVehicleHandler>();
+builder.Services.AddScoped<ICommandHandler<SetVehicleOffRoadCommand, VehicleDetail>, SetVehicleOffRoadHandler>();
 
 var app = builder.Build();
 app.UseExceptionHandler(new ExceptionHandlerOptions
@@ -137,6 +142,7 @@ app.MapPost("/api/v1/fleet/vehicles", async (CreateVehicleCommand command, Comma
 app.MapPut("/api/v1/fleet/vehicles/{id:guid}", async (Guid id, EditVehicleRequest request, CommandDispatcher dispatcher, CancellationToken cancellationToken) => Results.Ok(await dispatcher.DispatchAsync<EditVehicleCommand, VehicleDetail>(request.ToCommand(id), cancellationToken))).Produces<VehicleDetail>();
 app.MapPost("/api/v1/fleet/vehicles/{id:guid}/retire", async (Guid id, RetireVehicleRequest request, CommandDispatcher dispatcher, CancellationToken cancellationToken) => Results.Ok(await dispatcher.DispatchAsync<RetireVehicleCommand, VehicleDetail>(new(id, request.Version, request.RetiredReason), cancellationToken))).Produces<VehicleDetail>();
 app.MapPost("/api/v1/fleet/vehicles/{id:guid}/undo-retire", async (Guid id, UndoRetireVehicleRequest request, CommandDispatcher dispatcher, CancellationToken cancellationToken) => Results.Ok(await dispatcher.DispatchAsync<UndoRetireVehicleCommand, VehicleDetail>(new(id, request.Version, request.Reason), cancellationToken))).Produces<VehicleDetail>();
+app.MapPost("/api/v1/fleet/vehicles/{id:guid}/off-road", async (Guid id, SetVehicleOffRoadRequest request, CommandDispatcher dispatcher, CancellationToken cancellationToken) => Results.Ok(await dispatcher.DispatchAsync<SetVehicleOffRoadCommand, VehicleDetail>(new(id, request.Version, request.ManualOffRoad, request.Reason), cancellationToken))).Produces<VehicleDetail>();
 app.MapGet("/api/v1/fleet/vehicles", async (string? cursor, int? limit, string? search, string? kind, bool? includeRetired, QueryDispatcher dispatcher, CancellationToken cancellationToken) =>
 {
     VehicleKind? parsedKind = null;
@@ -166,6 +172,8 @@ app.MapPost("/api/v1/documents/{id:guid}/reject", async (Guid id, DocumentReject
 app.MapPost("/api/v1/documents/{id:guid}/delete", async (Guid id, DocumentDeleteRequest request, CommandDispatcher dispatcher, CancellationToken cancellationToken) => Results.Ok(await dispatcher.DispatchAsync<DeleteDocumentCommand, DocumentDetail>(new(id, request.Version, request.Reason), cancellationToken))).Produces<DocumentDetail>();
 app.MapPost("/api/v1/documents/{id:guid}/sight-check", async (Guid id, DocumentSightCheckRequest request, CommandDispatcher dispatcher, CancellationToken cancellationToken) => Results.Ok(await dispatcher.DispatchAsync<SightCheckDocumentCommand, DocumentDetail>(new(id, request.Version, request.CheckedAt), cancellationToken))).Produces<DocumentDetail>();
 app.MapGet("/api/v1/people/lookup", async (string? search, QueryDispatcher dispatcher, HttpContext context, CancellationToken cancellationToken) => { context.Response.Headers.CacheControl = "no-store"; return Results.Ok(await dispatcher.DispatchAsync<LookupPeopleQuery, PeopleLookupResult>(new(search), cancellationToken)); }).Produces<PeopleLookupResult>();
+app.MapGet("/api/v1/readiness/summary", async (QueryDispatcher dispatcher, CancellationToken cancellationToken) => Results.Ok(await dispatcher.DispatchAsync<GetReadinessSummaryQuery, ReadinessSummary>(new(), cancellationToken))).Produces<ReadinessSummary>();
+app.MapGet("/api/v1/readiness/drivers", async (string? cursor, int? limit, bool? blockedOnly, QueryDispatcher dispatcher, CancellationToken cancellationToken) => Results.Ok(await dispatcher.DispatchAsync<ListDriverReadinessQuery, DriverReadinessList>(new(cursor, limit is null ? 50 : Math.Clamp(limit.Value, 1, 100), blockedOnly == true), cancellationToken))).Produces<DriverReadinessList>();
 if (app.Environment.IsEnvironment("Testing"))
 {
     app.MapPost("/__tests/step-up-command", (IAccessContextAccessor access, IStepUpContextAccessor stepUp) => access.Current is null ? Results.Json(new { code = "not_signed_in" }, statusCode: 401) : stepUp.HasFreshStepUp ? Results.Ok(new { accepted = true }) : Results.Json(new { code = "step_up_required" }, statusCode: 403));
@@ -182,16 +190,17 @@ public sealed record EditVehicleRequest(int Version, VehicleKind Kind, string? P
 { public EditVehicleCommand ToCommand(Guid id) => new(id, Version, Kind, Plate, Vin, Make, Model, Year, GrossWeightKg, RequiredLicenceClass, Ownership, LeaseEndDate, TrailerType, OdometerKm, DepotId, ServiceIntervalKm, ServiceIntervalMonths, LastTachoDownloadAt, Reason); }
 public sealed record RetireVehicleRequest(int Version, RetiredReason RetiredReason);
 public sealed record UndoRetireVehicleRequest(int Version, string? Reason);
+public sealed record SetVehicleOffRoadRequest(int Version, bool ManualOffRoad, string? Reason);
 public sealed record DocumentUploadRequest(DocumentOwnerType OwnerType, Guid OwnerId, DocumentType Type, string ContentType, long SizeBytes);
 public sealed record DocumentCreateRequest(DocumentOwnerType OwnerType, Guid OwnerId, DocumentType Type, string? Number, DateOnly? IssuedAt, DateOnly? ExpiresAt, string[]? Categories, IReadOnlyList<ConfirmFileInput> Files);
 public sealed record DocumentVerifyRequest(int Version, DateOnly? ExpiresAt = null, DateOnly? IssuedAt = null, string? Number = null, string[]? Categories = null);
 public sealed record DocumentRejectRequest(int Version, string Reason);
 public sealed record DocumentDeleteRequest(int Version, string Reason);
 public sealed record DocumentSightCheckRequest(int Version, DateOnly CheckedAt);
-public sealed class VehicleQueryHandler(IConfiguration configuration) : IQueryHandler<GetVehicleQuery, VehicleDetail>
-{ public async Task<VehicleDetail> HandleAsync(GetVehicleQuery query, AccessContext actor, CancellationToken cancellationToken) => await EfVehicleStore.ReadByConnectionAsync(DatabaseConnectionString.Resolve(configuration) ?? throw new InvalidOperationException("Database is not configured."), query.SubjectId ?? throw new VehicleValidationException(["id"]), cancellationToken); }
+public sealed class VehicleQueryHandler(IConfiguration configuration, IReadiness readiness, ICompanyTimeService companyTime, TimeProvider time) : IQueryHandler<GetVehicleQuery, VehicleDetail>
+{ public async Task<VehicleDetail> HandleAsync(GetVehicleQuery query, AccessContext actor, CancellationToken cancellationToken) => await (await EfVehicleStore.ReadByConnectionAsync(DatabaseConnectionString.Resolve(configuration) ?? throw new InvalidOperationException("Database is not configured."), query.SubjectId ?? throw new VehicleValidationException(["id"]), cancellationToken)).ComposeAsync(readiness, companyTime, time, cancellationToken); }
 
-public sealed class VehicleListQueryHandler(IConfiguration configuration, IDataProtectionProvider protectionProvider) : IQueryHandler<ListVehiclesQuery, VehicleListResult>
+public sealed class VehicleListQueryHandler(IConfiguration configuration, IDataProtectionProvider protectionProvider, IReadiness readiness, ICompanyTimeService companyTime, TimeProvider time) : IQueryHandler<ListVehiclesQuery, VehicleListResult>
 {
     private readonly IDataProtector protector = protectionProvider.CreateProtector("FleetOps.VehicleListCursor.v1");
 
@@ -200,7 +209,7 @@ public sealed class VehicleListQueryHandler(IConfiguration configuration, IDataP
         var cursor = Unprotect(query.Cursor);
         var page = await EfVehicleStore.ReadListByConnectionAsync(DatabaseConnectionString.Resolve(configuration) ?? throw new InvalidOperationException("Database is not configured."), query, cursor, cancellationToken);
         var nextCursor = page.NextCursor is null ? null : protector.Protect(JsonSerializer.Serialize(page.NextCursor));
-        return new(page.Items, nextCursor);
+        return await new VehicleListResult(page.Items, nextCursor).ComposeAsync(readiness, companyTime, time, cancellationToken);
     }
 
     private VehicleListCursor? Unprotect(string? value)

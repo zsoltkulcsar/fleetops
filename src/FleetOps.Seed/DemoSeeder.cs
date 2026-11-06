@@ -2,6 +2,7 @@ using System.Text.Json;
 using FleetOps.Identity;
 using FleetOps.Migrations;
 using FleetOps.Modules.Fleet;
+using FleetOps.Modules.Documents;
 using FleetOps.Modules.Setup;
 using FleetOps.People;
 using Microsoft.AspNetCore.Identity;
@@ -13,7 +14,7 @@ public sealed class DemoSeeder
 {
     private static readonly Guid DepotId = Guid.Parse("11111111-1111-1111-1111-111111111111");
     private static readonly DateOnly StartDate = new(2026, 1, 1);
-    private static readonly DateTimeOffset SeedTime = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+    private static readonly DateTimeOffset SeedTime = DateTimeOffset.UtcNow;
     private readonly Func<int, Exception?>? failureFactory;
 
     public DemoSeeder(Func<int, Exception?>? failureFactory = null)
@@ -40,6 +41,7 @@ public sealed class DemoSeeder
         ThrowIfRequested(1);
         AddEmployees(db);
         AddVehicles(db);
+        AddDocuments(db);
         await db.SaveChangesAsync(cancellationToken);
         ThrowIfRequested(2);
         await transaction.CommitAsync(cancellationToken);
@@ -109,6 +111,35 @@ public sealed class DemoSeeder
             db.Vehicles.Add(new Vehicle { Id = FixedGuid(1000 + index), Kind = truck ? VehicleKind.Truck : VehicleKind.Trailer, Plate = $"B-D {index + 1:0000}", Vin = $"WVWZZZ1JZXW{index + 1:000000}", Make = truck ? new[] { "MAN", "Mercedes-Benz", "Scania", "DAF" }[index % 4] : new[] { "Schmitz", "Kögel", "Krone" }[index % 3], Model = truck ? "TGX" : "S.KO", Year = 2020 + index % 6, GrossWeightKg = truck ? 18000 : 39000, RequiredLicenceClass = truck ? "C" : null, Ownership = ownership, LeaseEndDate = ownership == VehicleOwnership.Owned ? null : new DateOnly(2028, 12, 31), TrailerType = truck ? null : (TrailerType)(index % 5), OdometerKm = truck ? 10000 + index * 1000 : null, DepotId = DepotId, ServiceIntervalKm = truck ? 50000 : null, ServiceIntervalMonths = truck ? 12 : null, Status = VehicleStatus.Active, CreatedAt = SeedTime, UpdatedAt = SeedTime });
         }
     }
+
+    private static void AddDocuments(FleetOpsDbContext db)
+    {
+        var today = DateOnly.FromDateTime(SeedTime.UtcDateTime);
+        foreach (var employee in db.Employees.Local.Where(x => x.Roles.Contains("driver", StringComparison.OrdinalIgnoreCase)).ToList())
+        {
+            foreach (var type in new[] { DocumentType.LicenceC_CE, DocumentType.DriverCard, DocumentType.Code95, DocumentType.Medical })
+            {
+                if (employee.Id == FixedGuid(10) && type == DocumentType.Medical) db.Documents.Add(Attested(employee.Id, DocumentOwnerType.Employee, type, today.AddDays(-10)));
+                else if (employee.Id == FixedGuid(11) && type == DocumentType.Code95) db.Documents.Add(Attested(employee.Id, DocumentOwnerType.Employee, type, today.AddDays(30)));
+                else if (employee.Id == FixedGuid(12) && type == DocumentType.DriverCard) continue;
+                else db.Documents.Add(Attested(employee.Id, DocumentOwnerType.Employee, type, today.AddDays(365)));
+            }
+        }
+        foreach (var vehicle in db.Vehicles.Local.ToList())
+        {
+            foreach (var required in VehicleRules.Documents(vehicle.Kind, vehicle.GrossWeightKg).Where(x => DocumentsCatalog.Get(MapDocumentType(x.Type)).Blocking))
+            {
+                var type = MapDocumentType(required.Type);
+                if (vehicle.Id == FixedGuid(1000) && type == DocumentType.HuReport) db.Documents.Add(Attested(vehicle.Id, DocumentOwnerType.Vehicle, type, today.AddDays(-10)));
+                else if (vehicle.Id == FixedGuid(1001) && type == DocumentType.Insurance) db.Documents.Add(Attested(vehicle.Id, DocumentOwnerType.Vehicle, type, today.AddDays(10)));
+                else if (vehicle.Id == FixedGuid(1002) && type == DocumentType.TachoCalibration) continue;
+                else db.Documents.Add(Attested(vehicle.Id, DocumentOwnerType.Vehicle, type, today.AddDays(365)));
+            }
+        }
+    }
+
+    private static Document Attested(Guid ownerId, DocumentOwnerType ownerType, DocumentType type, DateOnly expiresAt) => new() { OwnerId = ownerId, OwnerType = ownerType, Type = type, Number = $"DEMO-{ownerId.ToString("N")[..8]}-{type}", Status = DocumentStatus.Verified, ExpiresAt = expiresAt, IssuedAt = DateOnly.FromDateTime(SeedTime.UtcDateTime).AddYears(-1), ImportAttested = true, CreatedBy = FixedGuid(1), CreatedAt = SeedTime, VerifiedBy = FixedGuid(1), VerifiedAt = SeedTime };
+    private static DocumentType MapDocumentType(string type) => type switch { "registration" => DocumentType.Registration, "HU" => DocumentType.HuReport, "SP" => DocumentType.SpReport, "tacho_calibration" => DocumentType.TachoCalibration, "insurance" => DocumentType.Insurance, "community_licence" => DocumentType.CommunityLicence, _ => throw new InvalidOperationException("unknown_document_type") };
 
     private void ThrowIfRequested(int step)
     {

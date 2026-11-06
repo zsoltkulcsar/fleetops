@@ -31,6 +31,7 @@ public sealed class Vehicle
     [AuditField(AuditFieldClasses.Plain)] public int? ServiceIntervalMonths { get; set; }
     [AuditField(AuditFieldClasses.Plain)] public DateOnly? LastTachoDownloadAt { get; set; }
     [AuditField(AuditFieldClasses.Plain)] public VehicleStatus Status { get; set; } = VehicleStatus.Active;
+    [AuditField(AuditFieldClasses.Plain)] public bool ManualOffRoad { get; set; }
     [AuditField(AuditFieldClasses.Plain)] public RetiredReason? RetiredReason { get; set; }
     [AuditField(AuditFieldClasses.Plain)] public DateTimeOffset? RetiredAt { get; set; }
     [NotAudited] public int Version { get; set; } = 1;

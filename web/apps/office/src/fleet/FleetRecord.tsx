@@ -8,10 +8,24 @@ import { en } from "../i18n/en";
 import { fleetApi, type ApiProblem, type RetiredReason, type VehicleDetail } from "./api";
 import { VehicleForm } from "./VehicleForm";
 import "./fleet.css";
+import { readinessApi } from "../readiness/api";
 
-const statusPillFor: Record<VehicleDetail["status"], "usable" | "off-road"> = {
+type ReadinessDetail = VehicleDetail & {
+  shownStatus?: "active" | "off_road" | "in_maintenance" | "retired";
+  usable?: boolean;
+  causes?: Array<{ code: string; documentType: string | null }>;
+};
+const statusPillFor: Record<NonNullable<ReadinessDetail["shownStatus"]>, "usable" | "off-road"> = {
   active: "usable",
+  off_road: "off-road",
+  in_maintenance: "off-road",
   retired: "off-road",
+};
+const statusLabel: Record<NonNullable<ReadinessDetail["shownStatus"]>, string> = {
+  active: "Usable",
+  off_road: "Off road",
+  in_maintenance: "In workshop",
+  retired: "Retired",
 };
 const retiredReasonLabel: Record<RetiredReason, string> = {
   sold: en.fleet.retiredReason.sold,
@@ -31,6 +45,7 @@ export function FleetRecord({ id }: { id: string }) {
   const [toast, setToast] = useState(false);
   const [retireOpen, setRetireOpen] = useState(false);
   const [undoOpen, setUndoOpen] = useState(false);
+  const [offRoadBusy, setOffRoadBusy] = useState(false);
   const canEdit = Boolean(session.data?.roles.some((role) => role === "dispatcher" || role === "owner"));
   const isOwner = Boolean(session.data?.roles.some((role) => role === "owner"));
   useEffect(() => {
@@ -61,6 +76,17 @@ export function FleetRecord({ id }: { id: string }) {
       </div>
     );
   const vehicle = query.data;
+  const readinessVehicle = vehicle as ReadinessDetail;
+  const shownStatus = readinessVehicle.shownStatus ?? (vehicle.status === "retired" ? "retired" : "active");
+  const setOffRoad = async () => {
+    setOffRoadBusy(true);
+    try {
+      await fleetApi.setOffRoad(vehicle.id, { version: vehicle.version, manualOffRoad: true, reason: null });
+      await query.refetch();
+    } finally {
+      setOffRoadBusy(false);
+    }
+  };
   return (
     <div className="page fleet-page">
       <div className="record-back">
@@ -79,7 +105,12 @@ export function FleetRecord({ id }: { id: string }) {
           </h1>
         </div>
         <div className="record-actions">
-          <StatusPill status={statusPillFor[vehicle.status]} label={en.fleet.status[vehicle.status]} />
+          <StatusPill status={statusPillFor[shownStatus]} label={statusLabel[shownStatus]} />
+          {vehicle.status === "active" && canEdit && (
+            <button className="ui-button" disabled={offRoadBusy} onClick={() => void setOffRoad()}>
+              Set off road
+            </button>
+          )}
           {vehicle.status === "active" && canEdit && (
             <button className="ui-button" onClick={() => setRetireOpen(true)}>
               {en.fleet.retire.button}
@@ -97,6 +128,11 @@ export function FleetRecord({ id }: { id: string }) {
           Retired: {retiredReasonLabel[vehicle.retiredReason]} on {retiredDate(vehicle.retiredAt)}.
         </Banner>
       )}
+      {readinessVehicle.causes?.length ? (
+        <p className="ui-muted">
+          {readinessVehicle.causes.map((cause) => cause.documentType ?? cause.code).join(", ")}
+        </p>
+      ) : null}
       {vehicle.status === "retired" &&
         isOwner &&
         vehicle.retiredAt &&

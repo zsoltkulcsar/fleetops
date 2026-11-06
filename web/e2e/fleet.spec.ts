@@ -63,7 +63,7 @@ test("fleet lists vehicles with plate and status", async ({ page }) => {
   await list(page);
   await page.goto("/fleet");
   await expect(page.getByText("KS-DC 1177")).toBeVisible();
-  await expect(page.getByText("Active")).toBeVisible();
+  await expect(page.getByText("Usable", { exact: true })).toBeVisible();
 });
 test("fleet list shows labels for wire values", async ({ page }) => {
   await list(page, [

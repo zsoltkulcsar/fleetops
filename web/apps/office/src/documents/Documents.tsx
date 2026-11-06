@@ -47,6 +47,10 @@ export function Documents() {
   );
   const [toast, setToast] = useState(false);
   const canUpload = Boolean(roleOwner(session.data?.roles ?? []));
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("filter") === "missing" && canUpload) setDialogOpen(true);
+  }, [canUpload]);
 
   useEffect(() => {
     document.title = `Documents · ${en.appName}`;
@@ -213,6 +217,8 @@ export function Documents() {
       <UploadDialog
         open={dialogOpen}
         roles={session.data?.roles ?? []}
+        initialOwnerId={new URLSearchParams(window.location.search).get("ownerId") ?? ""}
+        initialOwnerType={new URLSearchParams(window.location.search).get("ownerId") ? "vehicle" : undefined}
         onClose={() => setDialogOpen(false)}
         onSaved={() => {
           setDialogOpen(false);
@@ -440,17 +446,21 @@ type UploadFile = { file: File; page: components["schemas"]["DocumentFilePage"] 
 function UploadDialog({
   open,
   roles,
+  initialOwnerId,
+  initialOwnerType,
   onClose,
   onSaved,
 }: {
   open: boolean;
   roles: string[];
+  initialOwnerId: string;
+  initialOwnerType?: DocumentOwnerType;
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const initialOwner = roleOwner(roles) ?? "employee";
+  const initialOwner = initialOwnerType ?? roleOwner(roles) ?? "employee";
   const [ownerType, setOwnerType] = useState<DocumentOwnerType>(initialOwner);
-  const [ownerId, setOwnerId] = useState("");
+  const [ownerId, setOwnerId] = useState(initialOwnerId);
   const [ownerName, setOwnerName] = useState("");
   const [vehicleKind, setVehicleKind] = useState<components["schemas"]["VehicleKind"] | null>(null);
   const [ownerSearch, setOwnerSearch] = useState("");

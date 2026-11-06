@@ -118,7 +118,7 @@ public sealed class AuthorizationTests
     [Fact]
     public void Matrix_contains_all_permission_rows()
     {
-        Assert.Equal(33, PermissionMatrix.Entries.Count);
+        Assert.Equal(34, PermissionMatrix.Entries.Count);
         Assert.Contains(PermissionMatrix.Entries, x => x.ActionKey == "shifts.approve_reject" && x.AllowedRoles.SetEquals([RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner]));
         Assert.Contains(PermissionMatrix.Entries, x => x.ActionKey == "documents.medical.view" && x.OwnRoles.SetEquals([RoleCode.Driver]));
     }
@@ -130,6 +130,7 @@ public sealed class AuthorizationTests
         {
             ["documents.view"] = [RoleCode.Hr, RoleCode.Owner],
             ["documents.people.lookup"] = [RoleCode.Hr, RoleCode.Owner],
+            ["readiness.summary"] = [RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner],
             ["shifts.enter_edit"] = [RoleCode.Driver, RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner],
             ["shifts.approve_reject"] = [RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner],
             ["shifts.reopen_exported"] = [RoleCode.Hr, RoleCode.Owner],
@@ -175,6 +176,7 @@ public sealed class AuthorizationTests
         {
             ["documents.view"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.View, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full),
             ["documents.people.lookup"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full),
+            ["readiness.summary"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full),
             ["shifts.enter_edit"] = (PermissionMatrix.Cell.Own, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full),
             ["shifts.approve_reject"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full),
             ["shifts.reopen_exported"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full),
@@ -261,6 +263,7 @@ public sealed class AuthorizationTests
         "shifts.reopen_exported" or "payroll.export" or "employees.create_edit" or "settings.users" or "settings.purge" or "settings.payroll" or "employees.phone.change" or "audit.export" => role is RoleCode.Hr or RoleCode.Owner,
         "employees.view" or "documents.medical.view" => role is RoleCode.Driver or RoleCode.Hr or RoleCode.Owner,
         "documents.view" or "documents.people.lookup" => role is RoleCode.Hr or RoleCode.Owner,
+        "readiness.summary" => role is RoleCode.Dispatcher or RoleCode.Hr or RoleCode.Owner,
         "documents.driver.upload" => role is RoleCode.Driver or RoleCode.Hr,
         "schedule.view" or "schedule.request_change" => role is RoleCode.Driver or RoleCode.Dispatcher or RoleCode.Owner,
         "absences.vacation.request" => role is RoleCode.Driver or RoleCode.Hr,

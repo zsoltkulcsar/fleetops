@@ -151,6 +151,21 @@ public sealed class SeedTests
         Assert.DoesNotContain(Password, exception.Message);
     }
 
+    [Fact]
+    public async Task Seed_gives_the_demo_real_readiness_states()
+    {
+        await using var postgres = await TestPostgres.StartAsync(nameof(SeedTests));
+        await SeedAsync(postgres);
+        await using var connection = new NpgsqlConnection(postgres.ConnectionString);
+        await connection.OpenAsync();
+        await using var expired = new NpgsqlCommand("select count(*) from fleetops.documents where owner_type = 'Vehicle' and type = 'hu_report' and status = 'Verified' and expires_at < date '2026-11-06'", connection);
+        Assert.Equal(1L, (long)(await expired.ExecuteScalarAsync())!);
+        await using var blockedDriver = new NpgsqlCommand("select count(*) from fleetops.employees e where e.status = 'Active' and e.roles like '%driver%' and exists (select 1 from fleetops.documents d where d.owner_type = 'Employee' and d.owner_id = e.id and d.status = 'Verified' and d.expires_at < date '2026-11-06')", connection);
+        Assert.Equal(1L, (long)(await blockedDriver.ExecuteScalarAsync())!);
+        await using var otherDrivers = new NpgsqlCommand("select count(*) from fleetops.employees e where e.status = 'Active' and e.roles like '%driver%' and not exists (select 1 from fleetops.documents d where d.owner_type = 'Employee' and d.owner_id = e.id and d.status = 'Verified' and d.expires_at < date '2026-11-06')", connection);
+        Assert.True((long)(await otherDrivers.ExecuteScalarAsync())! > 0);
+    }
+
     private static async Task SeedAsync(TestPostgres postgres) => await RunAsync(postgres, "Demo", Password);
 
     private static async Task RunAsync(TestPostgres postgres, string? environment, string? password, Func<int, Exception?>? failureFactory = null)

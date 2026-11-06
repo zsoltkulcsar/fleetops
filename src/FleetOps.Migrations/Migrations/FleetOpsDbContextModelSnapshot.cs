@@ -563,6 +563,12 @@ namespace FleetOps.Migrations.Migrations
                         .HasColumnType("text")
                         .HasColumnName("make");
 
+                    b.Property<bool>("ManualOffRoad")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("manual_off_road");
+
                     b.Property<string>("Model")
                         .IsRequired()
                         .HasColumnType("text")

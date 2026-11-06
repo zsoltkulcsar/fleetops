@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Plus, Search } from "lucide-react";
 import { Banner, EmptyState, Panel, Plate, StatusPill, Toast } from "@fleetops/ui";
 import { useSession } from "../auth/AuthGate";
@@ -7,10 +7,20 @@ import { en } from "../i18n/en";
 import { fleetApi, type Vehicle } from "./api";
 import { VehicleForm } from "./VehicleForm";
 import "./fleet.css";
+import { readinessApi, type VehicleReadiness } from "../readiness/api";
 
-const statusPillFor: Record<Vehicle["status"], "usable" | "off-road"> = {
+type ReadinessVehicle = Vehicle & VehicleReadiness;
+const statusPillFor: Record<ReadinessVehicle["shownStatus"], "usable" | "off-road"> = {
   active: "usable",
+  off_road: "off-road",
+  in_maintenance: "off-road",
   retired: "off-road",
+};
+const statusLabel: Record<ReadinessVehicle["shownStatus"], string> = {
+  active: "Usable",
+  off_road: "Off road",
+  in_maintenance: "In workshop",
+  retired: "Retired",
 };
 
 export function Fleet() {
@@ -57,7 +67,11 @@ export function Fleet() {
       }),
     getNextPageParam: (page) => page.nextCursor ?? undefined,
   });
-  const vehicles = useMemo(() => query.data?.pages.flatMap((page) => page.items) ?? [], [query.data]);
+  const summary = useQuery({ queryKey: ["readiness-summary"], queryFn: readinessApi.summary });
+  const vehicles = useMemo(
+    () => query.data?.pages.flatMap((page) => page.items as ReadinessVehicle[]) ?? [],
+    [query.data],
+  );
   return (
     <div className="page fleet-page">
       <div className="page-title">
@@ -116,6 +130,11 @@ export function Fleet() {
           </div>
         }
       >
+        {summary.data && (
+          <p className="ui-muted">
+            {summary.data.vehiclesUsable} of {summary.data.vehiclesTotal} usable
+          </p>
+        )}
         {query.isLoading ? (
           <div className="fleet-loading">Loading vehicles…</div>
         ) : !vehicles.length && !query.isError ? (
@@ -163,8 +182,16 @@ export function Fleet() {
                     <td className="tabular-nums">{vehicle.year}</td>
                     <td>
                       <StatusPill
-                        status={statusPillFor[vehicle.status]}
-                        label={en.fleet.status[vehicle.status]}
+                        status={
+                          statusPillFor[
+                            vehicle.shownStatus ?? (vehicle.status === "retired" ? "retired" : "active")
+                          ]
+                        }
+                        label={
+                          statusLabel[
+                            vehicle.shownStatus ?? (vehicle.status === "retired" ? "retired" : "active")
+                          ]
+                        }
                       />
                     </td>
                     <td>{en.fleet.ownership[vehicle.ownership]}</td>

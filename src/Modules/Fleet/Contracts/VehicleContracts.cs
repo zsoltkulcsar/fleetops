@@ -1,4 +1,5 @@
 using FleetOps.Kernel.Authorization;
+using FleetOps.Kernel;
 
 namespace FleetOps.Modules.Fleet;
 
@@ -29,7 +30,10 @@ public sealed record VehicleDetail(
     int? ServiceIntervalMonths,
     DateOnly? LastTachoDownloadAt,
     IReadOnlyList<string> PlateHistory,
-    IReadOnlyList<RequiredDocument> RequiredDocuments) : IReadModel;
+    IReadOnlyList<RequiredDocument> RequiredDocuments,
+    ReadinessShownStatus ShownStatus,
+    bool Usable,
+    IReadOnlyList<ReadinessCause> Causes) : IReadModel;
 
 [VisibleTo(RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner)]
 public sealed record VehicleListItem(
@@ -41,7 +45,10 @@ public sealed record VehicleListItem(
     int Year,
     VehicleStatus Status,
     VehicleOwnership Ownership,
-    int Version);
+    int Version,
+    ReadinessShownStatus ShownStatus = ReadinessShownStatus.Active,
+    bool Usable = false,
+    IReadOnlyList<ReadinessCause>? Causes = null);
 
 [VisibleTo(RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner)]
 public sealed record VehicleListResult(IReadOnlyList<VehicleListItem> Items, string? NextCursor) : IReadModel;
@@ -106,6 +113,9 @@ public sealed record RetireVehicleCommand(Guid? SubjectId, int Version, RetiredR
 
 [CommandPolicy("vehicles.retire.undo")]
 public sealed record UndoRetireVehicleCommand(Guid? SubjectId, int Version, string? Reason) : ICommand<VehicleDetail>, IHasSubject, IHasReason;
+
+[CommandPolicy("vehicles.manage", HasStatePrecondition = true)]
+public sealed record SetVehicleOffRoadCommand(Guid? SubjectId, int Version, bool ManualOffRoad, string? Reason) : ICommand<VehicleDetail>, IHasSubject, IHasReason;
 
 public interface IHasReason
 {

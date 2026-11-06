@@ -245,6 +245,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/fleet/vehicles/{id}/off-road": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SetVehicleOffRoadRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["VehicleDetail"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/documents/upload-links": {
         parameters: {
             query?: never;
@@ -684,6 +725,80 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["PeopleLookupResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/readiness/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReadinessSummary"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/readiness/drivers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    cursor?: string;
+                    limit?: number;
+                    blockedOnly?: boolean;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DriverReadinessList"];
                     };
                 };
             };
@@ -1186,6 +1301,17 @@ export interface components {
             number?: null | string;
             categories?: null | string[];
         };
+        DriverReadinessItem: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            canDrive: boolean;
+            causes: components["schemas"]["ReadinessCause"][];
+        };
+        DriverReadinessList: {
+            items: components["schemas"]["DriverReadinessItem"][];
+            nextCursor: null | string;
+        };
         EditVehicleRequest: {
             /** Format: int32 */
             version: number;
@@ -1239,6 +1365,24 @@ export interface components {
         PrivacyRequest: {
             version: string;
         };
+        ReadinessCause: {
+            code: components["schemas"]["ReadinessCauseCode"];
+            documentType: null | string;
+        };
+        /** @enum {unknown} */
+        ReadinessCauseCode: "document_expired" | "document_missing" | "manual_off_road" | "retired" | "suspended" | "left" | "not_a_driver";
+        /** @enum {unknown} */
+        ReadinessShownStatus: "active" | "off_road" | "in_maintenance" | "retired";
+        ReadinessSummary: {
+            /** Format: int32 */
+            vehiclesUsable: number;
+            /** Format: int32 */
+            vehiclesTotal: number;
+            /** Format: int32 */
+            driversAbleToDrive: number;
+            /** Format: int32 */
+            driversTotal: number;
+        };
         RequiredDocument: {
             type: string;
             needsConfirmation: boolean;
@@ -1256,6 +1400,12 @@ export interface components {
         };
         SecondFactorRequest: {
             code: string;
+        };
+        SetVehicleOffRoadRequest: {
+            /** Format: int32 */
+            version: number;
+            manualOffRoad: boolean;
+            reason: null | string;
         };
         SignInRequest: {
             email: string;
@@ -1314,6 +1464,9 @@ export interface components {
             lastTachoDownloadAt: null | string;
             plateHistory: string[];
             requiredDocuments: components["schemas"]["RequiredDocument"][];
+            shownStatus: components["schemas"]["ReadinessShownStatus"];
+            usable: boolean;
+            causes: components["schemas"]["ReadinessCause"][];
         };
         /** @enum {unknown} */
         VehicleKind: "truck" | "trailer";
@@ -1330,6 +1483,10 @@ export interface components {
             ownership: components["schemas"]["VehicleOwnership"];
             /** Format: int32 */
             version: number;
+            shownStatus?: components["schemas"]["ReadinessShownStatus"];
+            /** @default false */
+            usable: boolean;
+            causes?: null | components["schemas"]["ReadinessCause"][];
         };
         VehicleListResult: {
             items: components["schemas"]["VehicleListItem"][];
