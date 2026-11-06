@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures";
 import AxeBuilder from "@axe-core/playwright";
 import { openWithPausedClock } from "./clock";
 
@@ -157,17 +157,14 @@ test("reversible toast undo and focus pause work", async ({ page }) => {
 
 test("offline disables writes and removes the banner when online", async ({ page, context }) => {
   await page.goto("/");
-  await expect(page.getByRole("status", { name: "You are offline. Cached data is read-only." })).toHaveCount(
-    0,
-  );
+  const offlineBanner = page
+    .getByRole("status")
+    .filter({ hasText: "You are offline. Cached data is read-only." });
+  await expect(offlineBanner).toHaveCount(0);
   await context.setOffline(true);
-  await expect(
-    page.getByRole("status", { name: "You are offline. Cached data is read-only." }),
-  ).toBeVisible();
+  await expect(offlineBanner).toBeVisible();
   await context.setOffline(false);
-  await expect(page.getByRole("status", { name: "You are offline. Cached data is read-only." })).toHaveCount(
-    0,
-  );
+  await expect(offlineBanner).toHaveCount(0);
 });
 
 test("status vocabulary matches the literal system vocabulary", async ({ page }) => {

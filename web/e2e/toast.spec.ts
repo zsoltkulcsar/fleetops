@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures";
 import { openWithPausedClock } from "./clock";
 
 test("unpaused toast is visible at 9.9 seconds and gone at 10.1 seconds", async ({ page }) => {

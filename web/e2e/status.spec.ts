@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures";
 
 test("dated labels render the exact date with the trailing dot", async ({ page }) => {
   await page.goto("/__gallery");
