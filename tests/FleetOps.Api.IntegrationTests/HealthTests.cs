@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
-using Testcontainers.PostgreSql;
 using Xunit;
 
 namespace FleetOps.Tests;
@@ -10,11 +9,11 @@ public class HealthTests
     [Fact]
     public async Task Health_is_ok_with_a_real_postgres_17_database()
     {
-        await using var postgres = new PostgreSqlBuilder("postgres:17").Build();
-        await postgres.StartAsync(TestContext.Current.CancellationToken);
+        var postgres = await TestPostgres.StartAsync(nameof(HealthTests), TestContext.Current.CancellationToken);
+        await using var container = postgres.Container;
         await using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
             builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(
-                new Dictionary<string, string?> { ["ConnectionStrings:FleetOps"] = postgres.GetConnectionString() })));
+                new Dictionary<string, string?> { ["ConnectionStrings:FleetOps"] = postgres.ConnectionString })));
         using var client = factory.CreateClient();
         using var response = await client.GetAsync("/healthz", TestContext.Current.CancellationToken);
         var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);

@@ -43,6 +43,16 @@ public static class RoleMaskingInspector
             errors.Add($"{path} has uninspectable type System.Object");
             return;
         }
+        if (type.IsArray || IsEnumerable(type))
+        {
+            if (!visited.Add(type)) return;
+            var elements = type.IsArray
+                ? [type.GetElementType()!]
+                : type.GetInterfaces().Where(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>)).Select(i => i.GetGenericArguments()[0]).Distinct();
+            if (!elements.Any()) errors.Add($"{path} is a non-generic collection");
+            foreach (var element in elements) Walk(element, path + "[]", errors, visited);
+            return;
+        }
         if (type.IsInterface || type.IsAbstract)
         {
             errors.Add($"{path} has uninspectable type {type.FullName ?? type.Name}");
@@ -58,16 +68,6 @@ public static class RoleMaskingInspector
             errors.Add($"{path} is not visible to dispatcher");
         else if (visibleTo.Roles.Contains(RoleCode.Dispatcher) && type.GetCustomAttributes(typeof(MedicalContentAttribute), true).Length > 0)
             errors.Add($"{path} exposes medical content to dispatcher");
-
-        if (type.IsArray || IsEnumerable(type))
-        {
-            var elements = type.IsArray
-                ? [type.GetElementType()!]
-                : type.GetInterfaces().Where(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>)).Select(i => i.GetGenericArguments()[0]).Distinct();
-            if (!elements.Any()) errors.Add($"{path} is a non-generic collection");
-            foreach (var element in elements) Walk(element, path + "[]", errors, visited);
-            return;
-        }
 
         if (type.IsGenericType)
         {

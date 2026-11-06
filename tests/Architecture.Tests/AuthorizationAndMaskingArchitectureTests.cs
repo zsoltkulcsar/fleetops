@@ -114,6 +114,7 @@ public sealed class AuthorizationAndMaskingArchitectureTests
                 .Concat(CommandArchitectureRules.ValidateAssembly(assembly))
                 .Concat(QueryArchitectureRules.ValidateAssembly(assembly)))
             .ToArray();
+        Console.WriteLine("ASSEMBLY SWEEP ERRORS:\n" + string.Join("\n", errors));
         Assert.Empty(errors);
     }
 

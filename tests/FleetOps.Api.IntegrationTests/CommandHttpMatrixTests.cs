@@ -12,7 +12,6 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Xunit;
-using Testcontainers.PostgreSql;
 
 namespace FleetOps.Tests;
 
@@ -56,8 +55,8 @@ public sealed class CommandHttpMatrixTests
     public async Task Http_theory_parses_json_and_asserts_exact_refusal_code_and_allowed_roles(
         string scenario, int expectedStatus, bool allowed, bool selfApproval)
     {
-        await using var postgres = new PostgreSqlBuilder("postgres:17").Build();
-        await postgres.StartAsync(TestContext.Current.CancellationToken);
+        var postgres = await TestPostgres.StartAsync(nameof(CommandHttpMatrixTests), TestContext.Current.CancellationToken);
+        await using var container = postgres.Container;
         var calls = new CountingCommandHandler();
         var logs = new CaptureLoggerProvider();
         var accessor = new TestAccessor(scenario == "not_signed_in" ? null : AccessContext.For(ActorId,
@@ -73,7 +72,7 @@ public sealed class CommandHttpMatrixTests
 
         await using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
-            builder.UseSetting("ConnectionStrings:FleetOps", postgres.GetConnectionString());
+            builder.UseSetting("ConnectionStrings:FleetOps", postgres.ConnectionString);
             builder.ConfigureLogging(logging => logging.AddProvider(logs));
             builder.ConfigureTestServices(services =>
             {
