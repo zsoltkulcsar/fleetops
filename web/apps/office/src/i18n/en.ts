@@ -52,6 +52,7 @@ export const en = {
     forgot: "Reset your password",
     forgotBody: "Enter your e-mail address and we will send reset instructions if available.",
     forgotConfirmation: "If an account matches, reset instructions have been sent.",
+    networkError: "Something went wrong. Check your connection and try again.",
     reset: "Choose a new password",
     resetFailed: "This reset link is invalid or has expired.",
     backToSignIn: "Back to sign in",

@@ -47,7 +47,8 @@ async function request<T>(path: string, init?: RequestInit, isSession = false): 
     throw new AuthRequestError(response.status, problem);
   }
   if (response.status === 204) return undefined as T;
-  return (await response.json()) as T;
+  const body = await response.text();
+  return (body ? JSON.parse(body) : undefined) as T;
 }
 
 export const authApi = {

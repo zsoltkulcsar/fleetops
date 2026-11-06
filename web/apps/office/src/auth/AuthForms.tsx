@@ -50,8 +50,13 @@ export function SignIn({ onNext, expired }: Props) {
       const result = await authApi.signIn(email, password);
       onNext(result.next);
     } catch (error) {
-      const authError = error as AuthRequestError;
-      form.setError(authError.problem.code === "account_locked" ? en.auth.locked : en.auth.wrongDetails);
+      form.setError(
+        error instanceof AuthRequestError
+          ? error.problem.code === "account_locked"
+            ? en.auth.locked
+            : en.auth.wrongDetails
+          : en.auth.networkError,
+      );
     } finally {
       form.setBusy(false);
     }
@@ -99,8 +104,8 @@ export function SecondFactor({ onNext }: Props) {
     form.setError("");
     try {
       onNext((await authApi.secondFactor(code)).next);
-    } catch {
-      form.setError(en.auth.secondFactorFailed);
+    } catch (error) {
+      form.setError(error instanceof AuthRequestError ? en.auth.secondFactorFailed : en.auth.networkError);
     } finally {
       form.setBusy(false);
     }
@@ -134,8 +139,8 @@ export function Enrol({ onNext }: Props) {
   async function load() {
     try {
       setDetails(await authApi.enrol());
-    } catch {
-      form.setError(en.auth.secondFactorFailed);
+    } catch (error) {
+      form.setError(error instanceof AuthRequestError ? en.auth.secondFactorFailed : en.auth.networkError);
     }
   }
   if (!details)
@@ -152,8 +157,8 @@ export function Enrol({ onNext }: Props) {
     form.setBusy(true);
     try {
       onNext((await authApi.secondFactor(code)).next);
-    } catch {
-      form.setError(en.auth.secondFactorFailed);
+    } catch (error) {
+      form.setError(error instanceof AuthRequestError ? en.auth.secondFactorFailed : en.auth.networkError);
     } finally {
       form.setBusy(false);
     }
@@ -188,8 +193,8 @@ export function PrivacyNotice({ onNext }: Props) {
     form.setBusy(true);
     try {
       onNext((await authApi.privacy("1")).next);
-    } catch {
-      form.setError(en.auth.wrongDetails);
+    } catch (error) {
+      form.setError(error instanceof AuthRequestError ? en.auth.wrongDetails : en.auth.networkError);
     } finally {
       form.setBusy(false);
     }
@@ -212,13 +217,22 @@ export function PrivacyNotice({ onNext }: Props) {
 export function Forgot() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
+  const form = useSubmit();
   async function submit(event: FormEvent) {
     event.preventDefault();
-    await authApi.forgot(email);
-    setSent(true);
+    form.setBusy(true);
+    form.setError("");
+    try {
+      await authApi.forgot(email);
+      setSent(true);
+    } catch {
+      form.setError(en.auth.networkError);
+    } finally {
+      form.setBusy(false);
+    }
   }
   return (
-    <AuthFrame title={en.auth.forgot}>
+    <AuthFrame title={en.auth.forgot} error={form.error}>
       {sent ? (
         <>
           <Banner kind="info" label={en.banner.info}>
@@ -235,7 +249,9 @@ export function Forgot() {
             {en.auth.email}
             <input required type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
           </label>
-          <button className="ui-button primary">{en.auth.continue}</button>
+          <button className="ui-button primary" disabled={form.busy}>
+            {en.auth.continue}
+          </button>
           <Link className="auth-link" to=".">
             {en.auth.backToSignIn}
           </Link>
@@ -254,8 +270,8 @@ export function Reset() {
     try {
       await authApi.reset(token, password);
       setDone(true);
-    } catch {
-      setError(en.auth.resetFailed);
+    } catch (error) {
+      setError(error instanceof AuthRequestError ? en.auth.resetFailed : en.auth.networkError);
     }
   }
   return (

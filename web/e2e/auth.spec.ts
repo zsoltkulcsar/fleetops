@@ -176,6 +176,16 @@ test("forgot password shows the same confirmation for any email", async ({ page 
   expect(secondConfirmation).toContain("If an account matches");
   expect(secondConfirmation).toBe(firstConfirmation);
 });
+test("a failed request on an auth form shows an error and not silence", async ({ page }) => {
+  await noSession(page);
+  await page.route("**/api/v1/auth/forgot-password", (route) => route.abort());
+  await page.goto("/?forgot=1");
+  await page.getByLabel("E-mail address").fill("any@example.com");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(page.getByRole("alert")).toContainText(
+    "Something went wrong. Check your connection and try again.",
+  );
+});
 test("reset with a bad token shows an error and a way back", async ({ page }) => {
   await noSession(page);
   await page.route("**/api/v1/auth/reset-password", (route) =>
