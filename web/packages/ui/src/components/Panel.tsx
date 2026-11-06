@@ -7,7 +7,7 @@ export function Panel({
   filters,
   state = "ready",
 }: {
-  title: string;
+  title?: string;
   children: ReactNode;
   actions?: ReactNode;
   filters?: ReactNode;
@@ -15,10 +15,12 @@ export function Panel({
 }) {
   return (
     <section className="ui-panel" data-state={state}>
-      <header className="panel-header">
-        <h2>{title}</h2>
-        {filters ?? actions}
-      </header>
+      {(title || filters || actions) && (
+        <header className="panel-header">
+          {title && <h2>{title}</h2>}
+          {filters ?? actions}
+        </header>
+      )}
       {children}
     </section>
   );

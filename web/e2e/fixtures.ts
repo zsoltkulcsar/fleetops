@@ -9,6 +9,13 @@ export const test = base.extend({
         body: JSON.stringify({ employeeId: "demo", roles: ["owner"] }),
       }),
     );
+    await page.route("**/api/v1/fleet/vehicles?*", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ items: [], nextCursor: null }),
+      }),
+    );
     await use(page);
   },
 });

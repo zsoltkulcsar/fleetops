@@ -5,7 +5,6 @@ import { openWithPausedClock } from "./clock";
 const routes = [
   ["/", "Attention"],
   ["/timesheets", "Timesheets"],
-  ["/fleet", "Fleet"],
   ["/people", "People"],
   ["/documents", "Documents"],
   ["/payroll", "Payroll export"],
@@ -29,6 +28,17 @@ test.describe("navigation and responsive shell", () => {
       }
     });
   }
+
+  test("Fleet is a distinct route", async ({ page }) => {
+    await page.goto("/fleet");
+    await expect(page).toHaveURL(/\/fleet$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Fleet" })).toBeVisible();
+    await expect(page.getByText("No vehicles yet.")).toBeVisible();
+    await expect(page.locator(".topbar strong")).toHaveText("Fleet");
+    await expect(page).toHaveTitle("Fleet · FleetOps Office");
+    await expect(page.locator('nav a[aria-current="page"]')).toHaveCount(1);
+    await expect(page.locator('nav a[aria-current="page"]')).toHaveText("Fleet");
+  });
 
   test("unknown paths redirect to home", async ({ page }) => {
     await page.goto("/not-a-section");
