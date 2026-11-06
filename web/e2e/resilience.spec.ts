@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures";
 
 test("a render error shows the banner with Try again and keeps navigation", async ({ page }) => {
   await page.goto("/__gallery");

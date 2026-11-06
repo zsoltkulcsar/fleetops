@@ -66,7 +66,7 @@ export function Gallery() {
             <h2>Error</h2>
             <Banner
               kind="error"
-              label={en.states.error}
+              label={en.banner.error}
               retryLabel={en.actions.tryAgain}
               onRetry={() => setRetryCount((count) => count + 1)}
             >
@@ -76,7 +76,7 @@ export function Gallery() {
           </section>
           <section>
             <h2>Offline</h2>
-            <Banner kind="offline" label={en.states.offline}>
+            <Banner kind="offline" label={en.banner.offline}>
               {en.states.offline}
             </Banner>
             <button type="button" className="ui-button" disabled={!online}>
@@ -85,7 +85,7 @@ export function Gallery() {
           </section>
           <section>
             <h2>Permission denied</h2>
-            <Banner kind="info" label={en.states.permissionDenied}>
+            <Banner kind="info" label={en.banner.info}>
               {en.states.permissionDenied}
             </Banner>
           </section>

@@ -4,8 +4,11 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { DevGalleryRoute, OfficePage, Shell } from "./shell/Shell";
 import "./shell/shell.css";
+import { AuthGate } from "./auth/AuthGate";
+import { installAuthExpiryHandler } from "./auth/api";
 
 const queryClient = new QueryClient();
+installAuthExpiryHandler();
 const page = (section: string) => <OfficePage section={section} />;
 function CanonicalRedirect() {
   const path = window.location.pathname.toLowerCase().replace(/\/$/, "") || "/";
@@ -18,7 +21,13 @@ createRoot(document.getElementById("app")!).render(
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Routes>
-          <Route element={<Shell />}>
+          <Route
+            element={
+              <AuthGate>
+                <Shell />
+              </AuthGate>
+            }
+          >
             <Route path="/" element={page("attention")} />
             <Route path="/timesheets" element={page("timesheets")} />
             <Route path="/fleet" element={page("fleet")} />
@@ -27,8 +36,8 @@ createRoot(document.getElementById("app")!).render(
             <Route path="/payroll" element={page("payroll")} />
             <Route path="/settings" element={page("settings")} />
             {import.meta.env.DEV && <Route path="/__gallery" element={<DevGalleryRoute />} />}
-            <Route path="*" element={<CanonicalRedirect />} />
           </Route>
+          <Route path="*" element={<CanonicalRedirect />} />
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>

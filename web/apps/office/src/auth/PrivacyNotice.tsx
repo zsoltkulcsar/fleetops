@@ -1,0 +1,1 @@
+export { PrivacyNotice } from "./AuthForms";

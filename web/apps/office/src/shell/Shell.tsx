@@ -100,11 +100,13 @@ export function OfficePage({ section }: { section: string }) {
           <h1 ref={heading} tabIndex={-1}>
             {label}
           </h1>
-          <p className="ui-muted">A clear view of work that needs your review.</p>
+          <p className="ui-muted">
+            {en.subtitles[section as keyof typeof en.subtitles] ?? en.subtitles.attention}
+          </p>
         </div>
       </div>
       {!online && (
-        <Banner kind="offline" label={en.states.offline}>
+        <Banner kind="offline" label={en.banner.offline}>
           {en.states.offline}
         </Banner>
       )}
@@ -131,7 +133,7 @@ export class RouteErrorBoundary extends Component<{ children: ReactNode }, { err
       <div className="page">
         <Banner
           kind="error"
-          label={en.states.error}
+          label={en.banner.error}
           retryLabel={en.actions.tryAgain}
           onRetry={() => this.setState({ error: null })}
         >

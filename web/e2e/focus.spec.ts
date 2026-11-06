@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures";
 
 test("app root is inert only while the drawer is open", async ({ page }) => {
   await page.goto("/__gallery");
@@ -33,11 +33,13 @@ test("first load on a real route leaves focus on body", async ({ page }) => {
 });
 test("first tab on a real route reaches the skip link", async ({ page }) => {
   await page.goto("/fleet");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await page.keyboard.press("Tab");
   await expect(page.getByRole("link", { name: "Skip to main content" })).toBeFocused();
 });
 test("skip link moves focus to main", async ({ page }) => {
   await page.goto("/fleet");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await page.keyboard.press("Tab");
   await page.keyboard.press("Enter");
   await expect(page.locator("#main-content")).toBeFocused();
