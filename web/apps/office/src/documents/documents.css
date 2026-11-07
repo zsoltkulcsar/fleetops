@@ -1,11 +1,23 @@
 .documents-page {
-  max-width: 1180px;
+  max-width: 1440px;
 }
 .documents-page .search-field {
   margin-left: auto;
 }
 .documents-page .search-field input {
-  min-width: 280px;
+  min-width: 0;
+  width: 240px;
+}
+.documents-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+.documents-page .panel-header {
+  align-items: flex-start;
+  gap: 12px;
 }
 .document-filters {
   display: flex;
@@ -18,7 +30,7 @@
   color: var(--ink-2);
   border-radius: 999px;
   padding: 7px 12px;
-  font-weight: 650;
+  font-weight: 600;
 }
 .document-filter.selected {
   color: var(--accent);
@@ -31,7 +43,7 @@
 }
 .queue-card {
   display: grid;
-  grid-template-columns: 150px 1fr minmax(340px, 1.5fr);
+  grid-template-columns: 96px minmax(140px, 1fr) minmax(300px, 1.3fr);
   gap: 18px;
   align-items: start;
   border: 1px solid var(--line);
@@ -50,10 +62,28 @@
   color: var(--ink-2);
   text-align: center;
   font-size: var(--type-caption);
+  width: 100%;
+  border: 1px solid var(--line);
+  padding: 12px 8px;
+  color: var(--accent);
+  font-weight: 600;
+  transition: background-color 120ms ease-out;
+}
+.queue-thumb:hover {
+  background: var(--accent-soft);
 }
 .queue-card-body {
   display: grid;
   gap: 6px;
+}
+.queue-card-body h3 {
+  font: 600 var(--type-body) / 1.4 var(--font-body);
+}
+.queue-card-body p {
+  margin: 8px 0 0;
+  color: var(--ink-2);
+  font-size: var(--type-caption);
+  max-width: 30ch;
 }
 .queue-card-body small {
   color: var(--ink-2);
@@ -62,6 +92,33 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
+  padding: 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  min-width: 0;
+}
+.queue-actions h3 {
+  grid-column: 1 / -1;
+  margin-bottom: 4px;
+  font: 600 var(--type-body) var(--font-body);
+}
+.queue-actions label {
+  min-width: 0;
+}
+.queue-actions input {
+  width: 100%;
+  min-width: 0;
+}
+.queue-actions .queue-reason {
+  grid-column: 1 / -1;
+}
+.queue-reason-hint {
+  grid-column: 1 / -1;
+  color: var(--ink-2);
+  font-size: var(--type-caption);
+  font-weight: 400;
+  margin: -4px 0 2px;
 }
 .queue-actions label,
 .queue-delete {
@@ -84,16 +141,32 @@
   display: flex;
   gap: 8px;
 }
-.queue-actions label:last-child {
-  grid-column: 1 / -1;
-}
 .queue-delete {
   grid-column: 1 / -1;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(160px, 240px) auto;
   align-items: center;
   gap: 8px;
   border-top: 1px solid var(--line);
   padding-top: 10px;
+}
+.queue-delete p {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: var(--type-caption);
+}
+.queue-delete .danger {
+  color: var(--crit);
+  background: transparent;
+}
+.queue-delete .danger:hover:not(:disabled) {
+  background: var(--crit-bg);
+}
+.queue-error {
+  grid-column: 1 / -1;
+}
+.queue-error .banner {
+  margin-bottom: 0;
 }
 .queue-delete input {
   flex: 1;
@@ -125,6 +198,7 @@
 }
 .office-search {
   position: relative;
+  min-width: 0;
 }
 .office-search input {
   width: min(360px, 28vw);
@@ -173,7 +247,7 @@
   padding: 2px 6px;
   border-radius: 999px;
   background: var(--accent);
-  color: white;
+  color: var(--accent-ink);
   font-size: 11px;
   text-align: center;
 }
@@ -189,7 +263,7 @@
   gap: 6px;
 }
 .status-verified {
-  color: var(--good);
+  color: var(--ok);
 }
 .status-rejected {
   color: var(--crit);
@@ -284,6 +358,15 @@
   color: var(--accent);
   font-weight: 600;
 }
+@media (max-width: 1100px) {
+  .queue-card {
+    grid-template-columns: 100px minmax(0, 1fr);
+  }
+  .queue-actions,
+  .queue-delete {
+    grid-column: 1 / -1;
+  }
+}
 @media (max-width: 767px) {
   .documents-page .search-field {
     width: 100%;
@@ -300,7 +383,27 @@
   .queue-delete {
     grid-column: 1 / -1;
   }
+  .office-search {
+    flex: 1;
+  }
   .office-search input {
-    width: 170px;
+    width: 100%;
+    min-width: 0;
+  }
+  .queue-delete {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .queue-delete .ui-button {
+    justify-self: start;
+  }
+  .queue-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .queue-card {
+    gap: 12px;
+    padding: 12px;
+  }
+  .queue-delete input {
+    min-width: 0;
   }
 }

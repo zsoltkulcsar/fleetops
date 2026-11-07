@@ -68,9 +68,6 @@
   --spacing-4: var(--space-4);
   --spacing-5: var(--space-5);
   --spacing-6: var(--space-6);
-  --radius-control: var(--radius-control);
-  --radius-panel: var(--radius-panel);
-  --radius-sheet: var(--radius-sheet);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -107,7 +104,9 @@ body {
   font: var(--type-body) / 1.45 var(--font-body);
 }
 button,
-input {
+input,
+select,
+textarea {
   font: inherit;
 }
 button {
@@ -154,12 +153,22 @@ h2 {
   font-family: var(--font-data);
 }
 .ui-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
   border: 1px solid var(--line);
   border-radius: var(--radius-control);
-  padding: 9px 13px;
+  padding: 6px 12px;
   background: var(--surface);
   color: var(--ink);
   font-weight: 600;
+  line-height: 1.4;
+  text-decoration: none;
+  transition:
+    background-color 120ms ease-out,
+    border-color 120ms ease-out;
 }
 .ui-button:hover:not(:disabled) {
   background: var(--surface-2);
@@ -183,7 +192,8 @@ h2 {
   align-items: center;
   gap: 6px;
   border-radius: 99px;
-  padding: 4px 8px;
+  padding: 2px 7px;
+  line-height: 1.4;
   color: var(--status-color);
   background: var(--status-bg);
   font-size: var(--type-caption);
@@ -237,6 +247,9 @@ h2 {
   border: 1px solid var(--line);
   border-radius: 4px;
   background: var(--surface);
+  white-space: nowrap;
+  line-height: 1.2;
+  font-weight: 600;
 }
 .plate .eu {
   padding: 3px 5px;
@@ -254,6 +267,12 @@ h2 {
   justify-content: space-between;
   gap: var(--space-3);
   margin-bottom: 14px;
+}
+.panel-header {
+  flex-wrap: wrap;
+}
+.panel-header > * {
+  min-width: 0;
 }
 .alert-card {
   display: grid;

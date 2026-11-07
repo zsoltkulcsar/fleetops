@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Clock3, FileUp, RefreshCw, Search, XCircle } from "lucide-react";
+import { CheckCircle2, Clock3, FileText, FileUp, RefreshCw, Search, XCircle } from "lucide-react";
 import { Banner, Drawer, EmptyState, Panel, Toast } from "@fleetops/ui";
 import type { components } from "@fleetops/api-client";
 import { useSession } from "../auth/AuthGate";
@@ -64,8 +64,7 @@ export function Documents() {
   const canUpload = Boolean(roleOwner(session.data?.roles ?? []));
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if ((params.has("upload") || params.has("ownerId")) && canUpload)
-      setDialogOpen(true);
+    if ((params.has("upload") || params.has("ownerId")) && canUpload) setDialogOpen(true);
   }, [canUpload]);
 
   useEffect(() => {
@@ -128,6 +127,7 @@ export function Documents() {
     <button
       type="button"
       className={filter === value ? "document-filter selected" : "document-filter"}
+      aria-pressed={filter === value}
       onClick={() => setFilter(value)}
     >
       {label}
@@ -163,12 +163,24 @@ export function Documents() {
       <Panel
         title={filter === "queue" ? en.documents.queue : en.documents.panelTitle}
         filters={
-          <div className="document-filters">
-            {filterLabel("queue", en.documents.queue, counts.data?.queue)}
-            {filterLabel("all", en.documents.all)}
-            {filterLabel("expiring", en.documents.expiring, counts.data?.expiring)}
-            {filterLabel("expired", en.documents.expired, counts.data?.expired)}
-            {filterLabel("missing", en.documents.missing, counts.data?.missing)}
+          <div className="documents-toolbar">
+            <div className="document-filters">
+              {filterLabel("queue", en.documents.queue, counts.data?.queue)}
+              {filterLabel("all", en.documents.all)}
+              {filterLabel("expiring", en.documents.expiring, counts.data?.expiring)}
+              {filterLabel("expired", en.documents.expired, counts.data?.expired)}
+              {filterLabel("missing", en.documents.missing, counts.data?.missing)}
+            </div>
+            <label className="search-field">
+              <Search size={16} aria-hidden />
+              <span className="visually-hidden">{en.documents.searchLabel}</span>
+              <input
+                id="documents-search"
+                placeholder={en.documents.searchPlaceholder}
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+            </label>
           </div>
         }
       >
@@ -200,6 +212,7 @@ export function Documents() {
                     document={document}
                     roles={session.data?.roles ?? []}
                     onChanged={refresh}
+                    onReview={() => setOpenId(document.id)}
                   />
                 ))
               : null}
@@ -264,7 +277,18 @@ export function Documents() {
                       const Icon = statusIcons[document.status];
                       return (
                         <tr key={document.id} onClick={() => setOpenId(document.id)} className="document-row">
-                          <td>{en.documents.types[document.type]}</td>
+                          <td>
+                            <button
+                              className="document-link"
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setOpenId(document.id);
+                              }}
+                            >
+                              {en.documents.types[document.type]}
+                            </button>
+                          </td>
                           <td>{document.ownerName}</td>
                           <td>{document.number ?? "—"}</td>
                           <td className="tabular-nums">{formatDocumentDate(document.issuedAt)}</td>
@@ -333,12 +357,16 @@ function QueueCard({
   document,
   roles,
   onChanged,
+  onReview,
 }: {
   document: components["schemas"]["DocumentListItem"];
   roles: string[];
   onChanged: () => void;
+  onReview: () => void;
 }) {
   const [reason, setReason] = useState("");
+  const [deleteReason, setDeleteReason] = useState("");
+  const [failure, setFailure] = useState(false);
   const [expiresAt, setExpiresAt] = useState("");
   const [number, setNumber] = useState(document.number ?? "");
   const [busy, setBusy] = useState(false);
@@ -358,23 +386,35 @@ function QueueCard({
   ].includes(document.type);
   async function run(action: () => Promise<unknown>) {
     setBusy(true);
+    setFailure(false);
     try {
       await action();
       onChanged();
+    } catch {
+      setFailure(true);
     } finally {
       setBusy(false);
     }
   }
   return (
-    <article className="queue-card">
-      <div className="queue-thumb">
-        <FileUp size={22} aria-hidden />
-        <span>{en.documents.types[document.type]}</span>
-      </div>
+    <article className="queue-card" aria-busy={busy}>
+      <button
+        className="queue-thumb"
+        type="button"
+        onClick={onReview}
+        aria-label={`${en.documents.reviewFile}: ${document.ownerName}`}
+      >
+        <FileText size={28} aria-hidden />
+        <span>{en.documents.reviewFile}</span>
+      </button>
       <div className="queue-card-body">
-        <strong>{en.documents.types[document.type]}</strong>
+        <h3>{en.documents.types[document.type]}</h3>
         <span>{document.ownerName}</span>
-        <small>{formatDocumentDate(document.uploadedAt)}</small>
+        <small>
+          {en.documents.uploadedColumn}{" "}
+          <time dateTime={document.uploadedAt}>{formatDocumentDate(document.uploadedAt)}</time>
+        </small>
+        <p>{en.documents.reviewHint}</p>
       </div>
       {document.canAct ? (
         <form
@@ -392,6 +432,7 @@ function QueueCard({
             );
           }}
         >
+          <h3>{en.documents.verificationDetails}</h3>
           {typeNeedsExpiry && (
             <label>
               {en.documents.expires}
@@ -407,9 +448,15 @@ function QueueCard({
             {en.documents.number}
             <input value={number} onChange={(event) => setNumber(event.target.value)} />
           </label>
+          <label className="queue-reason">
+            {en.documents.rejectReason}
+            <input value={reason} onChange={(event) => setReason(event.target.value)} />
+          </label>
+          <p className="queue-reason-hint">{en.documents.rejectHint}</p>
           <div className="queue-buttons">
             <button className="ui-button primary" disabled={busy} type="submit">
-              {en.documents.verify}
+              <CheckCircle2 size={16} aria-hidden />
+              {busy ? en.documents.saving : en.documents.verify}
             </button>
             <button
               className="ui-button ghost"
@@ -419,13 +466,10 @@ function QueueCard({
                 void run(() => documentsApi.reject(document.id, { version: document.version, reason }))
               }
             >
+              <XCircle size={16} aria-hidden />
               {en.documents.reject}
             </button>
           </div>
-          <label>
-            {en.documents.rejectReason}
-            <input value={reason} onChange={(event) => setReason(event.target.value)} />
-          </label>
         </form>
       ) : (
         <p className="ui-muted">
@@ -434,22 +478,32 @@ function QueueCard({
       )}
       {canDelete && (
         <div className="queue-delete">
+          <p>{en.documents.deleteHint}</p>
           <input
             aria-label={en.documents.deleteReason}
             placeholder={en.documents.deleteReason}
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
+            value={deleteReason}
+            onChange={(event) => setDeleteReason(event.target.value)}
           />
           <button
             className="ui-button danger"
-            disabled={busy || !reason.trim()}
+            disabled={busy || !deleteReason.trim()}
             type="button"
             onClick={() =>
-              void run(() => documentsApi.remove(document.id, { version: document.version, reason }))
+              void run(() =>
+                documentsApi.remove(document.id, { version: document.version, reason: deleteReason.trim() }),
+              )
             }
           >
             {en.documents.deleteMisupload}
           </button>
+        </div>
+      )}
+      {failure && (
+        <div className="queue-error">
+          <Banner kind="error" label={en.documents.errorLabel}>
+            {en.documents.actionError}
+          </Banner>
         </div>
       )}
     </article>
@@ -469,6 +523,19 @@ function DocumentDetailDrawer({
 }) {
   const detail = useQuery({ queryKey: ["document", id], queryFn: () => documentsApi.detail(id) });
   const [checkedAt, setCheckedAt] = useState(new Date().toISOString().slice(0, 10));
+  if (detail.isError)
+    return (
+      <Drawer open title={en.documents.detail} onClose={onClose} closeLabel={en.documents.close}>
+        <Banner
+          kind="error"
+          label={en.documents.errorLabel}
+          retryLabel={en.documents.retry}
+          onRetry={() => void detail.refetch()}
+        >
+          {en.documents.error}
+        </Banner>
+      </Drawer>
+    );
   if (!detail.data)
     return (
       <Drawer open title={en.documents.detail} onClose={onClose} closeLabel={en.documents.close}>
@@ -485,6 +552,7 @@ function DocumentDetailDrawer({
           {en.documents.status[item.status]}
         </p>
         {item.rejectReason && <p className="document-reject-reason">{item.rejectReason}</p>}
+        {item.files.length === 0 && <p className="ui-muted">{en.documents.noFiles}</p>}
         <ul>
           {item.files.map((file) => (
             <li key={file.id}>

@@ -123,6 +123,32 @@ test("show more appears after eight groups", async ({ page }) => {
 
   await expect(page.getByText("Show 1 more", { exact: true })).toBeVisible();
   await expect(page.locator(".attention-card")).toHaveCount(8);
+  await page.getByRole("button", { name: "Show 1 more" }).click();
+  await expect(page.locator(".attention-card")).toHaveCount(9);
+  await expect(page.getByRole("button", { name: "Show 1 more" })).toHaveCount(0);
+});
+
+test("more actions expands useful secondary links and collapses them again", async ({ page }) => {
+  await session(page, ["dispatcher"]);
+  await queue(page, attention([group()]));
+  await page.goto("/");
+  const trigger = page.getByRole("button", { name: "More actions" });
+  await expect(trigger).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByRole("link", { name: "View vehicle record" })).toBeHidden();
+  await trigger.click();
+  await expect(trigger).toHaveAttribute("aria-expanded", "true");
+  await expect(page.getByRole("link", { name: "View vehicle record" })).toHaveAttribute(
+    "href",
+    `/fleet/${ids(2)}`,
+  );
+  await expect(page.getByRole("link", { name: "Open verification queue" })).toHaveAttribute(
+    "href",
+    "/documents?filter=queue",
+  );
+  await expect(page.getByRole("button", { name: "Snooze", exact: true })).toBeVisible();
+  await trigger.click();
+  await expect(page.getByRole("button", { name: "Snooze", exact: true })).toBeHidden();
+  await expect(page.getByRole("link", { name: "View vehicle record" })).toBeHidden();
 });
 
 test("primary button opens the work and calls no alert api", async ({ page }) => {
@@ -213,6 +239,7 @@ test("snooze needs a reason and offers undo", async ({ page }) => {
     }),
   );
   await page.goto("/");
+  await page.getByRole("button", { name: "More actions" }).click();
   await page.getByRole("button", { name: "Snooze" }).click();
   await page.getByRole("button", { name: "Snooze", exact: true }).last().click();
   await expect(page.getByText("A reason is required.", { exact: true })).toBeVisible();

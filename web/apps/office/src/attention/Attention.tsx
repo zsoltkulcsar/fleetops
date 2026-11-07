@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Check, ChevronDown, CircleAlert, FileUp, Truck, UserRound } from "lucide-react";
-import { Banner, SegmentedControl, Skeleton, Toast } from "@fleetops/ui";
+import { useEffect, useId, useMemo, useState } from "react";
+import { Check, ChevronDown, CircleAlert, Clock3, Info, Truck, UserRound } from "lucide-react";
+import { Banner, Plate, SegmentedControl, Skeleton, Toast } from "@fleetops/ui";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router";
 import { useSession } from "../auth/AuthGate";
@@ -46,6 +46,7 @@ export function Attention() {
   const owner = session.data?.roles.includes("owner") === true;
   const canSnooze = session.data?.roles.some((role) => role === "hr" || role === "dispatcher") === true;
   const [filter, setFilter] = useState("all");
+  const [visibleCount, setVisibleCount] = useState(8);
   const [snoozing, setSnoozing] = useState<{ item: AttentionItem; group: AttentionGroup } | null>(null);
   const [toast, setToast] = useState<{ id: string; version: number } | null>(null);
   const query = useQuery({ queryKey: ["attention"], queryFn: attentionApi.list, refetchInterval: 60_000 });
@@ -69,7 +70,8 @@ export function Attention() {
   useEffect(() => {
     document.title = `${en.nav.attention} · ${en.appName}`;
   }, []);
-  const visibleGroups = groups.slice(0, 8);
+  const visibleGroups = groups.slice(0, visibleCount);
+  useEffect(() => setVisibleCount(8), [filter]);
   useEffect(() => {
     if (query.isSuccess) void client.invalidateQueries({ queryKey: ["attention"] });
   }, []);
@@ -159,6 +161,7 @@ export function Attention() {
         </div>
       )}
       <div className="attention-toolbar">
+        <h2>{en.attention.queueTitle}</h2>
         <SegmentedControl
           ariaLabel={en.attention.filterLabel}
           value={filter}
@@ -189,7 +192,16 @@ export function Attention() {
               onSnooze={setSnoozing}
             />
           ))}
-          {groups.length > 8 && <p className="ui-muted">{en.attention.more(groups.length - 8)}</p>}
+          {groups.length > visibleCount && (
+            <button
+              className="attention-show-more"
+              type="button"
+              onClick={() => setVisibleCount((count) => count + 8)}
+            >
+              <ChevronDown size={16} aria-hidden />
+              {en.attention.more(Math.min(8, groups.length - visibleCount))}
+            </button>
+          )}
         </div>
       )}
       {snoozing && (
@@ -234,60 +246,94 @@ function AttentionCard({
   canSnooze: boolean;
   onSnooze: (value: { item: AttentionItem; group: AttentionGroup }) => void;
 }) {
-  const navigate = useNavigate();
+  const [expanded, setExpanded] = useState(false);
+  const actionsId = useId();
   const critical = group.worstSeverity === "critical";
   return (
     <article className={`attention-card ${critical ? "critical" : "compact"}`}>
       <header>
+        <span className="eyebrow">
+          {group.subjectType === "vehicle" ? en.attention.vehicle : en.attention.person}
+        </span>
         <span className="attention-subject">
           {group.subjectType === "vehicle" ? (
             <Truck size={17} aria-hidden />
           ) : (
             <UserRound size={17} aria-hidden />
           )}
-          {group.subjectName}
-        </span>
-        <span className={`ui-status status-${critical ? "crit" : "warn"}`}>
-          {critical ? en.attention.critical : en.attention.warning}
+          {group.subjectType === "vehicle" ? <Plate>{group.subjectName}</Plate> : group.subjectName}
         </span>
       </header>
-      <div className="attention-items">
-        {group.items.map((item) => {
-          const action = actionFor(item, group, owner);
-          return (
-            <div className="attention-item" key={item.id}>
-              <span className={`attention-pill ${item.severity}`}>
-                <CircleAlert size={14} aria-hidden />
-                {item.severity === "critical" ? en.attention.critical : en.attention.warning}
-              </span>
-              <div>
-                <h2>{itemTitle(item)}</h2>
-                <p className="ui-muted">
-                  {item.dueAt ? formatDocumentDate(item.dueAt) : en.attention.noDueDate}
-                </p>
+      <div className="attention-body">
+        <div className="attention-items">
+          {group.items.map((item) => {
+            const action = actionFor(item, group, owner);
+            const SeverityIcon =
+              item.severity === "critical" ? CircleAlert : item.severity === "warning" ? Clock3 : Info;
+            return (
+              <div className="attention-item" key={item.id}>
+                <span className={`attention-pill ${item.severity}`}>
+                  <SeverityIcon size={14} aria-hidden />
+                  {item.severity === "critical"
+                    ? en.attention.critical
+                    : item.severity === "warning"
+                      ? en.attention.warning
+                      : en.attention.notice}
+                </span>
+                <div className="attention-item-copy">
+                  <h3>
+                    {itemTitle(item)} <span className="attention-rule">{item.ruleId}</span>
+                  </h3>
+                  <p className="ui-muted">
+                    {item.dueAt ? (
+                      <>
+                        {en.attention.due} <time dateTime={item.dueAt}>{formatDocumentDate(item.dueAt)}</time>
+                      </>
+                    ) : (
+                      en.attention.noDueDate
+                    )}
+                  </p>
+                </div>
+                <div className="attention-item-actions">
+                  <Link className="ui-button primary" to={action.href}>
+                    {action.label}
+                  </Link>
+                  {expanded && canSnooze && item.snoozable && (
+                    <button
+                      className="ui-button ghost"
+                      type="button"
+                      onClick={() => onSnooze({ item, group })}
+                    >
+                      {en.attention.snooze}
+                    </button>
+                  )}
+                </div>
               </div>
-              <Link className="ui-button primary" to={action.href}>
-                {action.label}
-              </Link>
-              {canSnooze && item.snoozable && (
-                <button className="ui-button ghost" type="button" onClick={() => onSnooze({ item, group })}>
-                  {en.attention.snooze}
-                </button>
+            );
+          })}
+        </div>
+        {!critical && (
+          <>
+            <button
+              className="more-actions"
+              type="button"
+              aria-expanded={expanded}
+              aria-controls={actionsId}
+              onClick={() => setExpanded((value) => !value)}
+            >
+              <ChevronDown size={15} aria-hidden />
+              {en.attention.moreActions}
+            </button>
+            <div id={actionsId} className="attention-secondary" hidden={!expanded}>
+              {group.subjectType === "vehicle" && (
+                <Link to={`/fleet/${group.subjectId}`}>{en.attention.viewVehicle}</Link>
               )}
+              <Link to="/documents?filter=all">{en.attention.viewDocuments}</Link>
+              <Link to="/documents?filter=queue">{en.attention.reviewQueue}</Link>
             </div>
-          );
-        })}
+          </>
+        )}
       </div>
-      {!critical && (
-        <button
-          className="more-actions"
-          type="button"
-          onClick={() => group.items[0]?.ruleId === "A-05" && navigate(`/fleet/${group.subjectId}`)}
-        >
-          <ChevronDown size={15} aria-hidden />
-          {en.attention.moreActions}
-        </button>
-      )}
     </article>
   );
 }

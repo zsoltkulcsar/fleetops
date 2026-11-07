@@ -4,14 +4,17 @@
 .office-shell {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 240px 1fr;
+  grid-template-columns: 232px minmax(0, 1fr);
   grid-template-rows: 64px 1fr;
 }
 .sidebar {
+  position: sticky;
+  top: 0;
+  height: 100dvh;
   grid-row: 1 / 3;
   display: flex;
   flex-direction: column;
-  padding: 20px 14px;
+  padding: 20px 12px;
   background: var(--surface);
   border-right: 1px solid var(--line);
 }
@@ -63,11 +66,12 @@
   justify-content: flex-start;
 }
 .topbar {
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 18px;
-  padding: 10px 28px;
+  padding: 10px 24px;
   background: var(--surface);
   border-bottom: 1px solid var(--line);
 }
@@ -75,11 +79,14 @@
   display: grid;
   flex: 1;
   gap: 0;
+  min-width: 0;
 }
 .topbar-actions {
   position: relative;
   display: flex;
   gap: 8px;
+  align-items: center;
+  min-width: 0;
 }
 .notification-menu {
   position: relative;
@@ -97,7 +104,7 @@
   border: 1px solid var(--line);
   border-radius: var(--radius-panel);
   background: var(--surface);
-  box-shadow: var(--shadow-panel);
+  box-shadow: var(--elevation-overlay);
 }
 .notification-heading {
   display: flex;
@@ -166,7 +173,7 @@
 }
 .content {
   min-width: 0;
-  padding: 28px;
+  padding: 20px 24px;
 }
 .jobs-panel {
   display: grid;
@@ -239,7 +246,7 @@
   margin: auto;
 }
 .page {
-  max-width: 1120px;
+  max-width: 1440px;
   margin: 0 auto;
 }
 .page-title {
@@ -247,7 +254,7 @@
   align-items: start;
   justify-content: space-between;
   gap: 20px;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 .page-title p {
   margin: 6px 0 0;
@@ -320,12 +327,15 @@
 
 @media (768px <= width < 1280px) {
   .office-shell {
-    grid-template-columns: 72px 1fr;
+    grid-template-columns: 72px minmax(0, 1fr);
   }
   .sidebar {
     display: none;
   }
   .icon-rail {
+    position: sticky;
+    top: 0;
+    height: 100dvh;
     grid-row: 1 / 3;
     display: flex;
     align-items: center;
@@ -370,13 +380,29 @@
   }
   .topbar {
     padding: 10px 16px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .topbar-title {
+    flex-basis: 100%;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .topbar-actions {
+    width: 100%;
+  }
+  .topbar-actions > .ui-button {
+    flex-shrink: 0;
+    white-space: nowrap;
   }
   .menu-button {
     display: inline-flex;
     padding: 8px;
   }
   .content {
-    padding: 20px 16px;
+    padding: 16px;
   }
   .page-title {
     align-items: stretch;
@@ -403,6 +429,8 @@
     color: var(--ink-2);
     font-size: 11px;
     text-decoration: none;
+    min-height: 44px;
+    align-content: center;
   }
   .more-trigger {
     border: 0;

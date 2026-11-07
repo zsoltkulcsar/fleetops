@@ -1,10 +1,12 @@
 .fleet-page {
-  max-width: 1180px;
+  max-width: 1440px;
 }
 .fleet-filters {
   display: flex;
   gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 .checkbox-field {
   display: inline-flex;
@@ -46,6 +48,7 @@
 }
 .table-wrap {
   overflow-x: auto;
+  max-width: calc(100% + 32px);
   margin: 0 -16px;
 }
 .table-wrap table {
@@ -67,7 +70,8 @@
 }
 .table-wrap th,
 .table-wrap td {
-  padding: 11px 16px;
+  padding: 6px 16px;
+  height: 38px;
   border-bottom: 1px solid var(--line);
   white-space: nowrap;
 }
@@ -77,7 +81,10 @@
 .table-wrap tbody tr:hover,
 .table-wrap tbody tr:focus {
   background: var(--accent-soft);
-  outline: none;
+}
+.table-wrap tbody tr:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
 }
 .load-more {
   display: block;

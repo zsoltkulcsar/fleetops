@@ -55,7 +55,9 @@ export function Sidebar() {
   return (
     <aside className="sidebar">
       <Link to="/" className="brand">
-        <span className="brand-mark">F</span>
+        <span className="brand-mark">
+          <Truck size={20} aria-hidden />
+        </span>
         <span>FleetOps</span>
       </Link>
       <nav aria-label="Primary">
@@ -80,7 +82,7 @@ export function TabletRail() {
     <aside className="icon-rail">
       <nav aria-label="Primary">
         <Link to="/" className="brand-mark" aria-label="FleetOps">
-          F
+          <Truck size={20} aria-hidden />
         </Link>
         {items.map((item) => (
           <NavigationLink key={item.id} item={item} compact />
