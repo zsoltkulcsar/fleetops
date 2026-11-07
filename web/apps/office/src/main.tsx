@@ -10,6 +10,7 @@ import { Fleet } from "./fleet/Fleet";
 import { FleetRecord } from "./fleet/FleetRecord";
 import { Documents } from "./documents/Documents";
 import { People } from "./people/People";
+import { Settings } from "./settings/Settings";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -50,7 +51,7 @@ createRoot(document.getElementById("app")!).render(
             <Route path="/people" element={<People />} />
             <Route path="/documents" element={<Documents />} />
             <Route path="/payroll" element={page("payroll")} />
-            <Route path="/settings" element={page("settings")} />
+            <Route path="/settings" element={<Settings />} />
             {import.meta.env.DEV && <Route path="/__gallery" element={<DevGalleryRoute />} />}
           </Route>
           <Route path="*" element={<CanonicalRedirect />} />

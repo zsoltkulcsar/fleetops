@@ -13,6 +13,7 @@ using FleetOps.Modules.Fleet;
 using FleetOps.Modules.Documents;
 using FleetOps.Modules.Readiness;
 using FleetOps.Api.Files;
+using FleetOps.Api.Jobs;
 using FleetOps.Kernel.Files;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Identity;
@@ -64,6 +65,10 @@ builder.Services.AddSingleton<ICommandTransactionFactory, NpgsqlCommandTransacti
 builder.Services.AddScoped<ISubjectRoleLookup, FailClosedSubjectRoleLookup>();
 builder.Services.AddScoped<CommandDispatcher>();
 builder.Services.AddScoped<QueryDispatcher>();
+builder.Services.AddScoped<JobRunner>();
+builder.Services.AddScoped<IJob, FileOrphansJob>();
+builder.Services.AddScoped<ICommandHandler<RunJobCommand, JobRunResult>, RunJobCommandHandler>();
+builder.Services.AddScoped<IQueryHandler<ListJobsQuery, JobListResult>, ListJobsQueryHandler>();
 builder.Services.AddScoped<IQueryHandler<GetVehicleQuery, VehicleDetail>, VehicleQueryHandler>();
 builder.Services.AddScoped<IQueryHandler<ListVehiclesQuery, VehicleListResult>, VehicleListQueryHandler>();
 builder.Services.AddScoped<IVehicleStore, EfVehicleStore>();
@@ -136,6 +141,10 @@ app.Use(async (context, next) =>
     { var code = context.Items.TryGetValue("ProblemCode", out var value) && value is string text ? text : "not_signed_in"; await Results.Json(new { code }, statusCode: 401).ExecuteAsync(context); return; }
     await next();
 });
+app.MapGet("/jobs/{name}", async (string name, HttpContext context, JobRunner runner, CancellationToken cancellationToken) => await JobEndpoints.RunAsync(name, JobTrigger.scheduler, context, runner, cancellationToken)).ExcludeFromDescription();
+app.MapGet("/jobs/nightly", async (HttpContext context, JobRunner runner, CancellationToken cancellationToken) => await JobEndpoints.RunNightlyAsync(context, runner, cancellationToken)).ExcludeFromDescription();
+app.MapPost("/api/v1/admin/jobs/{name}/run", async (string name, CommandDispatcher dispatcher, JobRunner runner, IConfiguration configuration, CancellationToken cancellationToken) => !configuration.GetValue("Jobs:AdminTrigger", false) || !runner.Contains(name) ? Results.NotFound() : Results.Ok(await dispatcher.DispatchAsync<RunJobCommand, JobRunResult>(new(name), cancellationToken))).Produces<JobRunResult>();
+app.MapGet("/api/v1/admin/jobs", async (QueryDispatcher dispatcher, IConfiguration configuration, CancellationToken cancellationToken) => !configuration.GetValue("Jobs:AdminTrigger", false) ? Results.NotFound() : Results.Ok(await dispatcher.DispatchAsync<ListJobsQuery, JobListResult>(new(), cancellationToken))).Produces<JobListResult>();
 app.MapGet("/healthz", async (IDatabaseHealth database, CancellationToken cancellationToken) => await database.IsHealthyAsync(cancellationToken) ? Results.Ok(new { api = "ok", database = "ok" }) : Results.Problem(statusCode: 503, title: "Service unavailable", detail: "Database unavailable", extensions: new Dictionary<string, object?> { ["code"] = "database_unavailable", ["database"] = "unavailable" }));
 AuthEndpoints.Map(app);
 app.MapPost("/api/v1/fleet/vehicles", async (CreateVehicleCommand command, CommandDispatcher dispatcher, CancellationToken cancellationToken) => { var result = await dispatcher.DispatchAsync<CreateVehicleCommand, VehicleDetail>(command, cancellationToken); return Results.Created($"/api/v1/fleet/vehicles/{result.Id}", result); }).Produces<VehicleDetail>(StatusCodes.Status201Created);

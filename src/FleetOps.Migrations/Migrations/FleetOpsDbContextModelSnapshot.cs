@@ -243,6 +243,76 @@ namespace FleetOps.Migrations.Migrations
                     b.ToTable("privacy_acknowledgements", "fleetops");
                 });
 
+            modelBuilder.Entity("FleetOps.Migrations.JobCheckpoint", b =>
+                {
+                    b.Property<string>("Name")
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Cursor")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("cursor");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Name");
+
+                    b.ToTable("job_checkpoints", "fleetops");
+                });
+
+            modelBuilder.Entity("FleetOps.Migrations.JobRun", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ActorName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("actor_name");
+
+                    b.Property<string>("ErrorType")
+                        .HasColumnType("text")
+                        .HasColumnName("error_type");
+
+                    b.Property<DateTimeOffset?>("FinishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("finished_at");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.Property<int>("Processed")
+                        .HasColumnType("integer")
+                        .HasColumnName("processed");
+
+                    b.Property<DateTimeOffset>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Trigger")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("trigger");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name", "StartedAt");
+
+                    b.ToTable("job_runs", "fleetops");
+                });
+
             modelBuilder.Entity("FleetOps.Migrations.MigrationMarker", b =>
                 {
                     b.Property<int>("Id")

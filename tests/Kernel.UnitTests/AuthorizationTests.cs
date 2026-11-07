@@ -118,7 +118,7 @@ public sealed class AuthorizationTests
     [Fact]
     public void Matrix_contains_all_permission_rows()
     {
-        Assert.Equal(34, PermissionMatrix.Entries.Count);
+        Assert.Equal(35, PermissionMatrix.Entries.Count);
         Assert.Contains(PermissionMatrix.Entries, x => x.ActionKey == "shifts.approve_reject" && x.AllowedRoles.SetEquals([RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner]));
         Assert.Contains(PermissionMatrix.Entries, x => x.ActionKey == "documents.medical.view" && x.OwnRoles.SetEquals([RoleCode.Driver]));
     }
@@ -162,6 +162,7 @@ public sealed class AuthorizationTests
             ["schedule.edit"] = [RoleCode.Dispatcher, RoleCode.Owner],
             ["settings.payroll"] = [RoleCode.Hr, RoleCode.Owner],
             ["notifications.mine"] = [RoleCode.Driver, RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner]
+            , ["jobs.trigger"] = [RoleCode.Owner]
         };
 
         Assert.Equal(expected.Keys.Order(), PermissionMatrix.Entries.Select(x => x.ActionKey).Order());
@@ -208,6 +209,7 @@ public sealed class AuthorizationTests
             ["schedule.edit"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.View, PermissionMatrix.Cell.Full),
             ["settings.payroll"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full),
             ["notifications.mine"] = (PermissionMatrix.Cell.Own, PermissionMatrix.Cell.Own, PermissionMatrix.Cell.Own, PermissionMatrix.Cell.Own)
+            , ["jobs.trigger"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.None, PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full)
         };
         Assert.Equal(expected.Keys.Order(), PermissionMatrix.Entries.Select(x => x.ActionKey).Order());
         foreach (var item in expected)
@@ -260,6 +262,7 @@ public sealed class AuthorizationTests
     {
         "shifts.enter_edit" => role is RoleCode.Driver or RoleCode.Dispatcher or RoleCode.Hr or RoleCode.Owner,
         "shifts.approve_reject" or "sessions.manage" or "notifications.mine" => role is RoleCode.Dispatcher or RoleCode.Hr or RoleCode.Owner || (actionKey == "notifications.mine" && role == RoleCode.Driver),
+        "jobs.trigger" => role == RoleCode.Owner,
         "shifts.reopen_exported" or "payroll.export" or "employees.create_edit" or "settings.users" or "settings.purge" or "settings.payroll" or "employees.phone.change" or "audit.export" => role is RoleCode.Hr or RoleCode.Owner,
         "employees.view" or "documents.medical.view" => role is RoleCode.Driver or RoleCode.Hr or RoleCode.Owner,
         "documents.view" or "documents.people.lookup" => role is RoleCode.Hr or RoleCode.Owner,
