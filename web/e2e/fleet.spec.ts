@@ -16,6 +16,9 @@ const vehicle = (id: string, plate: string, status: Vehicle["status"] = "active"
   status,
   ownership: "owned",
   version: 1,
+  shownStatus: status === "retired" ? "retired" : "active",
+  usable: status !== "retired",
+  causes: [],
 });
 const detail = (id = "00000000-0000-0000-0000-000000000001", plate = "KS-DC 1177"): VehicleDetail => ({
   ...vehicle(id, plate),
@@ -34,6 +37,9 @@ const detail = (id = "00000000-0000-0000-0000-000000000001", plate = "KS-DC 1177
   lastTachoDownloadAt: null,
   plateHistory: [],
   requiredDocuments: [],
+  shownStatus: "active",
+  usable: true,
+  causes: [],
 });
 const retiredDetail = (
   id = "v-retired",
@@ -42,6 +48,8 @@ const retiredDetail = (
 ): VehicleDetail => ({
   ...detail(id, plate),
   status: "retired",
+  shownStatus: "retired",
+  usable: false,
   retiredReason: "sold",
   retiredAt,
 });
