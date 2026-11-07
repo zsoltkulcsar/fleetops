@@ -836,6 +836,66 @@ namespace FleetOps.Migrations.Migrations
                     b.ToTable("vehicles", "fleetops");
                 });
 
+            modelBuilder.Entity("FleetOps.Modules.Notifications.Notification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("AlertId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("alert_id");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempts");
+
+                    b.Property<string>("Channel")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("channel");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("employee_id");
+
+                    b.Property<DateTimeOffset?>("NextAttemptAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_attempt_at");
+
+                    b.Property<string>("Parameters")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("parameters");
+
+                    b.Property<DateTimeOffset?>("ReadAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("read_at");
+
+                    b.Property<DateTimeOffset?>("SentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("sent_at");
+
+                    b.Property<string>("TemplateCode")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("template_code");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmployeeId", "ReadAt");
+
+                    b.HasIndex("NextAttemptAt", "Id")
+                        .HasFilter("sent_at is null");
+
+                    b.ToTable("notifications", "fleetops");
+                });
+
             modelBuilder.Entity("FleetOps.Modules.Setup.Depot", b =>
                 {
                     b.Property<Guid>("Id")

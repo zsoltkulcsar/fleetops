@@ -7,10 +7,13 @@ using FleetOps.Kernel.Files;
 using FleetOps.Migrations;
 using FleetOps.Modules.Alerts;
 using FleetOps.Modules.Fleet;
+using FleetOps.Modules.Notifications;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 using Xunit;
@@ -53,6 +56,10 @@ public sealed class VehicleApiFactory : WebApplicationFactory<Program>, IAsyncLi
 
     /// <summary>When set, the next write command runs inside its transaction and then throws.</summary>
     public bool ThrowAfterWrite { get; set; }
+
+    public bool ThrowAfterNotificationWrite { get; set; }
+
+    public bool ThrowNotificationSender { get; set; }
 
     public string RuntimeConnectionString => postgres?.ConnectionString
         ?? throw new InvalidOperationException("Database is not initialized.");
@@ -102,6 +109,19 @@ public sealed class VehicleApiFactory : WebApplicationFactory<Program>, IAsyncLi
                 : new EfVehicleStore(Clock));
             foreach (var evaluator in AdditionalAlertEvaluators)
                 services.AddSingleton<IAlertEvaluator>(evaluator);
+            if (ThrowAfterNotificationWrite)
+            {
+                services.RemoveAll<INotifications>();
+                services.AddScoped<INotifications>(provider => new ThrowingNotifications(
+                    new EfNotifications(
+                        provider.GetRequiredService<TimeProvider>(),
+                        provider.GetRequiredService<INotificationIds>())));
+            }
+            if (ThrowNotificationSender)
+            {
+                services.RemoveAll<IPostCommitNotifications>();
+                services.AddScoped<IPostCommitNotifications, ThrowingPostCommitNotifications>();
+            }
         });
     }
 
@@ -237,6 +257,30 @@ public sealed class VehicleApiFactory : WebApplicationFactory<Program>, IAsyncLi
             _ = await inner.UndoRetireAsync(command, actor, context, cancellationToken);
             clearFailure();
             throw new InvalidOperationException("after write");
+        }
+    }
+
+    private sealed class ThrowingNotifications(INotifications inner) : INotifications
+    {
+        public async Task<Guid> AddAsync(Guid employeeId, string templateCode, object parameters, Guid? alertId, CommandContext context, CancellationToken cancellationToken)
+        {
+            var id = await inner.AddAsync(employeeId, templateCode, parameters, alertId, context, cancellationToken);
+            throw new InvalidOperationException("after notification write");
+        }
+    }
+
+    private sealed class ThrowingPostCommitNotifications(IConfiguration configuration, TimeProvider time) : IPostCommitNotifications
+    {
+        public async Task TrySendAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken)
+        {
+            var connectionString = configuration.GetConnectionString("FleetOps")!;
+            await using var connection = new NpgsqlConnection(connectionString);
+            await connection.OpenAsync(cancellationToken);
+            await using var command = new NpgsqlCommand("update fleetops.notifications set attempts = attempts + 1, next_attempt_at = $1 + interval '1 minute' where id = any($2::uuid[]) and sent_at is null", connection);
+            command.Parameters.AddWithValue(time.GetUtcNow());
+            command.Parameters.AddWithValue(ids.ToArray());
+            await command.ExecuteNonQueryAsync(cancellationToken);
+            throw new InvalidOperationException("notification sender failure");
         }
     }
 

@@ -27,6 +27,7 @@ public static class SettingCatalog
         ["documents.lead_days.tacho_calibration"] = 30,
         ["documents.lead_days.insurance"] = 30,
         ["documents.lead_days.community_licence"] = 60
+        , ["notifications.max_attempts"] = 5
     };
 
     public static int DefaultFor(SettingKey key) => Defaults.TryGetValue(key.Value, out var value) ? value : throw new KeyNotFoundException(key.Value);

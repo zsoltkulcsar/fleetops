@@ -31,6 +31,12 @@ export const en = {
     vehicles: "Vehicles",
     people: "People",
   },
+  notifications: {
+    title: "Notifications",
+    markAll: "Mark all as read",
+    empty: "No notifications.",
+    newLabel: "New",
+  },
   subtitles: {
     attention: "Review the work that needs your attention.",
     timesheets: "Keep working time accurate and ready for approval.",

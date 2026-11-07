@@ -9,10 +9,11 @@ using FleetOps.Modules.Setup;
 using FleetOps.People;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using FleetOps.Modules.Notifications;
 
 namespace FleetOps.Migrations;
 
-public sealed class AlertEngine(IEnumerable<IAlertEvaluator> evaluators, ISettings settings, IReadiness readiness, ICompanyTimeService companyTime, TimeProvider time, ILogger<AlertEngine> logger) : IAlertEngine
+public sealed class AlertEngine(IEnumerable<IAlertEvaluator> evaluators, ISettings settings, IReadiness readiness, ICompanyTimeService companyTime, TimeProvider time, ILogger<AlertEngine> logger, INotifications notifications) : IAlertEngine
 {
     public async Task ApplyAsync(string subjectType, Guid subjectId, CommandContext context, CancellationToken cancellationToken)
     {
@@ -26,7 +27,7 @@ public sealed class AlertEngine(IEnumerable<IAlertEvaluator> evaluators, ISettin
             try
             {
                 var conditions = await evaluator.EvaluateAsync(subjectId, today, now, evaluation, cancellationToken);
-                await ApplyRuleAsync(evaluator, subjectId, conditions, now, context, cancellationToken);
+                await ApplyRuleAsync(evaluator, subjectId, conditions, now, context, notifications, cancellationToken);
             }
             catch (Exception exception)
             {
@@ -37,7 +38,7 @@ public sealed class AlertEngine(IEnumerable<IAlertEvaluator> evaluators, ISettin
         }
     }
 
-    private static async Task ApplyRuleAsync(IAlertEvaluator evaluator, Guid subjectId, IReadOnlyList<AlertCondition> conditions, DateTimeOffset now, CommandContext context, CancellationToken cancellationToken)
+    private static async Task ApplyRuleAsync(IAlertEvaluator evaluator, Guid subjectId, IReadOnlyList<AlertCondition> conditions, DateTimeOffset now, CommandContext context, INotifications notifications, CancellationToken cancellationToken)
     {
         await using var command = new NpgsqlCommand("", (NpgsqlConnection)context.DbConnection, (NpgsqlTransaction)context.DbTransaction);
         var scopes = conditions.Select(x => x.ScopeKey).Distinct(StringComparer.Ordinal).ToArray();
@@ -58,8 +59,9 @@ public sealed class AlertEngine(IEnumerable<IAlertEvaluator> evaluators, ISettin
         }
         foreach (var condition in conditions)
         {
-            await using var insert = new NpgsqlCommand("insert into fleetops.alerts (id, rule_id, subject_type, subject_id, scope_key, severity, due_at, assigned_role, status, opened_at, version) values ($1,$2,$3,$4,$5,$6,$7,$8,'Open',$9,1) on conflict (rule_id, subject_type, subject_id, scope_key) where status <> 'Resolved' do nothing", (NpgsqlConnection)context.DbConnection, (NpgsqlTransaction)context.DbTransaction);
-            insert.Parameters.AddWithValue(Guid.CreateVersion7());
+            var alertId = Guid.CreateVersion7();
+            await using var insert = new NpgsqlCommand("insert into fleetops.alerts (id, rule_id, subject_type, subject_id, scope_key, severity, due_at, assigned_role, status, opened_at, version) values ($1,$2,$3,$4,$5,$6,$7,$8,'Open',$9,1) on conflict (rule_id, subject_type, subject_id, scope_key) where status <> 'Resolved' do nothing returning id", (NpgsqlConnection)context.DbConnection, (NpgsqlTransaction)context.DbTransaction);
+            insert.Parameters.AddWithValue(alertId);
             insert.Parameters.AddWithValue(evaluator.RuleId);
             insert.Parameters.AddWithValue(evaluator.SubjectType);
             insert.Parameters.AddWithValue(subjectId);
@@ -68,7 +70,18 @@ public sealed class AlertEngine(IEnumerable<IAlertEvaluator> evaluators, ISettin
             insert.Parameters.AddWithValue(condition.DueAt is null ? DBNull.Value : condition.DueAt.Value);
             insert.Parameters.AddWithValue(assignedRole);
             insert.Parameters.AddWithValue(now);
-            await insert.ExecuteNonQueryAsync(cancellationToken);
+            var inserted = await insert.ExecuteScalarAsync(cancellationToken);
+            if (inserted is Guid insertedAlertId && condition.Severity == AlertSeverity.Critical)
+            {
+                await using var employees = new NpgsqlCommand("select id from fleetops.employees where status = 'Active' and roles::jsonb @> $1::jsonb", (NpgsqlConnection)context.DbConnection, (NpgsqlTransaction)context.DbTransaction);
+                employees.Parameters.AddWithValue(JsonSerializer.Serialize(new[] { assignedRole }));
+                await using var reader = await employees.ExecuteReaderAsync(cancellationToken);
+                var employeeIds = new List<Guid>();
+                while (await reader.ReadAsync(cancellationToken)) employeeIds.Add(reader.GetGuid(0));
+                await reader.CloseAsync();
+                foreach (var employeeId in employeeIds)
+                    await notifications.AddAsync(employeeId, "critical_alert", new { alertId = insertedAlertId, ruleId = evaluator.RuleId, subjectType = evaluator.SubjectType, subjectId, documentType = evaluator.RuleId == "A-02" ? condition.ScopeKey : null }, insertedAlertId, context, cancellationToken);
+            }
             await using var update = new NpgsqlCommand("update fleetops.alerts set severity = $1, due_at = $2, version = version + 1 where rule_id = $3 and subject_type = $4 and subject_id = $5 and scope_key = $6 and status <> 'Resolved' and (severity <> $1 or due_at is distinct from $2)", (NpgsqlConnection)context.DbConnection, (NpgsqlTransaction)context.DbTransaction);
             update.Parameters.AddWithValue(condition.Severity.ToString()); update.Parameters.AddWithValue(condition.DueAt is null ? DBNull.Value : condition.DueAt.Value); update.Parameters.AddWithValue(evaluator.RuleId); update.Parameters.AddWithValue(evaluator.SubjectType); update.Parameters.AddWithValue(subjectId); update.Parameters.AddWithValue(condition.ScopeKey);
             await update.ExecuteNonQueryAsync(cancellationToken);

@@ -4,10 +4,11 @@ using FleetOps.Modules.Documents;
 using FleetOps.People;
 using Microsoft.EntityFrameworkCore;
 using FleetOps.Kernel;
+using FleetOps.Modules.Notifications;
 
 namespace FleetOps.Migrations;
 
-public sealed class EfDocumentStore(IObjectStore objects, IConfiguration configuration, ILogger<EfDocumentStore> logger, ICompanyTimeService companyTime, TimeProvider? time = null, IChangedSubjects? changedSubjects = null) : IDocumentStore
+public sealed class EfDocumentStore(IObjectStore objects, IConfiguration configuration, ILogger<EfDocumentStore> logger, ICompanyTimeService companyTime, INotifications notifications, TimeProvider? time = null, IChangedSubjects? changedSubjects = null) : IDocumentStore
 {
     private readonly TimeProvider clock = time ?? TimeProvider.System;
     private static readonly HashSet<string> ContentTypes = ["image/jpeg", "image/png", "image/webp", "image/heic", "application/pdf"];
@@ -95,6 +96,7 @@ public sealed class EfDocumentStore(IObjectStore objects, IConfiguration configu
         document.RejectReason = reason.Trim();
         document.Version++;
         await db.SaveChangesAsync(cancellationToken);
+        await notifications.AddAsync(document.CreatedBy, "document_rejected", new { documentId = document.Id, documentType = document.Type.ToString().ToSnakeCase() }, null, context, cancellationToken);
         changedSubjects?.Add(document.OwnerType == DocumentOwnerType.Employee ? "employee" : "vehicle", document.OwnerId);
         changedSubjects?.Add("document", document.Id);
         return await ReadDetailAsync(db, id, cancellationToken, actor) ?? throw new DocumentConflictException("not_found");

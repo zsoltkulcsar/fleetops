@@ -1,9 +1,10 @@
 using FleetOps.Kernel.Authorization;
 using FleetOps.Kernel;
+using FleetOps.Modules.Notifications;
 
 namespace FleetOps.Api.Pipeline;
 
-public sealed class CommandDispatcher(IAccessContextAccessor accessor, ICommandPolicyProvider policies, ICommandTransactionFactory transactions, IServiceProvider services, ISubjectRoleLookup subjectRoles)
+public sealed class CommandDispatcher(IAccessContextAccessor accessor, ICommandPolicyProvider policies, ICommandTransactionFactory transactions, IServiceProvider services, ISubjectRoleLookup subjectRoles, ILogger<CommandDispatcher> logger)
 {
     public async Task<TResult> DispatchAsync<TCommand, TResult>(TCommand command, CancellationToken cancellationToken = default) where TCommand : ICommand<TResult>
     {
@@ -45,6 +46,13 @@ public sealed class CommandDispatcher(IAccessContextAccessor accessor, ICommandP
             if (changed is not null && evaluation is not null && changed.Items.Count > 0)
                 await evaluation.EvaluateAsync(changed.Items, transaction.Context, cancellationToken);
             await transaction.CommitAsync(CancellationToken.None);
+            var postCommit = services.GetService<IPostCommitNotifications>();
+            var notificationIds = services.GetService<INotificationIds>()?.Items ?? [];
+            if (postCommit is not null && notificationIds.Count > 0)
+            {
+                try { await postCommit.TrySendAsync(notificationIds, CancellationToken.None); }
+                catch (Exception exception) { logger.LogWarning("Post-commit notification send failed. ExceptionType={ExceptionType}", exception.GetType().Name); }
+            }
             return result;
         }
         catch { try { await transaction.RollbackAsync(CancellationToken.None); } catch { } throw; }

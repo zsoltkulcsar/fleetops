@@ -62,7 +62,7 @@ Past runs exhausted this machine's memory. Use only:
 dotnet build <one project> -c Release -m:1 -nodeReuse:false -p:UseSharedCompilation=false --no-restore
 ```
 
-Never `-v:diag`. Never loop on a build that fails the same way. Packages are restored for you: if you need a new one, stop and name it.
+Never run `dotnet ef` or `dotnet-ef`: inside the sandbox it starts hundreds of MSBuild workers. If the model needs a migration, write `NEEDS_MIGRATION: <what>` in your result and the orchestrator adds it. Never `-v:diag`. Never loop on a build that fails the same way. Packages are restored for you: if you need a new one, stop and name it.
 
 ## Running tests
 
@@ -77,7 +77,7 @@ The Testcontainers path must keep working too, because CI uses it. Change both o
 
 ## Migrations
 
-Migrations come from `dotnet ef`, never by hand. The contract gives the tool path. Never edit a migration that is already on `main`.
+Migrations come from `dotnet ef`, run by the orchestrator, never by hand. Never edit a migration that is already on `main`.
 
 ## Git
 

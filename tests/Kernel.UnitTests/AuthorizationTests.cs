@@ -91,6 +91,7 @@ public sealed class AuthorizationTests
             .AddSingleton<ICommandTransactionFactory>(new TestTransactions(new TestTransaction()))
             .AddSingleton<ISubjectRoleLookup>(new FailClosedSubjectRoleLookup())
             .AddSingleton<ICommandHandler<MatrixCommand, int>>(handler)
+            .AddLogging()
             .AddScoped<CommandDispatcher>()
             .BuildServiceProvider();
 
@@ -507,6 +508,7 @@ public sealed class AuthorizationTests
         services.AddSingleton<ICommandTransactionFactory>(new TestTransactions(transaction ?? new TestTransaction()));
         services.AddSingleton<ISubjectRoleLookup>(subjectRoles ?? new FailClosedSubjectRoleLookup());
         services.AddSingleton<ICommandHandler<MatrixCommand, int>>(handler);
+        services.AddLogging();
         services.AddScoped<CommandDispatcher>();
         return services.BuildServiceProvider().GetRequiredService<CommandDispatcher>();
     }

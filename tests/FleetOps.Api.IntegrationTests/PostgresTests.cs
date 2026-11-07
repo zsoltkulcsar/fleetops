@@ -7,6 +7,8 @@ using FleetOps.Api.Pipeline;
 using FleetOps.Kernel.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FleetOps.Tests;
 
@@ -32,6 +34,7 @@ public sealed class PostgresTests
             .AddSingleton<ISubjectRoleLookup, FailClosedSubjectRoleLookup>()
             .AddSingleton<ICommandStatePrecondition<InsertCommand>>(precondition)
             .AddSingleton<ICommandHandler<InsertCommand, int>, InsertContextHandler>()
+            .AddSingleton<ILogger<CommandDispatcher>>(NullLogger<CommandDispatcher>.Instance)
             .AddScoped<CommandDispatcher>().BuildServiceProvider();
         var dispatcher = provider.GetRequiredService<CommandDispatcher>();
         Assert.Equal(1, await dispatcher.DispatchAsync<InsertCommand, int>(new InsertCommand(), TestContext.Current.CancellationToken));
@@ -49,6 +52,7 @@ public sealed class PostgresTests
             .AddSingleton<ISubjectRoleLookup, FailClosedSubjectRoleLookup>()
             .AddSingleton<ICommandStatePrecondition<InsertCommand>, RefusingPrecondition>()
             .AddSingleton<ICommandHandler<InsertCommand, int>, InsertAndFailHandler>()
+            .AddSingleton<ILogger<CommandDispatcher>>(NullLogger<CommandDispatcher>.Instance)
             .AddScoped<CommandDispatcher>().BuildServiceProvider();
         await Assert.ThrowsAsync<AuthorizationException>(() => failing.GetRequiredService<CommandDispatcher>().DispatchAsync<InsertCommand, int>(new InsertCommand(), TestContext.Current.CancellationToken));
         await using var final = new NpgsqlConnection(postgres.ConnectionString);
@@ -113,6 +117,7 @@ public sealed class PostgresTests
             .AddSingleton<ICommandTransactionFactory>(new NpgsqlCommandTransactionFactory(Configuration(postgres.ConnectionString)))
             .AddSingleton<ISubjectRoleLookup, FailClosedSubjectRoleLookup>()
             .AddSingleton<ICommandHandler<InsertCommand, int>, InsertAndFailHandler>()
+            .AddSingleton<ILogger<CommandDispatcher>>(NullLogger<CommandDispatcher>.Instance)
             .AddScoped<CommandDispatcher>()
             .BuildServiceProvider();
         var dispatcher = services.GetRequiredService<CommandDispatcher>();

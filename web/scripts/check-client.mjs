@@ -1,22 +1,23 @@
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
 const apiProject = fileURLToPath(new URL("../../src/FleetOps.Api/FleetOps.Api.csproj", import.meta.url));
 const port = 5197;
-const child = spawn(
+const apiDirectory = fileURLToPath(new URL("../../src/FleetOps.Api/", import.meta.url));
+// Build with the limits from AGENTS.md: without them MSBuild starts workers it cannot reach
+// inside the Codex sandbox, and keeps starting more. Run the DLL directly so kill() stops the API.
+execFileSync(
   "dotnet",
-  [
-    "run",
-    "--no-launch-profile",
-    "--project",
-    apiProject,
-    "--no-restore",
-    "--urls",
-    `http://127.0.0.1:${port}`,
-  ],
-  { stdio: "ignore", windowsHide: true, env: { ...process.env, ASPNETCORE_ENVIRONMENT: "Development" } },
+  ["build", apiProject, "-c", "Debug", "-m:1", "-nodeReuse:false", "-p:UseSharedCompilation=false", "--no-restore"],
+  { stdio: "ignore", windowsHide: true, env: { ...process.env, MSBUILDDISABLENODEREUSE: "1" } },
 );
+const child = spawn("dotnet", ["bin/Debug/net10.0/FleetOps.Api.dll", "--urls", `http://127.0.0.1:${port}`], {
+  cwd: apiDirectory,
+  stdio: "ignore",
+  windowsHide: true,
+  env: { ...process.env, ASPNETCORE_ENVIRONMENT: "Development" },
+});
 const stop = () => child.kill();
 process.on("exit", stop);
 try {

@@ -4,6 +4,10 @@ import { authApi } from "../auth/api";
 import { documentsApi } from "../documents/api";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
+import { Bell } from "lucide-react";
+import { apiClient } from "@fleetops/api-client";
+import { useQuery } from "@tanstack/react-query";
+import { formatBerlinDateTime } from "./date";
 
 export function Header({ pageName }: { pageName: string }) {
   const client = useQueryClient();
@@ -11,6 +15,15 @@ export function Header({ pageName }: { pageName: string }) {
   const [search, setSearch] = useState("");
   const [term, setTerm] = useState("");
   const [results, setResults] = useState<Awaited<ReturnType<typeof documentsApi.searchAll>> | null>(null);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const notifications = useQuery({
+    queryKey: ["notifications"],
+    queryFn: async () => {
+      const response = await apiClient.GET("/api/v1/notifications", { params: { query: { limit: 20 } } });
+      return response.data;
+    },
+    refetchInterval: 60_000,
+  });
   async function signOut() {
     await authApi.signOut();
     client.setQueryData(["session"], null);
@@ -29,6 +42,24 @@ export function Header({ pageName }: { pageName: string }) {
       .then(setResults)
       .catch(() => setResults(null));
   }, [term]);
+  useEffect(() => {
+    if (!notificationsOpen) return;
+    const close = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setNotificationsOpen(false);
+    };
+    document.addEventListener("keydown", close);
+    return () => document.removeEventListener("keydown", close);
+  }, [notificationsOpen]);
+  async function markRead(id: string, link: string) {
+    await apiClient.POST("/api/v1/notifications/{id}/read", { params: { path: { id } } });
+    await client.invalidateQueries({ queryKey: ["notifications"] });
+    setNotificationsOpen(false);
+    navigate(link);
+  }
+  async function markAllRead() {
+    await apiClient.POST("/api/v1/notifications/read-all");
+    await client.invalidateQueries({ queryKey: ["notifications"] });
+  }
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
       const target = event.target;
@@ -108,6 +139,53 @@ export function Header({ pageName }: { pageName: string }) {
                     </section>
                   )}
                 </>
+              )}
+            </div>
+          )}
+        </div>
+        <div className="notification-menu">
+          <button
+            className="ui-button ghost notification-button"
+            type="button"
+            aria-label={`${notifications.data?.unread ?? 0} unread notifications`}
+            aria-expanded={notificationsOpen}
+            onClick={() => setNotificationsOpen((open) => !open)}
+          >
+            <Bell size={18} aria-hidden="true" />
+            <span>{notifications.data?.unread ?? 0}</span>
+          </button>
+          {notificationsOpen && (
+            <div className="notification-popover" role="dialog" aria-label={en.notifications.title}>
+              <div className="notification-heading">
+                <strong>{en.notifications.title}</strong>
+                <button className="ui-button ghost" type="button" onClick={() => void markAllRead()}>
+                  {en.notifications.markAll}
+                </button>
+              </div>
+              {notifications.data?.items.length ? (
+                <div className="notification-list">
+                  {notifications.data.items.map((item) => (
+                    <button
+                      className={`notification-row${item.readAt ? "" : " unread"}`}
+                      key={item.id}
+                      type="button"
+                      onClick={() => void markRead(item.id, item.link)}
+                    >
+                      <span className="notification-row-text">{item.text}</span>
+                      <span className="notification-row-meta">
+                        {!item.readAt && (
+                          <>
+                            <span className="notification-dot" aria-hidden="true" />
+                            {en.notifications.newLabel}
+                          </>
+                        )}
+                        {formatBerlinDateTime(item.createdAt)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <span className="notification-empty">{en.notifications.empty}</span>
               )}
             </div>
           )}

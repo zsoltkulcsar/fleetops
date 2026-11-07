@@ -9,6 +9,7 @@
     <ProjectReference Include="..\Modules\Audit\Audit.csproj" />
     <ProjectReference Include="..\Modules\Setup\Setup.csproj" />
     <ProjectReference Include="..\Modules\Alerts\Alerts.csproj" />
+    <ProjectReference Include="..\Modules\Notifications\Notifications.csproj" />
     <ProjectReference Include="..\Kernel\Kernel.csproj" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.14" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.14" />

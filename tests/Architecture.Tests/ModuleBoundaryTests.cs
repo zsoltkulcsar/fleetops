@@ -6,7 +6,7 @@ namespace FleetOps.Tests;
 internal static class ModuleArchitectureRules
 {
     // AD-24: the only ordering used by the rule. Earlier modules may depend on later modules.
-    public static readonly string[] Ad24Order = ["Views", "Alerts", "Payroll", "Shifts", "Schedule", "Readiness", "Documents", "Absences", "Maintenance", "Fleet", "Identity", "People", "Setup", "Audit", "Notifications"];
+    public static readonly string[] Ad24Order = ["Views", "Alerts", "Notifications", "Payroll", "Shifts", "Schedule", "Readiness", "Documents", "Absences", "Maintenance", "Fleet", "Identity", "People", "Setup", "Audit"];
 
     public static IReadOnlyList<string> Validate(IReadOnlyDictionary<string, IReadOnlyCollection<string>> graph)
     {

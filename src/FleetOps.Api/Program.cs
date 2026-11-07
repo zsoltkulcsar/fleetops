@@ -14,6 +14,7 @@ using FleetOps.Modules.Documents;
 using FleetOps.Modules.Readiness;
 using FleetOps.Modules.Alerts;
 using FleetOps.Modules.Setup;
+using FleetOps.Modules.Notifications;
 using FleetOps.Api.Files;
 using FleetOps.Api.Jobs;
 using FleetOps.Kernel.Files;
@@ -70,6 +71,11 @@ builder.Services.AddScoped<IChangedSubjects, ChangedSubjects>();
 builder.Services.AddScoped<IPostCommandEvaluation, AlertPostCommandEvaluation>();
 builder.Services.AddScoped<IAlertEngine, AlertEngine>();
 builder.Services.AddScoped<ISettings, EfSettingsStore>();
+builder.Services.AddScoped<INotifications, EfNotifications>();
+builder.Services.AddScoped<INotificationIds, NotificationIds>();
+builder.Services.AddScoped<InAppSender>();
+builder.Services.AddScoped<INotificationSender>(services => services.GetRequiredService<InAppSender>());
+builder.Services.AddScoped<IPostCommitNotifications>(services => services.GetRequiredService<InAppSender>());
 builder.Services.AddScoped<IAlertEvaluator, A02EmployeeEvaluator>();
 builder.Services.AddScoped<IAlertEvaluator, A03DocumentEvaluator>();
 builder.Services.AddScoped<IAlertEvaluator, A05VehicleEvaluator>();
@@ -77,6 +83,7 @@ builder.Services.AddScoped<QueryDispatcher>();
 builder.Services.AddScoped<JobRunner>();
 builder.Services.AddScoped<IJob, FileOrphansJob>();
 builder.Services.AddScoped<IJob, AlertsSweepJob>();
+builder.Services.AddScoped<IJob, NotificationRetryJob>();
 builder.Services.AddScoped<ICommandHandler<RunJobCommand, JobRunResult>, RunJobCommandHandler>();
 builder.Services.AddScoped<IQueryHandler<ListJobsQuery, JobListResult>, ListJobsQueryHandler>();
 builder.Services.AddScoped<IQueryHandler<GetVehicleQuery, VehicleDetail>, VehicleQueryHandler>();
@@ -105,6 +112,9 @@ builder.Services.AddScoped<IQueryHandler<GetDocumentFileLinkQuery, DocumentFileL
 builder.Services.AddScoped<IQueryHandler<GetReadinessSummaryQuery, ReadinessSummary>, ReadinessSummaryQueryHandler>();
 builder.Services.AddScoped<IQueryHandler<ListDriverReadinessQuery, DriverReadinessList>, DriverReadinessQueryHandler>();
 builder.Services.AddScoped<IQueryHandler<GetAttentionQuery, AttentionResult>, AttentionQueryHandler>();
+builder.Services.AddScoped<IQueryHandler<ListNotificationsQuery, NotificationListResult>, NotificationQueryHandler>();
+builder.Services.AddScoped<ICommandHandler<MarkNotificationReadCommand, bool>, MarkNotificationReadHandler>();
+builder.Services.AddScoped<ICommandHandler<MarkAllNotificationsReadCommand, int>, MarkAllNotificationsReadHandler>();
 builder.Services.AddScoped<ICommandHandler<SnoozeAlertCommand, AlertActionResult>, AlertCommandHandler>();
 builder.Services.AddScoped<ICommandHandler<UnsnoozeAlertCommand, AlertActionResult>, AlertCommandHandler>();
 builder.Services.AddScoped<ICommandStatePrecondition<EditVehicleCommand>, RetiredVehicleEditPrecondition>();
@@ -202,6 +212,9 @@ app.MapGet("/api/v1/readiness/drivers", async (string? cursor, int? limit, bool?
 app.MapGet("/api/v1/attention", async (QueryDispatcher dispatcher, CancellationToken cancellationToken) => Results.Ok(await dispatcher.DispatchAsync<GetAttentionQuery, AttentionResult>(new(), cancellationToken))).Produces<AttentionResult>();
 app.MapPost("/api/v1/alerts/{id:guid}/snooze", async (Guid id, SnoozeAlertRequest request, CommandDispatcher dispatcher, CancellationToken cancellationToken) => Results.Ok(await dispatcher.DispatchAsync<SnoozeAlertCommand, AlertActionResult>(new(id, request.Version, request.Until, request.Reason), cancellationToken))).Produces<AlertActionResult>();
 app.MapPost("/api/v1/alerts/{id:guid}/unsnooze", async (Guid id, UnsnoozeAlertRequest request, CommandDispatcher dispatcher, CancellationToken cancellationToken) => Results.Ok(await dispatcher.DispatchAsync<UnsnoozeAlertCommand, AlertActionResult>(new(id, request.Version), cancellationToken))).Produces<AlertActionResult>();
+app.MapGet("/api/v1/notifications", async (string? cursor, int? limit, QueryDispatcher dispatcher, IAccessContextAccessor access, HttpContext context, CancellationToken cancellationToken) => { context.Response.Headers.CacheControl = "no-store"; return Results.Ok(await dispatcher.DispatchAsync<ListNotificationsQuery, NotificationListResult>(new(cursor, Math.Clamp(limit ?? 50, 1, 100), access.Current?.EmployeeId), cancellationToken)); }).Produces<NotificationListResult>();
+app.MapPost("/api/v1/notifications/{id:guid}/read", async (Guid id, CommandDispatcher dispatcher, IAccessContextAccessor access, HttpContext context, CancellationToken cancellationToken) => { context.Response.Headers.CacheControl = "no-store"; var result = await dispatcher.DispatchAsync<MarkNotificationReadCommand, bool>(new(id, access.Current?.EmployeeId), cancellationToken); return result ? Results.Ok() : Results.NotFound(); });
+app.MapPost("/api/v1/notifications/read-all", async (CommandDispatcher dispatcher, IAccessContextAccessor access, HttpContext context, CancellationToken cancellationToken) => { context.Response.Headers.CacheControl = "no-store"; return Results.Ok(await dispatcher.DispatchAsync<MarkAllNotificationsReadCommand, int>(new(access.Current?.EmployeeId), cancellationToken)); });
 if (app.Environment.IsEnvironment("Testing"))
 {
     app.MapPost("/__tests/step-up-command", (IAccessContextAccessor access, IStepUpContextAccessor stepUp) => access.Current is null ? Results.Json(new { code = "not_signed_in" }, statusCode: 401) : stepUp.HasFreshStepUp ? Results.Ok(new { accepted = true }) : Results.Json(new { code = "step_up_required" }, statusCode: 403));
