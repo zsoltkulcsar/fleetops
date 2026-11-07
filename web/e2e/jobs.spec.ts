@@ -13,8 +13,23 @@ const jobs: components["schemas"]["JobListResult"] = {
   ],
 };
 
+const jobsApiUrl = "http://127.0.0.1:4173/api/v1/admin/jobs";
+const runJobApiUrl = "http://127.0.0.1:4173/api/v1/admin/jobs/file-orphans/run";
+
+test("jobs panel calls the exact API path", async ({ page }) => {
+  let requestUrl: string | undefined;
+  page.on("request", (request) => {
+    if (request.url().includes("/api/v1/admin/jobs")) requestUrl = request.url();
+  });
+  await page.route(jobsApiUrl, (route) => route.fulfill({ status: 200, json: jobs }));
+  await page.goto("/settings");
+  await expect(page.getByRole("heading", { name: "Timed jobs" })).toBeVisible();
+  expect(requestUrl).toBeDefined();
+  expect(new URL(requestUrl!).pathname).toBe("/api/v1/admin/jobs");
+});
+
 test("owner sees timed jobs when the trigger is on", async ({ page }) => {
-  await page.route("**/api/v1/admin/jobs", (route) => route.fulfill({ status: 200, json: jobs }));
+  await page.route(jobsApiUrl, (route) => route.fulfill({ status: 200, json: jobs }));
   await page.goto("/settings");
   await expect(page.getByRole("heading", { name: "Timed jobs" })).toBeVisible();
   await expect(page.getByText("file-orphans")).toBeVisible();
@@ -27,8 +42,8 @@ test("run now calls the trigger and shows the result", async ({ page }) => {
     processed: 2,
     errorType: null,
   };
-  await page.route("**/api/v1/admin/jobs", (route) => route.fulfill({ status: 200, json: jobs }));
-  await page.route("**/api/v1/admin/jobs/file-orphans/run", (route) => {
+  await page.route(jobsApiUrl, (route) => route.fulfill({ status: 200, json: jobs }));
+  await page.route(runJobApiUrl, (route) => {
     triggered = true;
     return route.fulfill({ status: 200, json: result });
   });
@@ -39,17 +54,15 @@ test("run now calls the trigger and shows the result", async ({ page }) => {
 });
 
 test("run now failure says so", async ({ page }) => {
-  await page.route("**/api/v1/admin/jobs", (route) => route.fulfill({ status: 200, json: jobs }));
-  await page.route("**/api/v1/admin/jobs/file-orphans/run", (route) => route.fulfill({ status: 500 }));
+  await page.route(jobsApiUrl, (route) => route.fulfill({ status: 200, json: jobs }));
+  await page.route(runJobApiUrl, (route) => route.fulfill({ status: 500 }));
   await page.goto("/settings");
   await page.getByRole("button", { name: "Run now" }).click();
   await expect(page.getByText("Could not run the job.")).toBeVisible();
 });
 
 test("timed jobs panel is hidden when the trigger is off", async ({ page }) => {
-  await page.route("**/api/v1/admin/jobs", (route) =>
-    route.fulfill({ status: 404, json: { code: "not_found" } }),
-  );
+  await page.route(jobsApiUrl, (route) => route.fulfill({ status: 404, json: { code: "not_found" } }));
   await page.goto("/settings");
   await expect(page.getByRole("heading", { name: "Timed jobs" })).toHaveCount(0);
 });
