@@ -106,7 +106,7 @@ test("not usable shows its cause", async ({ page }) => {
     }),
   );
   await page.goto("/fleet/v-readiness");
-  await expect(page.getByText(/HU|hu_report/)).toBeVisible();
+  await expect(page.getByText("HU report expired", { exact: true })).toBeVisible();
 });
 
 test("fleet page shows the usable count", async ({ page }) => {
@@ -145,7 +145,26 @@ test("people page shows the masked block text", async ({ page }) => {
     }),
   );
   await page.goto("/people");
-  await expect(page.getByText("Cannot drive", { exact: true })).toBeVisible();
+  await expect(page.getByText("Blocked — document expired", { exact: true })).toBeVisible();
+  await expect(page.getByText("Medical", { exact: true })).not.toBeVisible();
+});
+
+test("people page shows the type to hr", async ({ page }) => {
+  const driver: Driver = {
+    id: "d-1",
+    name: "A Driver",
+    canDrive: false,
+    causes: [{ code: "document_expired", documentType: "medical" }],
+  };
+  await page.route("**/api/v1/readiness/drivers?*", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ items: [driver], nextCursor: null }),
+    }),
+  );
+  await page.goto("/people");
+  await expect(page.getByText("Blocked — Medical expired", { exact: true })).toBeVisible();
 });
 
 test("people page offers blocked only", async ({ page }) => {

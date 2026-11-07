@@ -9,6 +9,7 @@ import { fleetApi, type ApiProblem, type RetiredReason, type VehicleDetail } fro
 import { VehicleForm } from "./VehicleForm";
 import "./fleet.css";
 import { readinessApi } from "../readiness/api";
+import { fleetCauseText } from "../readiness/labels";
 
 type ReadinessDetail = VehicleDetail & {
   shownStatus?: "active" | "off_road" | "in_maintenance" | "retired";
@@ -78,6 +79,7 @@ export function FleetRecord({ id }: { id: string }) {
   const vehicle = query.data;
   const readinessVehicle = vehicle as ReadinessDetail;
   const shownStatus = readinessVehicle.shownStatus ?? (vehicle.status === "retired" ? "retired" : "active");
+  const notUsable = shownStatus === "active" && readinessVehicle.usable === false;
   const setOffRoad = async () => {
     setOffRoadBusy(true);
     try {
@@ -105,7 +107,10 @@ export function FleetRecord({ id }: { id: string }) {
           </h1>
         </div>
         <div className="record-actions">
-          <StatusPill status={statusPillFor[shownStatus]} label={statusLabel[shownStatus]} />
+          <StatusPill
+            status={notUsable ? "off-road" : statusPillFor[shownStatus]}
+            label={notUsable ? "Not usable" : statusLabel[shownStatus]}
+          />
           {vehicle.status === "active" && canEdit && (
             <button className="ui-button" disabled={offRoadBusy} onClick={() => void setOffRoad()}>
               Set off road
@@ -129,9 +134,7 @@ export function FleetRecord({ id }: { id: string }) {
         </Banner>
       )}
       {readinessVehicle.causes?.length ? (
-        <p className="ui-muted">
-          {readinessVehicle.causes.map((cause) => cause.documentType ?? cause.code).join(", ")}
-        </p>
+        <p className="ui-muted">{readinessVehicle.causes.map((cause) => fleetCauseText(cause)).join(", ")}</p>
       ) : null}
       {vehicle.status === "retired" &&
         isOwner &&

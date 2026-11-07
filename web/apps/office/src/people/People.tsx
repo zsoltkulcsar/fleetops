@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { EmptyState, Panel, StatusPill } from "@fleetops/ui";
 import { readinessApi } from "../readiness/api";
+import { peopleCauseText } from "../readiness/labels";
 import { en } from "../i18n/en";
 
 export function People() {
@@ -37,11 +38,17 @@ export function People() {
             <div key={driver.id}>
               <strong>{driver.name}</strong>
               {driver.canDrive ? (
-                <StatusPill status="usable" />
+                <>
+                  <StatusPill status="usable" />
+                  <span>Can drive</span>
+                </>
               ) : (
                 <>
                   <StatusPill status="blocked" />
-                  <span> Cannot drive</span>
+                  {driver.causes.map((cause) => {
+                    const text = peopleCauseText(cause);
+                    return text ? <span key={`${cause.code}-${cause.documentType}`}>{text}</span> : null;
+                  })}
                 </>
               )}
             </div>

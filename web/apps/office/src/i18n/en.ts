@@ -190,7 +190,7 @@ export const en = {
       licence_c_ce: "C/CE licence",
       driver_card: "Driver card",
       code95: "Code 95",
-      medical: "Medical certificate",
+      medical: "Medical",
       adr_certificate: "ADR certificate",
       id_card: "ID card",
       employment_contract: "Employment contract",

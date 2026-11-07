@@ -8,6 +8,7 @@ import { fleetApi, type Vehicle } from "./api";
 import { VehicleForm } from "./VehicleForm";
 import "./fleet.css";
 import { readinessApi, type VehicleReadiness } from "../readiness/api";
+import { fleetCauseText } from "../readiness/labels";
 
 type ReadinessVehicle = Vehicle & VehicleReadiness;
 const statusPillFor: Record<ReadinessVehicle["shownStatus"], "usable" | "off-road"> = {
@@ -181,18 +182,22 @@ export function Fleet() {
                     </td>
                     <td className="tabular-nums">{vehicle.year}</td>
                     <td>
-                      <StatusPill
-                        status={
-                          statusPillFor[
-                            vehicle.shownStatus ?? (vehicle.status === "retired" ? "retired" : "active")
-                          ]
-                        }
-                        label={
-                          statusLabel[
-                            vehicle.shownStatus ?? (vehicle.status === "retired" ? "retired" : "active")
-                          ]
-                        }
-                      />
+                      {(() => {
+                        const shownStatus =
+                          vehicle.shownStatus ?? (vehicle.status === "retired" ? "retired" : "active");
+                        const notUsable = shownStatus === "active" && vehicle.usable === false;
+                        return (
+                          <>
+                            <StatusPill
+                              status={notUsable ? "off-road" : statusPillFor[shownStatus]}
+                              label={notUsable ? "Not usable" : statusLabel[shownStatus]}
+                            />
+                            {vehicle.causes?.map((cause) => (
+                              <div key={`${cause.code}-${cause.documentType}`}>{fleetCauseText(cause)}</div>
+                            ))}
+                          </>
+                        );
+                      })()}
                     </td>
                     <td>{en.fleet.ownership[vehicle.ownership]}</td>
                   </tr>
