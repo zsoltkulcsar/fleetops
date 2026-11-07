@@ -99,6 +99,18 @@ public sealed class DocumentListTests : IAsyncLifetime
         Assert.DoesNotContain("Left", await allowed.Content.ReadAsStringAsync(), StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task People_lookup_finds_one_person_by_id()
+    {
+        using var response = await factory.AsHr().GetAsync($"/api/v1/people/lookup?id={employeeId}");
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var items = body.RootElement.GetProperty("items");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(1, items.GetArrayLength());
+        Assert.Equal(employeeId, items[0].GetProperty("id").GetGuid());
+        Assert.Equal("Alice Driver", items[0].GetProperty("name").GetString());
+    }
+
     private async Task<Guid> Upload(HttpClient client, string ownerType, Guid ownerId, string type, string number = "N-123")
     {
         using var linkResponse = await client.PostAsJsonAsync("/api/v1/documents/upload-links", new { ownerType, ownerId, type, contentType = "application/pdf", sizeBytes = 12 });

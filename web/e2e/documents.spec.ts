@@ -67,13 +67,15 @@ async function missing(page: Page) {
 }
 
 async function people(page: Page) {
-  await page.route("**/api/v1/people/lookup?*", (route) =>
-    route.fulfill({
+  await page.route("**/api/v1/people/lookup?*", (route) => {
+    const requestUrl = new URL(route.request().url());
+    expect(requestUrl.searchParams.get("id")).toBe(row().ownerId);
+    return route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({ items: [{ id: row().ownerId, name: "Alice Driver" }] }),
-    }),
-  );
+    });
+  });
 }
 
 test("documents list shows rows with status text", async ({ page }) => {
@@ -100,7 +102,9 @@ test("missing row upload opens the prefilled dialog", async ({ page }) => {
   await missing(page);
   await people(page);
   await page.goto("/documents?filter=missing");
-  await page.getByRole("button", { name: "Upload", exact: true }).last().click();
+  const missingRow = page.getByRole("row", { name: /Alice Driver/ });
+  await expect(missingRow).toBeVisible();
+  await missingRow.getByRole("button", { name: "Upload", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Upload document" })).toBeVisible();
   await expect(page.getByLabel("Owner", { exact: true })).toHaveValue("Alice Driver");
   await expect(page.getByRole("combobox", { name: "Type", exact: true })).toHaveValue("medical");

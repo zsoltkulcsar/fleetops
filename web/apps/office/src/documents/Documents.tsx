@@ -582,7 +582,7 @@ function UploadDialog({
         const vehicle = await fleetApi.detail(ownerId);
         return `${vehicle.plate} · ${vehicle.make} ${vehicle.model}`;
       }
-      const result = await documentsApi.people(ownerId);
+      const result = await documentsApi.people("", ownerId);
       return result.items.find((person) => person.id === ownerId)?.name ?? "";
     },
     enabled: open && Boolean(ownerId) && !ownerName,

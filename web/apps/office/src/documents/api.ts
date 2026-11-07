@@ -66,8 +66,9 @@ export const documentsApi = {
     query.set("filter", params.filter ?? "");
     return request<DocumentList>(`/api/v1/documents?${query.toString()}`);
   },
-  people: (search: string) => {
+  people: (search: string, id?: string) => {
     const query = new URLSearchParams({ search });
+    if (id) query.set("id", id);
     return request<PeopleLookupResult>(`/api/v1/people/lookup?${query.toString()}`);
   },
   vehicles: (search: string) => {

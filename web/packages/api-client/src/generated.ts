@@ -821,6 +821,7 @@ export interface paths {
             parameters: {
                 query?: {
                     search?: string;
+                    id?: string;
                 };
                 header?: never;
                 path?: never;

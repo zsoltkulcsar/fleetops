@@ -60,7 +60,7 @@ public sealed record SearchDocumentsQuery(string? Search) : IQuery<DocumentSearc
 [QueryPolicy("documents.view")]
 public sealed record GetDocumentFileLinkQuery(Guid DocumentId, Guid FileId) : IQuery<DocumentFileLinkResult>;
 [QueryPolicy("documents.people.lookup")]
-public sealed record LookupPeopleQuery(string? Search) : IQuery<PeopleLookupResult>;
+public sealed record LookupPeopleQuery(string? Search, Guid? Id) : IQuery<PeopleLookupResult>;
 
 [CommandPolicy("documents.driver.verify")]
 public sealed record VerifyEmployeeDocumentCommand(Guid DocumentId, int Version, DateOnly? ExpiresAt, DateOnly? IssuedAt, string? Number, string[]? Categories) : ICommand<DocumentDetail>;
