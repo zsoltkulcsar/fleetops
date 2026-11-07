@@ -883,6 +883,123 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/attention": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AttentionResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/alerts/{id}/snooze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SnoozeAlertRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AlertActionResult"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/alerts/{id}/unsnooze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UnsnoozeAlertRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AlertActionResult"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/sign-in": {
         parameters: {
             query?: never;
@@ -1208,6 +1325,49 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AlertActionResult: {
+            /** Format: uuid */
+            id: string;
+            status: components["schemas"]["AlertStatus"];
+            /** Format: int32 */
+            version: number;
+        };
+        /** @enum {unknown} */
+        AlertSeverity: "info" | "warning" | "critical";
+        /** @enum {unknown} */
+        AlertStatus: "open" | "snoozed" | "resolved";
+        AttentionGroup: {
+            subjectType: string;
+            /** Format: uuid */
+            subjectId: string;
+            subjectName: string;
+            worstSeverity: components["schemas"]["AlertSeverity"];
+            items: components["schemas"]["AttentionItem"][];
+        };
+        AttentionItem: {
+            /** Format: uuid */
+            id: string;
+            ruleId: string;
+            severity: components["schemas"]["AlertSeverity"];
+            scopeKey: string;
+            /** Format: date */
+            dueAt: null | string;
+            status: components["schemas"]["AlertStatus"];
+            snoozable: boolean;
+            /** Format: int32 */
+            version: number;
+        };
+        AttentionResult: {
+            groups: components["schemas"]["AttentionGroup"][];
+            totals: components["schemas"]["AttentionTotals"];
+            companyEmpty: boolean;
+        };
+        AttentionTotals: {
+            /** Format: int32 */
+            open: number;
+            /** Format: int32 */
+            critical: number;
+        };
         ConfirmFileInput: {
             /** Format: uuid */
             fileId: string;
@@ -1502,12 +1662,23 @@ export interface components {
             email: string;
             password: string;
         };
+        SnoozeAlertRequest: {
+            /** Format: int32 */
+            version: number;
+            /** Format: date-time */
+            until: string;
+            reason: string;
+        };
         /** @enum {unknown} */
         TrailerType: "curtainsider" | "box" | "reefer" | "flatbed" | "tanker" | null;
         UndoRetireVehicleRequest: {
             /** Format: int32 */
             version: number;
             reason: null | string;
+        };
+        UnsnoozeAlertRequest: {
+            /** Format: int32 */
+            version: number;
         };
         UploadLinkResult: {
             /** Format: uuid */

@@ -55,6 +55,8 @@ public static class PermissionMatrix
         E("settings.manage", Cell.None, Cell.None, Cell.None, Cell.Full), E("settings.payroll", Cell.None, Cell.None, Cell.Full, Cell.Full), E("sessions.manage", Cell.None, Cell.Full, Cell.Full, Cell.Full),
         E("employees.phone.change", Cell.None, Cell.None, Cell.Full, Cell.Full), E("audit.export", Cell.None, Cell.None, Cell.Full, Cell.Full),
         E("notifications.mine", Cell.Own, Cell.Own, Cell.Own, Cell.Own),
-        E("jobs.trigger", Cell.None, Cell.None, Cell.None, Cell.Full)
+        E("jobs.trigger", Cell.None, Cell.None, Cell.None, Cell.Full),
+        E("alerts.view", Cell.None, Cell.Full, Cell.Full, Cell.View),
+        E("alerts.snooze", Cell.None, Cell.Full, Cell.Full, Cell.None)
     ];
 }

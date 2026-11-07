@@ -11,6 +11,7 @@ import { FleetRecord } from "./fleet/FleetRecord";
 import { Documents } from "./documents/Documents";
 import { People } from "./people/People";
 import { Settings } from "./settings/Settings";
+import { Attention } from "./attention/Attention";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -44,7 +45,7 @@ createRoot(document.getElementById("app")!).render(
               </AuthGate>
             }
           >
-            <Route path="/" element={page("attention")} />
+            <Route path="/" element={<Attention />} />
             <Route path="/timesheets" element={page("timesheets")} />
             <Route path="/fleet" element={<Fleet />} />
             <Route path="/fleet/:id" element={<FleetRecordRoute />} />

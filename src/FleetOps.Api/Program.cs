@@ -103,6 +103,9 @@ builder.Services.AddScoped<IQueryHandler<SearchDocumentsQuery, DocumentSearchRes
 builder.Services.AddScoped<IQueryHandler<GetDocumentFileLinkQuery, DocumentFileLinkResult>, DocumentFileLinkQueryHandler>();
 builder.Services.AddScoped<IQueryHandler<GetReadinessSummaryQuery, ReadinessSummary>, ReadinessSummaryQueryHandler>();
 builder.Services.AddScoped<IQueryHandler<ListDriverReadinessQuery, DriverReadinessList>, DriverReadinessQueryHandler>();
+builder.Services.AddScoped<IQueryHandler<GetAttentionQuery, AttentionResult>, AttentionQueryHandler>();
+builder.Services.AddScoped<ICommandHandler<SnoozeAlertCommand, AlertActionResult>, AlertCommandHandler>();
+builder.Services.AddScoped<ICommandHandler<UnsnoozeAlertCommand, AlertActionResult>, AlertCommandHandler>();
 builder.Services.AddScoped<ICommandStatePrecondition<EditVehicleCommand>, RetiredVehicleEditPrecondition>();
 builder.Services.AddScoped<ICommandStatePrecondition<RetireVehicleCommand>, ActiveVehicleRetirePrecondition>();
 builder.Services.AddScoped<ICommandHandler<CreateVehicleCommand, VehicleDetail>, CreateVehicleHandler>();
@@ -138,11 +141,12 @@ app.UseExceptionHandler(new ExceptionHandlerOptions
         if (exception is DocumentInvalidCursorException) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "invalid_cursor" }).ExecuteAsync(context); return; }
         if (exception is VehicleConflictException conflict) { await Results.Problem(statusCode: conflict.Code is "duplicate_vehicle" or "version_conflict" or "state_conflict" or "undo_window_closed" or "plate_in_use" ? 409 : 404, extensions: new Dictionary<string, object?> { ["code"] = conflict.Code }).ExecuteAsync(context); return; }
         if (exception is DocumentConflictException documentConflict) { await Results.Problem(statusCode: documentConflict.Code is "state_conflict" or "version_conflict" ? 409 : 404, extensions: new Dictionary<string, object?> { ["code"] = documentConflict.Code }).ExecuteAsync(context); return; }
+        if (exception is AlertValidationException alertValidation) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "validation_error", ["fields"] = alertValidation.Fields }).ExecuteAsync(context); return; }
+        if (exception is AlertConflictException alertConflict) { await Results.Problem(statusCode: alertConflict.Code is "state_conflict" or "version_conflict" or "not_snoozable" ? 409 : 404, extensions: new Dictionary<string, object?> { ["code"] = alertConflict.Code }).ExecuteAsync(context); return; }
         try { app.Logger.LogError("Unhandled exception {ExceptionType} TraceId {TraceId}", exception?.GetType().Name ?? "Unknown", context.TraceIdentifier); } catch { }
         context.Response.StatusCode = 500; await Results.Problem(statusCode: 500).ExecuteAsync(context);
     }
 });
-if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing")) app.MapOpenApi("/openapi/{documentName}.json");
 app.UseMiddleware<SessionMiddleware>();
 app.Use(async (context, next) =>
 {
@@ -193,11 +197,15 @@ app.MapPost("/api/v1/documents/{id:guid}/sight-check", async (Guid id, DocumentS
 app.MapGet("/api/v1/people/lookup", async (string? search, QueryDispatcher dispatcher, HttpContext context, CancellationToken cancellationToken) => { context.Response.Headers.CacheControl = "no-store"; return Results.Ok(await dispatcher.DispatchAsync<LookupPeopleQuery, PeopleLookupResult>(new(search), cancellationToken)); }).Produces<PeopleLookupResult>();
 app.MapGet("/api/v1/readiness/summary", async (QueryDispatcher dispatcher, CancellationToken cancellationToken) => Results.Ok(await dispatcher.DispatchAsync<GetReadinessSummaryQuery, ReadinessSummary>(new(), cancellationToken))).Produces<ReadinessSummary>();
 app.MapGet("/api/v1/readiness/drivers", async (string? cursor, int? limit, bool? blockedOnly, QueryDispatcher dispatcher, CancellationToken cancellationToken) => Results.Ok(await dispatcher.DispatchAsync<ListDriverReadinessQuery, DriverReadinessList>(new(cursor, limit is null ? 50 : Math.Clamp(limit.Value, 1, 100), blockedOnly == true), cancellationToken))).Produces<DriverReadinessList>();
+app.MapGet("/api/v1/attention", async (QueryDispatcher dispatcher, CancellationToken cancellationToken) => Results.Ok(await dispatcher.DispatchAsync<GetAttentionQuery, AttentionResult>(new(), cancellationToken))).Produces<AttentionResult>();
+app.MapPost("/api/v1/alerts/{id:guid}/snooze", async (Guid id, SnoozeAlertRequest request, CommandDispatcher dispatcher, CancellationToken cancellationToken) => Results.Ok(await dispatcher.DispatchAsync<SnoozeAlertCommand, AlertActionResult>(new(id, request.Version, request.Until, request.Reason), cancellationToken))).Produces<AlertActionResult>();
+app.MapPost("/api/v1/alerts/{id:guid}/unsnooze", async (Guid id, UnsnoozeAlertRequest request, CommandDispatcher dispatcher, CancellationToken cancellationToken) => Results.Ok(await dispatcher.DispatchAsync<UnsnoozeAlertCommand, AlertActionResult>(new(id, request.Version), cancellationToken))).Produces<AlertActionResult>();
 if (app.Environment.IsEnvironment("Testing"))
 {
     app.MapPost("/__tests/step-up-command", (IAccessContextAccessor access, IStepUpContextAccessor stepUp) => access.Current is null ? Results.Json(new { code = "not_signed_in" }, statusCode: 401) : stepUp.HasFreshStepUp ? Results.Ok(new { accepted = true }) : Results.Json(new { code = "step_up_required" }, statusCode: 403));
     app.MapPost("/__tests/dispatcher-command", (IAccessContextAccessor access) => access.Current is null ? Results.Json(new { code = "not_signed_in" }, statusCode: 401) : Results.Ok(new { actor = access.Current.EmployeeId }));
 }
+if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing")) app.MapOpenApi("/openapi/{documentName}.json");
 app.Run();
 
 public interface IDatabaseHealth { Task<bool> IsHealthyAsync(CancellationToken cancellationToken); }
@@ -216,6 +224,8 @@ public sealed record DocumentVerifyRequest(int Version, DateOnly? ExpiresAt = nu
 public sealed record DocumentRejectRequest(int Version, string Reason);
 public sealed record DocumentDeleteRequest(int Version, string Reason);
 public sealed record DocumentSightCheckRequest(int Version, DateOnly CheckedAt);
+public sealed record SnoozeAlertRequest(int Version, DateTimeOffset Until, string Reason);
+public sealed record UnsnoozeAlertRequest(int Version);
 public sealed class VehicleQueryHandler(IConfiguration configuration, IReadiness readiness, ICompanyTimeService companyTime, TimeProvider time) : IQueryHandler<GetVehicleQuery, VehicleDetail>
 { public async Task<VehicleDetail> HandleAsync(GetVehicleQuery query, AccessContext actor, CancellationToken cancellationToken) => await (await EfVehicleStore.ReadByConnectionAsync(DatabaseConnectionString.Resolve(configuration) ?? throw new InvalidOperationException("Database is not configured."), query.SubjectId ?? throw new VehicleValidationException(["id"]), cancellationToken)).ComposeAsync(readiness, companyTime, time, cancellationToken); }
 

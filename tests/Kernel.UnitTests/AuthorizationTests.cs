@@ -118,7 +118,7 @@ public sealed class AuthorizationTests
     [Fact]
     public void Matrix_contains_all_permission_rows()
     {
-        Assert.Equal(35, PermissionMatrix.Entries.Count);
+        Assert.Equal(37, PermissionMatrix.Entries.Count);
         Assert.Contains(PermissionMatrix.Entries, x => x.ActionKey == "shifts.approve_reject" && x.AllowedRoles.SetEquals([RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner]));
         Assert.Contains(PermissionMatrix.Entries, x => x.ActionKey == "documents.medical.view" && x.OwnRoles.SetEquals([RoleCode.Driver]));
     }
@@ -158,6 +158,8 @@ public sealed class AuthorizationTests
             ["sessions.manage"] = [RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner],
             ["employees.phone.change"] = [RoleCode.Hr, RoleCode.Owner],
             ["audit.export"] = [RoleCode.Hr, RoleCode.Owner],
+            ["alerts.view"] = [RoleCode.Dispatcher, RoleCode.Hr],
+            ["alerts.snooze"] = [RoleCode.Dispatcher, RoleCode.Hr],
             ["defects.report"] = [RoleCode.Driver],
             ["schedule.edit"] = [RoleCode.Dispatcher, RoleCode.Owner],
             ["settings.payroll"] = [RoleCode.Hr, RoleCode.Owner],
@@ -210,6 +212,8 @@ public sealed class AuthorizationTests
             ["settings.payroll"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full),
             ["notifications.mine"] = (PermissionMatrix.Cell.Own, PermissionMatrix.Cell.Own, PermissionMatrix.Cell.Own, PermissionMatrix.Cell.Own)
             , ["jobs.trigger"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.None, PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full)
+            , ["alerts.view"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.View)
+            , ["alerts.snooze"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.None)
         };
         Assert.Equal(expected.Keys.Order(), PermissionMatrix.Entries.Select(x => x.ActionKey).Order());
         foreach (var item in expected)
@@ -278,6 +282,8 @@ public sealed class AuthorizationTests
         "schedule.edit" => role is RoleCode.Dispatcher or RoleCode.Owner,
         "override.manage" => role is RoleCode.Dispatcher or RoleCode.Owner,
         "absences.sick_other.record" => role is RoleCode.Dispatcher or RoleCode.Hr,
+        "alerts.view" => role is RoleCode.Dispatcher or RoleCode.Hr,
+        "alerts.snooze" => role is RoleCode.Dispatcher or RoleCode.Hr,
         "settings.manage" => role == RoleCode.Owner,
         "defects.report" => role == RoleCode.Driver,
         _ => false

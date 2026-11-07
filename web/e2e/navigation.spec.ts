@@ -12,7 +12,11 @@ test("every route shows its empty state heading", async ({ page }) => {
   for (const [route, label] of routes) {
     await page.goto(route);
     await expect(page.getByRole("heading", { level: 1, name: label })).toBeVisible();
-    await expect(page.getByRole("heading", { level: 2, name: "Nothing here yet" })).toBeVisible();
+    if (route === "/")
+      await expect(
+        page.getByRole("heading", { level: 2, name: "Nothing needs attention right now." }),
+      ).toBeVisible();
+    else await expect(page.getByRole("heading", { level: 2, name: "Nothing here yet" })).toBeVisible();
   }
 });
 test("placeholder pages have no action buttons", async ({ page }) => {

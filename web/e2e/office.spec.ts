@@ -43,7 +43,7 @@ test.describe("navigation and responsive shell", () => {
   test("unknown paths redirect to home", async ({ page }) => {
     await page.goto("/not-a-section");
     await expect(page).toHaveURL(/\/$/);
-    await expect(page.getByRole("heading", { name: "Attention" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Attention", exact: true })).toBeVisible();
   });
 
   test("mobile More reaches its three links", async ({ page }) => {

@@ -48,10 +48,26 @@ public sealed class AlertEngine(IEnumerable<IAlertEvaluator> evaluators, ISettin
         command.Parameters.AddWithValue(subjectId);
         command.Parameters.AddWithValue(scopes);
         await command.ExecuteNonQueryAsync(cancellationToken);
+        var assignedRole = evaluator.RuleId == "A-05" ? "dispatcher" : "hr";
+        if (evaluator.RuleId == "A-03" && evaluator.SubjectType == "document")
+        {
+            await using var ownerTypeCommand = new NpgsqlCommand("select owner_type from fleetops.documents where id = $1", (NpgsqlConnection)context.DbConnection, (NpgsqlTransaction)context.DbTransaction);
+            ownerTypeCommand.Parameters.AddWithValue(subjectId);
+            var ownerType = (string?)await ownerTypeCommand.ExecuteScalarAsync(cancellationToken);
+            assignedRole = string.Equals(ownerType, nameof(DocumentOwnerType.Vehicle), StringComparison.OrdinalIgnoreCase) ? "dispatcher" : "hr";
+        }
         foreach (var condition in conditions)
         {
             await using var insert = new NpgsqlCommand("insert into fleetops.alerts (id, rule_id, subject_type, subject_id, scope_key, severity, due_at, assigned_role, status, opened_at, version) values ($1,$2,$3,$4,$5,$6,$7,$8,'Open',$9,1) on conflict (rule_id, subject_type, subject_id, scope_key) where status <> 'Resolved' do nothing", (NpgsqlConnection)context.DbConnection, (NpgsqlTransaction)context.DbTransaction);
-            insert.Parameters.AddWithValue(Guid.CreateVersion7()); insert.Parameters.AddWithValue(evaluator.RuleId); insert.Parameters.AddWithValue(evaluator.SubjectType); insert.Parameters.AddWithValue(subjectId); insert.Parameters.AddWithValue(condition.ScopeKey); insert.Parameters.AddWithValue(condition.Severity.ToString()); insert.Parameters.AddWithValue(condition.DueAt is null ? DBNull.Value : condition.DueAt.Value); insert.Parameters.AddWithValue(evaluator.RuleId == "A-03" && evaluator.SubjectType == "document" ? (condition.ScopeKey.StartsWith("vehicle:", StringComparison.Ordinal) ? "dispatcher" : "hr") : evaluator.RuleId == "A-05" ? "dispatcher" : "hr"); insert.Parameters.AddWithValue(now);
+            insert.Parameters.AddWithValue(Guid.CreateVersion7());
+            insert.Parameters.AddWithValue(evaluator.RuleId);
+            insert.Parameters.AddWithValue(evaluator.SubjectType);
+            insert.Parameters.AddWithValue(subjectId);
+            insert.Parameters.AddWithValue(condition.ScopeKey);
+            insert.Parameters.AddWithValue(condition.Severity.ToString());
+            insert.Parameters.AddWithValue(condition.DueAt is null ? DBNull.Value : condition.DueAt.Value);
+            insert.Parameters.AddWithValue(assignedRole);
+            insert.Parameters.AddWithValue(now);
             await insert.ExecuteNonQueryAsync(cancellationToken);
             await using var update = new NpgsqlCommand("update fleetops.alerts set severity = $1, due_at = $2, version = version + 1 where rule_id = $3 and subject_type = $4 and subject_id = $5 and scope_key = $6 and status <> 'Resolved' and (severity <> $1 or due_at is distinct from $2)", (NpgsqlConnection)context.DbConnection, (NpgsqlTransaction)context.DbTransaction);
             update.Parameters.AddWithValue(condition.Severity.ToString()); update.Parameters.AddWithValue(condition.DueAt is null ? DBNull.Value : condition.DueAt.Value); update.Parameters.AddWithValue(evaluator.RuleId); update.Parameters.AddWithValue(evaluator.SubjectType); update.Parameters.AddWithValue(subjectId); update.Parameters.AddWithValue(condition.ScopeKey);
@@ -89,7 +105,7 @@ public sealed class A03DocumentEvaluator : IAlertEvaluator
         var threshold = document.CreatedAt.AddDays(queueDays);
         var blocked = DocumentsCatalog.Get(document.Type).Blocking;
         var holds = now >= threshold || blocked && now >= document.CreatedAt.AddHours(blockedHours);
-        return holds ? [new AlertCondition(document.OwnerType == DocumentOwnerType.Vehicle ? $"vehicle:{document.OwnerId}" : $"employee:{document.OwnerId}", AlertSeverity.Warning, null)] : [];
+        return holds ? [new AlertCondition(document.Type.ToString().ToSnakeCase(), AlertSeverity.Warning, null)] : [];
     }
 }
 

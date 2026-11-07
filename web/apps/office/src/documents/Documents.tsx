@@ -40,7 +40,10 @@ export function Documents() {
   const client = useQueryClient();
   const [search, setSearch] = useState("");
   const [term, setTerm] = useState("");
-  const [filter, setFilter] = useState("queue");
+  const uploadTarget = new URLSearchParams(window.location.search).get("upload")?.split(":") ?? [];
+  const [filter, setFilter] = useState(() =>
+    new URLSearchParams(window.location.search).get("filter") === "queue" ? "queue" : "queue",
+  );
   const [dialogOpen, setDialogOpen] = useState(false);
   const [openId, setOpenId] = useState<string | null>(
     new URLSearchParams(window.location.search).get("open"),
@@ -49,7 +52,7 @@ export function Documents() {
   const canUpload = Boolean(roleOwner(session.data?.roles ?? []));
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("filter") === "missing" && canUpload) setDialogOpen(true);
+    if ((params.get("filter") === "missing" || params.has("upload")) && canUpload) setDialogOpen(true);
   }, [canUpload]);
 
   useEffect(() => {
@@ -217,8 +220,15 @@ export function Documents() {
       <UploadDialog
         open={dialogOpen}
         roles={session.data?.roles ?? []}
-        initialOwnerId={new URLSearchParams(window.location.search).get("ownerId") ?? ""}
-        initialOwnerType={new URLSearchParams(window.location.search).get("ownerId") ? "vehicle" : undefined}
+        initialOwnerId={uploadTarget[1] ?? new URLSearchParams(window.location.search).get("ownerId") ?? ""}
+        initialOwnerType={
+          uploadTarget[0] === "employee" || uploadTarget[0] === "vehicle"
+            ? uploadTarget[0]
+            : new URLSearchParams(window.location.search).get("ownerId")
+              ? "vehicle"
+              : undefined
+        }
+        initialType={uploadTarget[2] as DocumentType | undefined}
         onClose={() => setDialogOpen(false)}
         onSaved={() => {
           setDialogOpen(false);
@@ -448,6 +458,7 @@ function UploadDialog({
   roles,
   initialOwnerId,
   initialOwnerType,
+  initialType,
   onClose,
   onSaved,
 }: {
@@ -455,6 +466,7 @@ function UploadDialog({
   roles: string[];
   initialOwnerId: string;
   initialOwnerType?: DocumentOwnerType;
+  initialType?: DocumentType;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -464,7 +476,11 @@ function UploadDialog({
   const [ownerName, setOwnerName] = useState("");
   const [vehicleKind, setVehicleKind] = useState<components["schemas"]["VehicleKind"] | null>(null);
   const [ownerSearch, setOwnerSearch] = useState("");
-  const [type, setType] = useState<DocumentType>(documentTypes[initialOwner][0]);
+  const [type, setType] = useState<DocumentType>(
+    initialType && documentTypes[initialOwner].includes(initialType)
+      ? initialType
+      : documentTypes[initialOwner][0],
+  );
   const [files, setFiles] = useState<UploadFile[]>([]);
   const [number, setNumber] = useState("");
   const [issuedAt, setIssuedAt] = useState("");

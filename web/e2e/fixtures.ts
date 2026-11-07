@@ -18,6 +18,24 @@ export const test = base.extend({
         body: JSON.stringify(emptyList),
       }),
     );
+    await page.route("**/api/v1/attention", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          groups: [],
+          totals: { open: 0, critical: 0 },
+          companyEmpty: false,
+        }),
+      }),
+    );
+    await page.route("**/api/v1/readiness/summary", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ vehiclesUsable: 0, vehiclesTotal: 0 }),
+      }),
+    );
     await use(page);
   },
 });

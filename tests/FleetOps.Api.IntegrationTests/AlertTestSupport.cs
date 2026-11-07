@@ -99,6 +99,41 @@ internal static class AlertTestSupport
         return await job.RunStepAsync(new JobContext(cursor, factory.Clock.GetUtcNow(), new SystemActor("test")), CancellationToken.None);
     }
 
+    public static async Task<Guid> AddAlert(
+        VehicleApiFactory factory,
+        string ruleId,
+        string subjectType,
+        Guid subjectId,
+        string scopeKey,
+        string severity,
+        DateOnly? dueAt,
+        string assignedRole = "dispatcher",
+        string status = "Open",
+        DateTimeOffset? snoozedUntil = null,
+        string? snoozeReason = null,
+        int version = 1)
+    {
+        var id = Guid.NewGuid();
+        await using var connection = new NpgsqlConnection(factory.AdminConnectionString);
+        await connection.OpenAsync();
+        await using var command = new NpgsqlCommand("insert into fleetops.alerts (id, rule_id, subject_type, subject_id, scope_key, severity, due_at, assigned_role, status, snoozed_until, snooze_reason, opened_at, version) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)", connection);
+        command.Parameters.AddWithValue(id);
+        command.Parameters.AddWithValue(ruleId);
+        command.Parameters.AddWithValue(subjectType);
+        command.Parameters.AddWithValue(subjectId);
+        command.Parameters.AddWithValue(scopeKey);
+        command.Parameters.AddWithValue(severity);
+        command.Parameters.AddWithValue((object?)dueAt ?? DBNull.Value);
+        command.Parameters.AddWithValue(assignedRole);
+        command.Parameters.AddWithValue(status);
+        command.Parameters.AddWithValue((object?)snoozedUntil ?? DBNull.Value);
+        command.Parameters.AddWithValue((object?)snoozeReason ?? DBNull.Value);
+        command.Parameters.AddWithValue(factory.Clock.GetUtcNow());
+        command.Parameters.AddWithValue(version);
+        await command.ExecuteNonQueryAsync();
+        return id;
+    }
+
     public static async Task SetVehicleStatus(VehicleApiFactory factory, Guid id, string status)
     {
         await using var connection = new NpgsqlConnection(factory.AdminConnectionString);
