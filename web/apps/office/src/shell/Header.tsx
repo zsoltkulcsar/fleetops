@@ -147,7 +147,7 @@ export function Header({ pageName }: { pageName: string }) {
           <button
             className="ui-button ghost notification-button"
             type="button"
-            aria-label={`${notifications.data?.unread ?? 0} unread notifications`}
+            aria-label={en.notifications.unreadLabel(notifications.data?.unread ?? 0)}
             aria-expanded={notificationsOpen}
             onClick={() => setNotificationsOpen((open) => !open)}
           >

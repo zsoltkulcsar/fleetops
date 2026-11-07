@@ -36,6 +36,7 @@ export const en = {
     markAll: "Mark all as read",
     empty: "No notifications.",
     newLabel: "New",
+    unreadLabel: (count: number) => `${count} unread notification${count === 1 ? "" : "s"}`,
   },
   subtitles: {
     attention: "Review the work that needs your attention.",

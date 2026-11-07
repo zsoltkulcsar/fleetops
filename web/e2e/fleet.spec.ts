@@ -365,7 +365,7 @@ test("retired record is read only and shows its reason", async ({ page }) => {
   await page.goto("/fleet/v-retired");
   await expect(page.getByRole("button", { name: "Edit" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Retire", exact: true })).toHaveCount(0);
-  await expect(page.getByText("Retired: Sold on 01.11.2026.")).toBeVisible();
+  await expect(page.getByRole("alert", { name: "Retired" })).toContainText("Retired: Sold on 01.11.2026.");
 });
 test("owner sees undo within the window", async ({ page }) => {
   await page.route("**/api/v1/fleet/vehicles/v-retired", (route) =>

@@ -102,7 +102,7 @@
 }
 body {
   margin: 0;
-  background: var(--bg);
+  background-color: var(--bg);
   color: var(--ink);
   font: var(--type-body) / 1.45 var(--font-body);
 }

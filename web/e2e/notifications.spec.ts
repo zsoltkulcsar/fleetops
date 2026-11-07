@@ -33,7 +33,7 @@ async function notifications(page: Page, value: NotificationList) {
 
 async function openBell(page: Page) {
   await page.goto("/fleet");
-  await page.getByRole("button", { name: /unread notifications/ }).click();
+  await page.getByRole("button", { name: /^\d+ unread notifications?$/ }).click();
   await expect(page.getByRole("dialog", { name: "Notifications" })).toBeVisible();
 }
 
@@ -42,6 +42,13 @@ test("bell shows the unread count as text", async ({ page }) => {
   await page.goto("/fleet");
 
   await expect(page.getByRole("button", { name: "3 unread notifications" })).toContainText("3");
+});
+
+test("bell label is singular for one unread", async ({ page }) => {
+  await notifications(page, list({ unread: 1 }));
+  await page.goto("/fleet");
+
+  await expect(page.getByRole("button", { name: "1 unread notification" })).toBeVisible();
 });
 
 test("bell lists notifications with dates", async ({ page }) => {
@@ -69,6 +76,30 @@ test("row click marks read and opens the link", async ({ page }) => {
 
   expect(markedRead).toBe(true);
   await expect(page).toHaveURL(/\/documents\?open=/);
+});
+
+test("read and read all send the request header", async ({ page }) => {
+  await notifications(page, list());
+  let readHeader: string | undefined;
+  let readAllHeader: string | undefined;
+  await page.route(`**/api/v1/notifications/${id}/read`, async (route) => {
+    readHeader = route.request().headers()["x-fleetops-request"];
+    await route.fulfill({ status: 200, body: "" });
+  });
+  await page.route("**/api/v1/notifications/read-all", async (route) => {
+    readAllHeader = route.request().headers()["x-fleetops-request"];
+    await route.fulfill({ status: 200, body: "1" });
+  });
+
+  await openBell(page);
+  await page.getByRole("button", { name: /Driver card document was rejected/ }).click();
+  await expect(page).toHaveURL(/\/documents\?open=/);
+
+  await openBell(page);
+  await page.getByRole("button", { name: "Mark all as read" }).click();
+
+  expect(readHeader).toBe("1");
+  expect(readAllHeader).toBe("1");
 });
 
 test("mark all as read clears the count", async ({ page }) => {

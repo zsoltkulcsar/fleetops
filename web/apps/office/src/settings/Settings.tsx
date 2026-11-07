@@ -40,7 +40,6 @@ export function Settings() {
                 onRun={async () => {
                   const result = await apiClient.POST("/api/v1/admin/jobs/{name}/run", {
                     params: { path: { name: job.name } },
-                    headers: { "X-FleetOps-Request": "1" },
                   });
                   if (result.error || !result.data) {
                     setRunResults((current) => ({ ...current, [job.name]: "failed" }));
