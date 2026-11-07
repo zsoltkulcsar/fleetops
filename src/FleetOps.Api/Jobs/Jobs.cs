@@ -55,7 +55,8 @@ public sealed class JobRunner(IConfiguration configuration, IEnumerable<IJob> jo
     {
         if (!jobs.TryGetValue(name, out var job)) throw new KeyNotFoundException(name);
         var connectionString = DatabaseConnectionString.Resolve(configuration) ?? throw new InvalidOperationException("Database is not configured.");
-        await using var connection = new NpgsqlConnection(connectionString);
+        var connectionBuilder = new NpgsqlConnectionStringBuilder(connectionString) { Pooling = false };
+        await using var connection = new NpgsqlConnection(connectionBuilder.ConnectionString);
         await connection.OpenAsync(cancellationToken);
         var locked = await TryLockAsync(connection, name, cancellationToken);
         if (!locked)
@@ -210,14 +211,15 @@ public sealed record ListJobsQuery : IQuery<JobListResult>;
 public sealed record JobListResult(IReadOnlyList<JobListItem> Items) : IReadModel;
 public sealed record JobListItem(string Name, DateTimeOffset? StartedAt, DateTimeOffset? FinishedAt, string? Status, int Processed);
 
-public sealed class ListJobsQueryHandler(IConfiguration configuration) : IQueryHandler<ListJobsQuery, JobListResult>
+public sealed class ListJobsQueryHandler(IConfiguration configuration, IEnumerable<IJob> jobs) : IQueryHandler<ListJobsQuery, JobListResult>
 {
     public async Task<JobListResult> HandleAsync(ListJobsQuery query, AccessContext actor, CancellationToken cancellationToken)
     {
         var connectionString = DatabaseConnectionString.Resolve(configuration) ?? throw new InvalidOperationException("Database is not configured.");
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync(cancellationToken);
-        await using var command = new NpgsqlCommand("select names.name, runs.started_at, runs.finished_at, runs.status, runs.processed from (select distinct name from fleetops.job_runs) names left join lateral (select started_at, finished_at, status, processed from fleetops.job_runs where name = names.name order by started_at desc limit 1) runs on true order by names.name", connection);
+        await using var command = new NpgsqlCommand("select names.name, runs.started_at, runs.finished_at, runs.status, runs.processed from (select distinct name from unnest($1::text[]) as registered(name)) names left join lateral (select started_at, finished_at, status, processed from fleetops.job_runs where name = names.name order by started_at desc limit 1) runs on true order by names.name", connection);
+        command.Parameters.AddWithValue(jobs.Select(job => job.Name).ToArray());
         var items = new List<JobListItem>();
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))

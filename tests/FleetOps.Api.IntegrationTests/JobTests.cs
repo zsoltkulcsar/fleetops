@@ -191,6 +191,19 @@ public sealed class JobTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task List_shows_a_registered_job_that_never_ran()
+    {
+        factory.AdminTrigger = true;
+        factory.IncludeOrphanJob = true;
+        await factory.ClearJobRuns();
+        using var response = await factory.GetAdminJobs(RoleCode.Owner);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(response.StatusCode == HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
+        var orphan = body.GetProperty("items").EnumerateArray().Single(item => item.GetProperty("name").GetString() == "file-orphans");
+        Assert.Equal(JsonValueKind.Null, orphan.GetProperty("status").ValueKind);
+    }
+
+    [Fact]
     public async Task Admin_trigger_is_404_when_off()
     {
         using var run = await factory.RunAdmin("recording", RoleCode.Owner);
@@ -267,6 +280,7 @@ public sealed class JobApiFactory : WebApplicationFactory<Program>, IAsyncLifeti
     public Task<HttpResponseMessage> RunAdmin(string name, RoleCode role) { access.Current = AccessContext.For(VehicleApiFactory.ActorId, role); var request = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/admin/jobs/{name}/run"); request.Headers.TryAddWithoutValidation("Origin", "https://localhost"); request.Headers.TryAddWithoutValidation("X-FleetOps-Request", "1"); return Client.SendAsync(request); }
     public Task<HttpResponseMessage> GetAdminJobs(RoleCode role) { access.Current = AccessContext.For(VehicleApiFactory.ActorId, role); var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/admin/jobs"); request.Headers.TryAddWithoutValidation("Origin", "https://localhost"); request.Headers.TryAddWithoutValidation("X-FleetOps-Request", "1"); return Client.SendAsync(request); }
     public async Task<NpgsqlConnection> DirectConnection() { var connection = new NpgsqlConnection(RuntimeConnectionString); await connection.OpenAsync(); return connection; }
+    public async Task ClearJobRuns() { await using var connection = new NpgsqlConnection(AdminConnectionString); await connection.OpenAsync(); await using var command = new NpgsqlCommand("truncate fleetops.job_runs", connection); await command.ExecuteNonQueryAsync(); }
     public async Task<T> Scalar<T>(string sql) { await using var connection = await DirectConnection(); await using var command = new NpgsqlCommand(sql, connection); return (T)(await command.ExecuteScalarAsync())!; }
     public Task<bool> TryAdvisoryLock(string name) => TryAdvisoryLockAsync(name);
     private async Task<bool> TryAdvisoryLockAsync(string name) { await using var connection = await DirectConnection(); await using var command = new NpgsqlCommand("select pg_try_advisory_lock(hashtextextended('fleetops.job.' || $1, 0))", connection); command.Parameters.AddWithValue(name); return (bool)(await command.ExecuteScalarAsync())!; }

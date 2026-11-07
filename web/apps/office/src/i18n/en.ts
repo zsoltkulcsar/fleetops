@@ -40,7 +40,15 @@ export const en = {
     payroll: "Prepare a reliable export for payroll processing.",
     settings: "Manage workspace preferences and access.",
   },
-  settings: { jobs: { title: "Timed jobs", runNow: "Run now", neverRun: "Never run" } },
+  settings: {
+    jobs: {
+      title: "Timed jobs",
+      runNow: "Run now",
+      neverRun: "Never run",
+      runResult: "{status}, {processed} processed",
+      runFailed: "Could not run the job.",
+    },
+  },
   auth: {
     signIn: "Sign in",
     email: "E-mail address",
