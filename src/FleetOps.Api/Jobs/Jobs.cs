@@ -5,6 +5,7 @@ using FleetOps.Api.Pipeline;
 using FleetOps.Kernel.Authorization;
 using FleetOps.Kernel.Files;
 using FleetOps.Migrations;
+using FleetOps.Modules.Alerts;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Npgsql;
 
@@ -34,7 +35,7 @@ public sealed class JobRunner(IConfiguration configuration, IEnumerable<IJob> jo
     public async Task<JobRunResult> RunNightlyAsync(JobTrigger trigger, CancellationToken cancellationToken)
     {
         var budget = time.GetUtcNow().AddSeconds(configuration.GetValue("Jobs:BudgetSeconds", 50));
-        var order = configuration.GetSection("Jobs:NightlyOrder").Get<string[]>() ?? [];
+        var order = configuration.GetSection("Jobs:NightlyOrder").Get<string[]>() ?? ["alerts-sweep", "file-orphans"];
         var names = order.Length == 0
             ? jobs.Keys
             : order.Distinct(StringComparer.OrdinalIgnoreCase).Where(Contains);
@@ -166,6 +167,31 @@ public sealed class JobRunner(IConfiguration configuration, IEnumerable<IJob> jo
         command.Parameters.AddWithValue(cursor);
         command.Parameters.AddWithValue(DateTimeOffset.UtcNow);
         await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+}
+
+public sealed class AlertsSweepJob(IConfiguration configuration, IAlertEngine engine, TimeProvider time) : IJob
+{
+    public string Name => "alerts-sweep";
+
+    public async Task<JobStep> RunStepAsync(JobContext context, CancellationToken cancellationToken)
+    {
+        var connectionString = DatabaseConnectionString.Resolve(configuration) ?? throw new InvalidOperationException("Database is not configured.");
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var select = new NpgsqlCommand("select subject_type, subject_id from (select 'employee' subject_type, id subject_id from fleetops.employees where roles::jsonb @> '[\"driver\"]' and status = 'Active' union select 'vehicle', id from fleetops.vehicles where status = 'Active' union select 'document', id from fleetops.documents where status = 'Uploaded' union select subject_type, subject_id from fleetops.alerts where status <> 'Resolved') subjects where ($1::text is null or subject_type || ':' || subject_id::text > $1) order by subject_type, subject_id limit 100", connection);
+        select.Parameters.AddWithValue(context.Cursor is null ? DBNull.Value : context.Cursor);
+        var subjects = new List<(string Type, Guid Id)>();
+        await using (var reader = await select.ExecuteReaderAsync(cancellationToken))
+            while (await reader.ReadAsync(cancellationToken)) subjects.Add((reader.GetString(0), reader.GetGuid(1)));
+        foreach (var subject in subjects)
+        {
+            await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+            await engine.ApplyAsync(subject.Type, subject.Id, new CommandContext(connection, transaction), cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+        }
+        var cursor = subjects.Count == 0 ? context.Cursor : $"{subjects[^1].Type}:{subjects[^1].Id}";
+        return new(subjects.Count < 100, cursor, subjects.Count);
     }
 }
 

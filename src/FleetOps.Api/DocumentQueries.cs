@@ -9,12 +9,13 @@ using FleetOps.Kernel.Authorization;
 using FleetOps.Kernel;
 using FleetOps.Kernel.Files;
 using Microsoft.EntityFrameworkCore;
+using FleetOps.Modules.Setup;
 
 namespace FleetOps.Api;
 
 public sealed record DocumentListCursor(DateTimeOffset UploadedAt, Guid Id);
 public sealed class DocumentInvalidCursorException : Exception { public DocumentInvalidCursorException() : base("invalid_cursor") { } }
-public sealed class DocumentListQueryHandler(IConfiguration configuration, IDataProtectionProvider protectionProvider, ICompanyTimeService companyTime, TimeProvider time) : IQueryHandler<ListDocumentsQuery, DocumentListResult>
+public sealed class DocumentListQueryHandler(IConfiguration configuration, IDataProtectionProvider protectionProvider, ICompanyTimeService companyTime, TimeProvider time, ISettings settings) : IQueryHandler<ListDocumentsQuery, DocumentListResult>
 {
     private readonly IDataProtector protector = protectionProvider.CreateProtector("FleetOps.DocumentListCursor.v1");
     public async Task<DocumentListResult> HandleAsync(ListDocumentsQuery query, AccessContext actor, CancellationToken cancellationToken)
@@ -28,7 +29,7 @@ public sealed class DocumentListQueryHandler(IConfiguration configuration, IData
         if (query.Status.HasValue) rows = rows.Where(x => x.Status == query.Status.Value);
         var today = companyTime.ToCompanyDate(time.GetUtcNow());
         if (string.Equals(query.Filter, "queue", StringComparison.OrdinalIgnoreCase)) rows = rows.Where(x => x.Status == DocumentStatus.Uploaded);
-        if (string.Equals(query.Filter, "expiring", StringComparison.OrdinalIgnoreCase)) rows = rows.Where(x => x.Status == DocumentStatus.Verified && x.ExpiresAt >= today && ((x.Type == DocumentType.LicenceC_CE || x.Type == DocumentType.DriverCard || x.Type == DocumentType.Medical || x.Type == DocumentType.AdrCertificate) && x.ExpiresAt <= today.AddDays(60) || x.Type == DocumentType.Code95 && x.ExpiresAt <= today.AddDays(90) || x.Type == DocumentType.IdCard && x.ExpiresAt <= today.AddDays(30) || (x.Type == DocumentType.HuReport || x.Type == DocumentType.SpReport || x.Type == DocumentType.TachoCalibration || x.Type == DocumentType.Insurance) && x.ExpiresAt <= today.AddDays(30) || x.Type == DocumentType.CommunityLicence && x.ExpiresAt <= today.AddDays(60)));
+        if (string.Equals(query.Filter, "expiring", StringComparison.OrdinalIgnoreCase)) rows = await ApplyExpiringFilterAsync(rows, today, settings, cancellationToken);
         if (string.Equals(query.Filter, "expired", StringComparison.OrdinalIgnoreCase)) rows = rows.Where(x => x.Status == DocumentStatus.Verified && x.ExpiresAt < today);
         if (actor.Roles.Contains(RoleCode.Dispatcher)) rows = rows.Where(x => x.OwnerType == DocumentOwnerType.Vehicle);
         if (!string.IsNullOrWhiteSpace(query.Search)) { var s = query.Search.Replace("%", "\\%", StringComparison.Ordinal).Replace("_", "\\_", StringComparison.Ordinal); rows = rows.Where(x => EF.Functions.ILike(x.Number ?? "", $"%{s}%", "\\") || (x.OwnerType == DocumentOwnerType.Vehicle && db.Vehicles.Where(v => v.Id == x.OwnerId).Select(v => v.Plate).Any(p => EF.Functions.ILike(p, $"%{s}%", "\\"))) || (x.OwnerType == DocumentOwnerType.Employee && db.Set<Employee>().Where(e => e.Id == x.OwnerId).Any(e => EF.Functions.ILike(e.FirstName + " " + e.LastName, $"%{s}%", "\\")))); }
@@ -44,6 +45,17 @@ public sealed class DocumentListQueryHandler(IConfiguration configuration, IData
         var result = entities.Select(x => new DocumentListItem(x.Id, x.OwnerType, x.OwnerId, x.OwnerType == DocumentOwnerType.Employee ? names.GetValueOrDefault(x.OwnerId, "") : plates.GetValueOrDefault(x.OwnerId, ""), x.Type, x.Number, x.IssuedAt, x.ExpiresAt, x.Status, x.CreatedAt, x.Version, CanAct(x, actor))).ToList();
         return new(result, hasNext ? protector.Protect(JsonSerializer.Serialize(new DocumentListCursor(entities[^1].CreatedAt, entities[^1].Id))) : null);
     }
+    private static async Task<IQueryable<Document>> ApplyExpiringFilterAsync(IQueryable<Document> rows, DateOnly today, ISettings settings, CancellationToken cancellationToken)
+    {
+        var filtered = rows.Where(x => false);
+        foreach (var catalog in DocumentsCatalog.All.Where(x => x.HasExpiry))
+        {
+            var days = await settings.GetIntAsync(new SettingKey($"documents.lead_days.{DocumentTypeKey(catalog.Type)}"), null, cancellationToken);
+            filtered = filtered.Concat(rows.Where(x => x.Status == DocumentStatus.Verified && x.Type == catalog.Type && x.ExpiresAt >= today && x.ExpiresAt <= today.AddDays(days)));
+        }
+        return filtered;
+    }
+    private static string DocumentTypeKey(DocumentType type) => type switch { DocumentType.LicenceC_CE => "licence_c_ce", DocumentType.DriverCard => "driver_card", DocumentType.IdCard => "id_card", DocumentType.AdrCertificate => "adr_certificate", DocumentType.HuReport => "hu_report", DocumentType.SpReport => "sp_report", DocumentType.TachoCalibration => "tacho_calibration", DocumentType.CommunityLicence => "community_licence", _ => type.ToString().ToLowerInvariant() };
     private static bool CanAct(Document document, AccessContext actor) => document.Status == DocumentStatus.Uploaded && ((document.OwnerType == DocumentOwnerType.Employee && PermissionMatrix.Resolve("documents.driver.verify", actor.Roles)?.Cell == PermissionMatrix.Cell.Full) || (document.OwnerType == DocumentOwnerType.Vehicle && PermissionMatrix.Resolve("documents.vehicle.manage", actor.Roles)?.Cell == PermissionMatrix.Cell.Full));
     private DocumentListCursor? Unprotect(string? value) { if (string.IsNullOrWhiteSpace(value)) return null; try { var c = JsonSerializer.Deserialize<DocumentListCursor>(protector.Unprotect(value)); return c is null || c.Id == Guid.Empty ? throw new DocumentInvalidCursorException() : c; } catch (DocumentInvalidCursorException) { throw; } catch (Exception ex) when (ex is FormatException or CryptographicException or JsonException) { throw new DocumentInvalidCursorException(); } }
 }
@@ -51,7 +63,7 @@ public sealed class DocumentDetailQueryHandler(IConfiguration configuration) : I
 {
     public async Task<DocumentDetail> HandleAsync(GetDocumentQuery query, AccessContext actor, CancellationToken cancellationToken) { var options = new DbContextOptionsBuilder<FleetOpsDbContext>().UseNpgsql(DatabaseConnectionString.Resolve(configuration) ?? throw new InvalidOperationException("Database is not configured.")).Options; await using var db = new FleetOpsDbContext(options); var row = await EfDocumentStore.ReadDetailAsync(db, query.SubjectId ?? throw new DocumentValidationException(["id"]), cancellationToken, actor) ?? throw new DocumentConflictException("not_found"); if (actor.Roles.Contains(RoleCode.Dispatcher) && row.OwnerType == DocumentOwnerType.Employee) throw new DocumentConflictException("not_found"); return row; }
 }
-public sealed class DocumentCountsQueryHandler(IConfiguration configuration, ICompanyTimeService companyTime, TimeProvider time) : IQueryHandler<GetDocumentCountsQuery, DocumentCounts>
+public sealed class DocumentCountsQueryHandler(IConfiguration configuration, ICompanyTimeService companyTime, TimeProvider time, ISettings settings) : IQueryHandler<GetDocumentCountsQuery, DocumentCounts>
 {
     public async Task<DocumentCounts> HandleAsync(GetDocumentCountsQuery query, AccessContext actor, CancellationToken cancellationToken)
     {
@@ -61,10 +73,17 @@ public sealed class DocumentCountsQueryHandler(IConfiguration configuration, ICo
         if (actor.Roles.Contains(RoleCode.Dispatcher)) rows = rows.Where(x => x.OwnerType == DocumentOwnerType.Vehicle);
         var today = companyTime.ToCompanyDate(time.GetUtcNow());
         var queue = await rows.CountAsync(x => x.Status == DocumentStatus.Uploaded, cancellationToken);
-        var expiring = await rows.Where(x => x.Status == DocumentStatus.Verified && x.ExpiresAt >= today && ((x.Type == DocumentType.LicenceC_CE || x.Type == DocumentType.DriverCard || x.Type == DocumentType.Medical || x.Type == DocumentType.AdrCertificate) && x.ExpiresAt <= today.AddDays(60) || x.Type == DocumentType.Code95 && x.ExpiresAt <= today.AddDays(90) || x.Type == DocumentType.IdCard && x.ExpiresAt <= today.AddDays(30) || (x.Type == DocumentType.HuReport || x.Type == DocumentType.SpReport || x.Type == DocumentType.TachoCalibration || x.Type == DocumentType.Insurance) && x.ExpiresAt <= today.AddDays(30) || x.Type == DocumentType.CommunityLicence && x.ExpiresAt <= today.AddDays(60))).CountAsync(cancellationToken);
+        var expiringRows = rows.Where(x => false);
+        foreach (var catalog in DocumentsCatalog.All.Where(x => x.HasExpiry))
+        {
+            var days = await settings.GetIntAsync(new SettingKey($"documents.lead_days.{DocumentTypeKey(catalog.Type)}"), null, cancellationToken);
+            expiringRows = expiringRows.Concat(rows.Where(x => x.Status == DocumentStatus.Verified && x.Type == catalog.Type && x.ExpiresAt >= today && x.ExpiresAt <= today.AddDays(days)));
+        }
+        var expiring = await expiringRows.CountAsync(cancellationToken);
         var expired = await rows.CountAsync(x => x.Status == DocumentStatus.Verified && x.ExpiresAt < today, cancellationToken);
         return new(queue, expiring, expired);
     }
+    private static string DocumentTypeKey(DocumentType type) => type switch { DocumentType.LicenceC_CE => "licence_c_ce", DocumentType.DriverCard => "driver_card", DocumentType.IdCard => "id_card", DocumentType.AdrCertificate => "adr_certificate", DocumentType.HuReport => "hu_report", DocumentType.SpReport => "sp_report", DocumentType.TachoCalibration => "tacho_calibration", DocumentType.CommunityLicence => "community_licence", _ => type.ToString().ToLowerInvariant() };
 }
 public sealed class SearchDocumentsQueryHandler(IConfiguration configuration) : IQueryHandler<SearchDocumentsQuery, DocumentSearchResult>
 {

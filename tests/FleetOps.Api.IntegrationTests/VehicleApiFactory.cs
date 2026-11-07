@@ -5,6 +5,7 @@ using System.Collections.Concurrent;
 using FleetOps.Kernel.Authorization;
 using FleetOps.Kernel.Files;
 using FleetOps.Migrations;
+using FleetOps.Modules.Alerts;
 using FleetOps.Modules.Fleet;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -47,6 +48,8 @@ public sealed class VehicleApiFactory : WebApplicationFactory<Program>, IAsyncLi
     public bool UseRealObjectStore { get; set; }
 
     public ConcurrentQueue<string>? LogItems { get; set; }
+
+    public IList<IAlertEvaluator> AdditionalAlertEvaluators { get; } = new List<IAlertEvaluator>();
 
     /// <summary>When set, the next write command runs inside its transaction and then throws.</summary>
     public bool ThrowAfterWrite { get; set; }
@@ -97,6 +100,8 @@ public sealed class VehicleApiFactory : WebApplicationFactory<Program>, IAsyncLi
             services.AddScoped<IVehicleStore>(_ => ThrowAfterWrite
                 ? new FailingVehicleStore(new EfVehicleStore(Clock), () => ThrowAfterWrite = false)
                 : new EfVehicleStore(Clock));
+            foreach (var evaluator in AdditionalAlertEvaluators)
+                services.AddSingleton<IAlertEvaluator>(evaluator);
         });
     }
 

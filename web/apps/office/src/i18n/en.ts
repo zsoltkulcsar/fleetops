@@ -95,6 +95,7 @@ export const en = {
       scrapped: "Scrapped",
       returnedLease: "Lease returned",
       activeList: "Leaves the active Fleet list.",
+      alertsResolved: "Open alerts on this Vehicle are resolved.",
       readOnly: "Becomes read-only.",
       historyStays: "Documents and history stay.",
       confirm: "Confirm retirement",

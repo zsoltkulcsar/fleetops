@@ -6,7 +6,7 @@ using Npgsql;
 
 namespace FleetOps.Migrations;
 
-public sealed class EfVehicleStore(TimeProvider? time = null) : IVehicleStore
+public sealed class EfVehicleStore(TimeProvider? time = null, IChangedSubjects? changedSubjects = null) : IVehicleStore
 {
     private readonly TimeProvider clock = time ?? TimeProvider.System;
     public static async Task<VehicleListPage> ReadListByConnectionAsync(
@@ -51,6 +51,7 @@ public sealed class EfVehicleStore(TimeProvider? time = null) : IVehicleStore
             ServiceIntervalKm = input.ServiceIntervalKm, ServiceIntervalMonths = input.ServiceIntervalMonths, LastTachoDownloadAt = input.LastTachoDownloadAt };
         db.Vehicles.Add(vehicle);
         try { await db.SaveChangesAsync(cancellationToken); } catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: "23505" }) { throw new VehicleConflictException("duplicate_vehicle"); }
+        changedSubjects?.Add("vehicle", vehicle.Id);
         return await Read(db, vehicle.Id, cancellationToken);
     }
 
@@ -72,6 +73,7 @@ public sealed class EfVehicleStore(TimeProvider? time = null) : IVehicleStore
         vehicle.DepotId = input.DepotId ?? vehicle.DepotId; vehicle.ServiceIntervalKm = input.ServiceIntervalKm; vehicle.ServiceIntervalMonths = input.ServiceIntervalMonths;
         vehicle.LastTachoDownloadAt = input.LastTachoDownloadAt; vehicle.Version++; vehicle.UpdatedAt = DateTimeOffset.UtcNow;
         try { await db.SaveChangesAsync(cancellationToken); } catch (DbUpdateConcurrencyException) { throw new VehicleConflictException("version_conflict"); } catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: "23505" }) { throw new VehicleConflictException("duplicate_vehicle"); }
+        changedSubjects?.Add("vehicle", vehicle.Id);
         return await Read(db, vehicle.Id, cancellationToken);
     }
 
@@ -87,6 +89,7 @@ public sealed class EfVehicleStore(TimeProvider? time = null) : IVehicleStore
         vehicle.Version++;
         vehicle.UpdatedAt = clock.GetUtcNow();
         try { await db.SaveChangesAsync(cancellationToken); } catch (DbUpdateConcurrencyException) { throw new VehicleConflictException("version_conflict"); }
+        changedSubjects?.Add("vehicle", vehicle.Id);
         return await Read(db, vehicle.Id, cancellationToken);
     }
 
@@ -105,6 +108,7 @@ public sealed class EfVehicleStore(TimeProvider? time = null) : IVehicleStore
         vehicle.Version++;
         vehicle.UpdatedAt = clock.GetUtcNow();
         try { await db.SaveChangesAsync(cancellationToken); } catch (DbUpdateConcurrencyException) { throw new VehicleConflictException("version_conflict"); } catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: "23505" }) { throw new VehicleConflictException("plate_in_use"); }
+        changedSubjects?.Add("vehicle", vehicle.Id);
         return await Read(db, vehicle.Id, cancellationToken);
     }
 
@@ -118,6 +122,7 @@ public sealed class EfVehicleStore(TimeProvider? time = null) : IVehicleStore
         vehicle.Version++;
         vehicle.UpdatedAt = clock.GetUtcNow();
         await db.SaveChangesAsync(cancellationToken);
+        changedSubjects?.Add("vehicle", vehicle.Id);
         return await Read(db, vehicle.Id, cancellationToken);
     }
 

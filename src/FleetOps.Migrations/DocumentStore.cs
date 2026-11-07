@@ -1,13 +1,13 @@
 using FleetOps.Kernel.Authorization;
-using FleetOps.Kernel;
 using FleetOps.Kernel.Files;
 using FleetOps.Modules.Documents;
 using FleetOps.People;
 using Microsoft.EntityFrameworkCore;
+using FleetOps.Kernel;
 
 namespace FleetOps.Migrations;
 
-public sealed class EfDocumentStore(IObjectStore objects, IConfiguration configuration, ILogger<EfDocumentStore> logger, ICompanyTimeService companyTime, TimeProvider? time = null) : IDocumentStore
+public sealed class EfDocumentStore(IObjectStore objects, IConfiguration configuration, ILogger<EfDocumentStore> logger, ICompanyTimeService companyTime, TimeProvider? time = null, IChangedSubjects? changedSubjects = null) : IDocumentStore
 {
     private readonly TimeProvider clock = time ?? TimeProvider.System;
     private static readonly HashSet<string> ContentTypes = ["image/jpeg", "image/png", "image/webp", "image/heic", "application/pdf"];
@@ -52,6 +52,8 @@ public sealed class EfDocumentStore(IObjectStore objects, IConfiguration configu
         db.Documents.Add(document);
         for (var i = 0; i < files.Count; i++) { var input = files[i]; var row = pending.Single(x => x.Id == input.FileId); var info = await objects.GetInfoAsync(row.ObjectKey, cancellationToken) ?? throw new DocumentValidationException([], "file_rejected"); row.ConfirmedAt = clock.GetUtcNow(); document.Files.Add(new DocumentFile { DocumentId = document.Id, ObjectKey = row.ObjectKey, ContentType = row.ContentType, SizeBytes = info.SizeBytes, Page = input.Page, SortOrder = i }); }
         await db.SaveChangesAsync(cancellationToken);
+        changedSubjects?.Add(document.OwnerType == DocumentOwnerType.Employee ? "employee" : "vehicle", document.OwnerId);
+        changedSubjects?.Add("document", document.Id);
         return await ReadDetailAsync(db, document.Id, cancellationToken) ?? throw new DocumentConflictException("not_found");
     }
     public async Task<DocumentDetail> VerifyAsync(Guid id, int version, DateOnly? expiresAt, DateOnly? issuedAt, string? number, string[]? categories, AccessContext actor, CommandContext context, CancellationToken cancellationToken)
@@ -78,6 +80,8 @@ public sealed class EfDocumentStore(IObjectStore objects, IConfiguration configu
         document.ReplacesId = previous?.Id;
         document.Version++;
         await db.SaveChangesAsync(cancellationToken);
+        changedSubjects?.Add(document.OwnerType == DocumentOwnerType.Employee ? "employee" : "vehicle", document.OwnerId);
+        changedSubjects?.Add("document", document.Id);
         return await ReadDetailAsync(db, id, cancellationToken, actor) ?? throw new DocumentConflictException("not_found");
     }
     public async Task<DocumentDetail> RejectAsync(Guid id, int version, string reason, AccessContext actor, CommandContext context, CancellationToken cancellationToken)
@@ -91,6 +95,8 @@ public sealed class EfDocumentStore(IObjectStore objects, IConfiguration configu
         document.RejectReason = reason.Trim();
         document.Version++;
         await db.SaveChangesAsync(cancellationToken);
+        changedSubjects?.Add(document.OwnerType == DocumentOwnerType.Employee ? "employee" : "vehicle", document.OwnerId);
+        changedSubjects?.Add("document", document.Id);
         return await ReadDetailAsync(db, id, cancellationToken, actor) ?? throw new DocumentConflictException("not_found");
     }
     public async Task<DocumentDetail> DeleteAsync(Guid id, int version, string reason, AccessContext actor, CommandContext context, CancellationToken cancellationToken)
@@ -110,6 +116,8 @@ public sealed class EfDocumentStore(IObjectStore objects, IConfiguration configu
         db.Documents.Remove(document);
         db.AuditEntries.Add(new FleetOps.Modules.Audit.AuditEntry { Id = Guid.CreateVersion7(), EntityType = nameof(Document), EntityId = id, FieldName = "deleted", ActorId = actor.EmployeeId.ToString(), Reason = $"type={document.Type};owner={document.OwnerType}:{document.OwnerId};reason={reason.Trim()}", CreatedAt = clock.GetUtcNow() });
         await db.SaveChangesAsync(cancellationToken);
+        changedSubjects?.Add(document.OwnerType == DocumentOwnerType.Employee ? "employee" : "vehicle", document.OwnerId);
+        changedSubjects?.Add("document", document.Id);
         return new DocumentDetail(id, document.OwnerType, document.OwnerId, "", document.Type, null, null, null, document.Status, document.CreatedAt, version, null, null, [], [], false);
     }
     public async Task<DocumentDetail> SightCheckAsync(Guid id, int version, DateOnly checkedAt, AccessContext actor, CommandContext context, CancellationToken cancellationToken)
@@ -123,6 +131,8 @@ public sealed class EfDocumentStore(IObjectStore objects, IConfiguration configu
         document.LastSightCheckAt = checkedAt;
         document.Version++;
         await db.SaveChangesAsync(cancellationToken);
+        changedSubjects?.Add(document.OwnerType == DocumentOwnerType.Employee ? "employee" : "vehicle", document.OwnerId);
+        changedSubjects?.Add("document", document.Id);
         return await ReadDetailAsync(db, id, cancellationToken, actor) ?? throw new DocumentConflictException("not_found");
     }
     internal static void ValidateType(DocumentOwnerType ownerType, DocumentType type) { var catalog = DocumentsCatalog.Get(type); if (catalog.OwnerType != ownerType) throw new DocumentValidationException(["type"]); }

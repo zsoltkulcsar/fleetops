@@ -1,0 +1,33 @@
+using FleetOps.Kernel.Authorization;
+
+namespace FleetOps.Modules.Setup;
+
+public readonly record struct SettingKey(string Value);
+
+public interface ISettings
+{
+    Task<int> GetIntAsync(SettingKey key, CommandContext? context, CancellationToken cancellationToken);
+}
+
+public static class SettingCatalog
+{
+    public static readonly IReadOnlyDictionary<string, int> Defaults = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+    {
+        ["alerts.a03.queue_days"] = 2,
+        ["alerts.a03.blocked_hours"] = 1,
+        ["alerts.escalation_minutes"] = 15,
+        ["documents.lead_days.licence_c_ce"] = 60,
+        ["documents.lead_days.driver_card"] = 60,
+        ["documents.lead_days.code95"] = 90,
+        ["documents.lead_days.medical"] = 60,
+        ["documents.lead_days.adr_certificate"] = 60,
+        ["documents.lead_days.id_card"] = 30,
+        ["documents.lead_days.hu_report"] = 30,
+        ["documents.lead_days.sp_report"] = 30,
+        ["documents.lead_days.tacho_calibration"] = 30,
+        ["documents.lead_days.insurance"] = 30,
+        ["documents.lead_days.community_licence"] = 60
+    };
+
+    public static int DefaultFor(SettingKey key) => Defaults.TryGetValue(key.Value, out var value) ? value : throw new KeyNotFoundException(key.Value);
+}

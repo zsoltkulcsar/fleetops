@@ -1,4 +1,5 @@
 using FleetOps.Kernel.Authorization;
+using FleetOps.Kernel;
 
 namespace FleetOps.Api.Pipeline;
 
@@ -39,6 +40,10 @@ public sealed class CommandDispatcher(IAccessContextAccessor accessor, ICommandP
             if (result is not null && result.GetType() != typeof(TResult)) throw new InvalidOperationException($"Handler returned {result.GetType()} instead of {typeof(TResult)}.");
             var visible = typeof(TResult).GetCustomAttributes(typeof(VisibleToAttribute), true).SingleOrDefault() as VisibleToAttribute;
             if (visible is not null && !permittedRoles.Any(visible.Roles.Contains)) Refuse(RefusalCodes.PermissionDenied, policy, visible.Roles);
+            var changed = services.GetService<IChangedSubjects>();
+            var evaluation = services.GetService<IPostCommandEvaluation>();
+            if (changed is not null && evaluation is not null && changed.Items.Count > 0)
+                await evaluation.EvaluateAsync(changed.Items, transaction.Context, cancellationToken);
             await transaction.CommitAsync(CancellationToken.None);
             return result;
         }

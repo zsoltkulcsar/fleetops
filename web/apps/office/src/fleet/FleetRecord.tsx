@@ -313,6 +313,7 @@ function RetireDrawer({
         </label>
         <ul className="drawer-list">
           <li>{en.fleet.retire.activeList}</li>
+          <li>{en.fleet.retire.alertsResolved}</li>
           <li>{en.fleet.retire.readOnly}</li>
           <li>{en.fleet.retire.historyStays}</li>
         </ul>
