@@ -58,7 +58,7 @@ public sealed class DemoSeeder
 
     private async Task ResetAsync(FleetOpsDbContext db, CancellationToken cancellationToken)
     {
-        var tables = new[] { "audit_entries", "document_files", "documents", "pending_files", "vehicle_plate_history", "vehicles", "depots", "user_tokens", "user_logins", "user_claims", "user_roles", "role_claims", "sessions", "privacy_acknowledgements", "password_reset_tokens", "users", "roles", "employees" };
+        var tables = new[] { "notifications", "alerts", "audit_entries", "document_files", "documents", "pending_files", "vehicle_plate_history", "vehicles", "depots", "user_tokens", "user_logins", "user_claims", "user_roles", "role_claims", "sessions", "privacy_acknowledgements", "password_reset_tokens", "users", "roles", "employees" };
         foreach (var table in tables)
         {
             await db.Database.ExecuteSqlRawAsync($"DELETE FROM fleetops.\"{table}\"", cancellationToken);

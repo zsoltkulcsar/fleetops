@@ -52,6 +52,40 @@ public sealed class SeedTests
     }
 
     [Fact]
+    public async Task Reset_clears_alerts_and_notifications()
+    {
+        await using var postgres = await TestPostgres.StartAsync(nameof(SeedTests));
+        await SeedAsync(postgres);
+        var employeeId = Guid.NewGuid();
+        var alertId = Guid.NewGuid();
+        await using (var connection = new NpgsqlConnection(postgres.MigratorConnectionString))
+        {
+            await connection.OpenAsync();
+            await using var alertCommand = new NpgsqlCommand("insert into fleetops.alerts (id, rule_id, subject_type, subject_id, scope_key, severity, assigned_role, status, opened_at, version) values ($1, 'F-SEED', 'employee', $2, '', 'Warning', 'dispatcher', 'Open', now(), 1)", connection);
+            alertCommand.Parameters.AddWithValue(alertId);
+            alertCommand.Parameters.AddWithValue(employeeId);
+            await alertCommand.ExecuteNonQueryAsync();
+            await using var notificationCommand = new NpgsqlCommand("insert into fleetops.notifications (id, employee_id, alert_id, template_code, parameters, channel, created_at, attempts) values ($1, $2, $3, 'seed_test', '{}'::jsonb, 'in_app', now(), 0)", connection);
+            notificationCommand.Parameters.AddWithValue(Guid.NewGuid());
+            notificationCommand.Parameters.AddWithValue(employeeId);
+            notificationCommand.Parameters.AddWithValue(alertId);
+            await notificationCommand.ExecuteNonQueryAsync();
+        }
+
+        await SeedAsync(postgres);
+
+        await using (var connection = new NpgsqlConnection(postgres.MigratorConnectionString))
+        {
+            await connection.OpenAsync();
+            await using var command = new NpgsqlCommand("select (select count(*) from fleetops.alerts), (select count(*) from fleetops.notifications)", connection);
+            await using var reader = await command.ExecuteReaderAsync();
+            Assert.True(await reader.ReadAsync());
+            Assert.Equal(0L, reader.GetInt64(0));
+            Assert.Equal(0L, reader.GetInt64(1));
+        }
+    }
+
+    [Fact]
     public async Task Seed_refuses_production_and_writes_nothing()
     {
         await using var postgres = await TestPostgres.StartAsync(nameof(SeedTests));
