@@ -12,6 +12,7 @@ export type PeopleLookupResult = components["schemas"]["PeopleLookupResult"];
 export type VehicleListResult = components["schemas"]["VehicleListResult"];
 export type DocumentDetail = components["schemas"]["DocumentDetail"];
 export type DocumentCounts = components["schemas"]["DocumentCounts"];
+export type DocumentMissing = components["schemas"]["DocumentMissingResult"];
 export type DocumentSearchResult = components["schemas"]["DocumentSearchResult"];
 
 export type ApiProblem = {
@@ -84,6 +85,8 @@ export const documentsApi = {
       body: JSON.stringify(input),
     }),
   counts: () => request<DocumentCounts>("/api/v1/documents/counts"),
+  missing: (cursor?: string) =>
+    request<DocumentMissing>(`/api/v1/documents/missing?cursor=${encodeURIComponent(cursor ?? "")}&limit=50`),
   detail: (id: string) => request<DocumentDetail>(`/api/v1/documents/${id}`),
   fileLink: (id: string, fileId: string) =>
     request<{ url: string; expiresAt: string }>(`/api/v1/documents/${id}/files/${fileId}/link`),

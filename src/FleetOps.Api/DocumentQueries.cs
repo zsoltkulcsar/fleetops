@@ -10,6 +10,8 @@ using FleetOps.Kernel;
 using FleetOps.Kernel.Files;
 using Microsoft.EntityFrameworkCore;
 using FleetOps.Modules.Setup;
+using FleetOps.Modules.Readiness;
+using FleetOps.Modules.Fleet;
 
 namespace FleetOps.Api;
 
@@ -63,7 +65,7 @@ public sealed class DocumentDetailQueryHandler(IConfiguration configuration) : I
 {
     public async Task<DocumentDetail> HandleAsync(GetDocumentQuery query, AccessContext actor, CancellationToken cancellationToken) { var options = new DbContextOptionsBuilder<FleetOpsDbContext>().UseNpgsql(DatabaseConnectionString.Resolve(configuration) ?? throw new InvalidOperationException("Database is not configured.")).Options; await using var db = new FleetOpsDbContext(options); var row = await EfDocumentStore.ReadDetailAsync(db, query.SubjectId ?? throw new DocumentValidationException(["id"]), cancellationToken, actor) ?? throw new DocumentConflictException("not_found"); if (actor.Roles.Contains(RoleCode.Dispatcher) && row.OwnerType == DocumentOwnerType.Employee) throw new DocumentConflictException("not_found"); return row; }
 }
-public sealed class DocumentCountsQueryHandler(IConfiguration configuration, ICompanyTimeService companyTime, TimeProvider time, ISettings settings) : IQueryHandler<GetDocumentCountsQuery, DocumentCounts>
+public sealed class DocumentCountsQueryHandler(IConfiguration configuration, ICompanyTimeService companyTime, TimeProvider time, ISettings settings, IReadiness readiness) : IQueryHandler<GetDocumentCountsQuery, DocumentCounts>
 {
     public async Task<DocumentCounts> HandleAsync(GetDocumentCountsQuery query, AccessContext actor, CancellationToken cancellationToken)
     {
@@ -81,9 +83,60 @@ public sealed class DocumentCountsQueryHandler(IConfiguration configuration, ICo
         }
         var expiring = await expiringRows.CountAsync(cancellationToken);
         var expired = await rows.CountAsync(x => x.Status == DocumentStatus.Verified && x.ExpiresAt < today, cancellationToken);
-        return new(queue, expiring, expired);
+        var missing = await MissingDocumentQueryHandler.CountAsync(db, actor, readiness, today, cancellationToken);
+        return new(queue, expiring, expired, missing);
     }
     private static string DocumentTypeKey(DocumentType type) => type switch { DocumentType.LicenceC_CE => "licence_c_ce", DocumentType.DriverCard => "driver_card", DocumentType.IdCard => "id_card", DocumentType.AdrCertificate => "adr_certificate", DocumentType.HuReport => "hu_report", DocumentType.SpReport => "sp_report", DocumentType.TachoCalibration => "tacho_calibration", DocumentType.CommunityLicence => "community_licence", _ => type.ToString().ToLowerInvariant() };
+}
+
+public sealed class MissingDocumentQueryHandler(IConfiguration configuration, IReadiness readiness, ICompanyTimeService companyTime, TimeProvider time) : IQueryHandler<ListMissingDocumentsQuery, DocumentMissingResult>
+{
+    public async Task<DocumentMissingResult> HandleAsync(ListMissingDocumentsQuery query, AccessContext actor, CancellationToken cancellationToken)
+    {
+        var options = new DbContextOptionsBuilder<FleetOpsDbContext>().UseNpgsql(DatabaseConnectionString.Resolve(configuration) ?? throw new InvalidOperationException("Database is not configured.")).Options;
+        await using var db = new FleetOpsDbContext(options);
+        var all = await LoadAsync(db, actor, readiness, companyTime.ToCompanyDate(time.GetUtcNow()), cancellationToken);
+        var offset = ParseCursor(query.Cursor);
+        var items = all.Skip(offset).Take(Math.Clamp(query.Limit, 1, 100)).ToList();
+        var next = offset + items.Count < all.Count ? (offset + items.Count).ToString(System.Globalization.CultureInfo.InvariantCulture) : null;
+        return new(items, next);
+    }
+
+    internal static async Task<int> CountAsync(FleetOpsDbContext db, AccessContext actor, IReadiness readiness, DateOnly date, CancellationToken cancellationToken)
+        => (await LoadAsync(db, actor, readiness, date, cancellationToken)).Count;
+
+    private static async Task<List<DocumentMissingItem>> LoadAsync(FleetOpsDbContext db, AccessContext actor, IReadiness readiness, DateOnly date, CancellationToken cancellationToken)
+    {
+        var vehicles = await db.Vehicles.AsNoTracking().Where(x => x.Status == VehicleStatus.Active).OrderBy(x => x.Plate).ToListAsync(cancellationToken);
+        var vehicleReadiness = await readiness.ForVehiclesAsync(vehicles.Select(x => x.Id).ToArray(), date, cancellationToken);
+        var items = vehicles.SelectMany(vehicle => vehicleReadiness[vehicle.Id].Causes.Where(cause => cause.Code == ReadinessCauseCode.DocumentMissing && cause.DocumentType is not null).Select(cause => new DocumentMissingItem(DocumentOwnerType.Vehicle, vehicle.Id, vehicle.Plate, ParseType(cause.DocumentType!)))).ToList();
+        if (!actor.Roles.Contains(RoleCode.Dispatcher))
+        {
+            var employees = await db.Set<Employee>().AsNoTracking().Where(x => x.Status != EmployeeStatus.Left && x.Roles.Contains("driver")).OrderBy(x => x.LastName).ThenBy(x => x.FirstName).ToListAsync(cancellationToken);
+            var driverReadiness = await readiness.ForDriversAsync(employees.Select(x => x.Id).ToArray(), date, cancellationToken);
+            items.AddRange(employees.SelectMany(employee => driverReadiness[employee.Id].Causes.Where(cause => cause.Code == ReadinessCauseCode.DocumentMissing && cause.DocumentType is not null).Select(cause => new DocumentMissingItem(DocumentOwnerType.Employee, employee.Id, employee.FirstName + " " + employee.LastName, ParseType(cause.DocumentType!)))));
+        }
+        return items;
+    }
+
+    private static int ParseCursor(string? cursor) => int.TryParse(cursor, out var value) && value >= 0 ? value : 0;
+    private static DocumentType ParseType(string value) => value switch
+    {
+        "licence_c_ce" => DocumentType.LicenceC_CE,
+        "driver_card" => DocumentType.DriverCard,
+        "code95" => DocumentType.Code95,
+        "medical" => DocumentType.Medical,
+        "adr_certificate" => DocumentType.AdrCertificate,
+        "id_card" => DocumentType.IdCard,
+        "employment_contract" => DocumentType.EmploymentContract,
+        "registration" => DocumentType.Registration,
+        "hu_report" => DocumentType.HuReport,
+        "sp_report" => DocumentType.SpReport,
+        "tacho_calibration" => DocumentType.TachoCalibration,
+        "insurance" => DocumentType.Insurance,
+        "community_licence" => DocumentType.CommunityLicence,
+        _ => throw new InvalidOperationException("unknown_document_type"),
+    };
 }
 public sealed class SearchDocumentsQueryHandler(IConfiguration configuration) : IQueryHandler<SearchDocumentsQuery, DocumentSearchResult>
 {
@@ -120,5 +173,5 @@ public sealed class DocumentFileLinkQueryHandler(IConfiguration configuration, I
 }
 public sealed class PeopleLookupQueryHandler(IConfiguration configuration) : IQueryHandler<LookupPeopleQuery, PeopleLookupResult>
 {
-    public async Task<PeopleLookupResult> HandleAsync(LookupPeopleQuery query, AccessContext actor, CancellationToken cancellationToken) { var options = new DbContextOptionsBuilder<FleetOpsDbContext>().UseNpgsql(DatabaseConnectionString.Resolve(configuration) ?? throw new InvalidOperationException("Database is not configured.")).Options; await using var db = new FleetOpsDbContext(options); var rows = db.Set<Employee>().AsNoTracking().Where(x => x.Status != EmployeeStatus.Left); if (!string.IsNullOrWhiteSpace(query.Search)) { var s = query.Search.Replace("%", "\\%", StringComparison.Ordinal).Replace("_", "\\_", StringComparison.Ordinal); rows = rows.Where(x => EF.Functions.ILike(x.FirstName + " " + x.LastName, $"%{s}%", "\\")); } return new(await rows.OrderBy(x => x.LastName).ThenBy(x => x.FirstName).Take(20).Select(x => new PeopleLookupItem(x.Id, x.FirstName + " " + x.LastName)).ToListAsync(cancellationToken)); }
+    public async Task<PeopleLookupResult> HandleAsync(LookupPeopleQuery query, AccessContext actor, CancellationToken cancellationToken) { var options = new DbContextOptionsBuilder<FleetOpsDbContext>().UseNpgsql(DatabaseConnectionString.Resolve(configuration) ?? throw new InvalidOperationException("Database is not configured.")).Options; await using var db = new FleetOpsDbContext(options); var rows = db.Set<Employee>().AsNoTracking().Where(x => x.Status != EmployeeStatus.Left); if (!string.IsNullOrWhiteSpace(query.Search)) { var search = query.Search.Trim(); if (Guid.TryParse(search, out var id)) rows = rows.Where(x => x.Id == id); else { var escapedSearch = search.Replace("%", "\\%", StringComparison.Ordinal).Replace("_", "\\_", StringComparison.Ordinal); rows = rows.Where(x => EF.Functions.ILike(x.FirstName + " " + x.LastName, $"%{escapedSearch}%", "\\")); } } return new(await rows.OrderBy(x => x.LastName).ThenBy(x => x.FirstName).Take(20).Select(x => new PeopleLookupItem(x.Id, x.FirstName + " " + x.LastName)).ToListAsync(cancellationToken)); }
 }

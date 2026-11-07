@@ -198,11 +198,44 @@ test("documents missing filter opens a prefilled upload", async ({ page }) => {
     route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ queue: 0, expiring: 0, expired: 0 }),
+      body: JSON.stringify({ queue: 0, expiring: 0, expired: 0, missing: 0 }),
     }),
   );
-  await page.goto("/documents?filter=missing&ownerId=v-readiness");
+  await page.route("**/api/v1/documents/missing?*", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ items: [], nextCursor: null }),
+    }),
+  );
+  await page.goto("/documents?ownerId=v-readiness");
   await expect(page.getByRole("dialog")).toBeVisible();
+});
+
+test("filter missing alone opens no dialog", async ({ page }) => {
+  await page.route("**/api/v1/auth/session", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ employeeId: "dispatcher", roles: ["dispatcher"] }),
+    }),
+  );
+  await page.route("**/api/v1/documents/counts", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ queue: 0, expiring: 0, expired: 0, missing: 0 }),
+    }),
+  );
+  await page.route("**/api/v1/documents/missing?*", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ items: [], nextCursor: null }),
+    }),
+  );
+  await page.goto("/documents?filter=missing");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
 test("people page has no accessibility violations", async ({ page }) => {

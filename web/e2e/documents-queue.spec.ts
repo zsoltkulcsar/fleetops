@@ -35,7 +35,7 @@ async function session(page: Page, roles: string[]) {
 async function queue(
   page: Page,
   items: DocumentListItem[],
-  counts: DocumentCounts = { queue: items.length, expiring: 0, expired: 0 },
+  counts: DocumentCounts = { queue: items.length, expiring: 0, expired: 0, missing: 0 },
 ) {
   await page.route("**/api/v1/documents?*", (route) =>
     route.fulfill({
@@ -72,7 +72,7 @@ test("verify sends the expiry date and clears the card", async ({ page }) => {
     route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ queue: cleared ? 0 : 1, expiring: 0, expired: 0 }),
+      body: JSON.stringify({ queue: cleared ? 0 : 1, expiring: 0, expired: 0, missing: 0 }),
     }),
   );
   let body: unknown;
@@ -125,7 +125,7 @@ test("read only card explains who verifies", async ({ page }) => {
 
 test("documents nav badge shows the queue count", async ({ page }) => {
   await session(page, ["hr"]);
-  await queue(page, [row()], { queue: 3, expiring: 0, expired: 0 });
+  await queue(page, [row()], { queue: 3, expiring: 0, expired: 0, missing: 0 });
   await page.goto("/documents");
   await expect(page.getByText("Documents").first()).toBeVisible();
   await expect(page.getByText("3").first()).toBeVisible();

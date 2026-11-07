@@ -16,8 +16,12 @@ public sealed record DocumentListResult(IReadOnlyList<DocumentListItem> Items, s
 [VisibleTo(RoleCode.Hr, RoleCode.Owner)]
 public sealed record PeopleLookupResult(IReadOnlyList<PeopleLookupItem> Items) : IReadModel;
 public sealed record PeopleLookupItem(Guid Id, string Name);
- [VisibleTo(RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner)]
-public sealed record DocumentCounts(int Queue, int Expiring, int Expired) : IReadModel;
+[VisibleTo(RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner)]
+public sealed record DocumentCounts(int Queue, int Expiring, int Expired, int Missing) : IReadModel;
+[VisibleTo(RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner)]
+public sealed record DocumentMissingItem(DocumentOwnerType OwnerType, Guid OwnerId, string OwnerName, DocumentType DocumentType);
+[VisibleTo(RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner)]
+public sealed record DocumentMissingResult(IReadOnlyList<DocumentMissingItem> Items, string? NextCursor) : IReadModel;
  [VisibleTo(RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner)]
 public sealed record DocumentSearchResult(IReadOnlyList<DocumentSearchItem> Documents, IReadOnlyList<VehicleSearchItem> Vehicles, IReadOnlyList<PeopleSearchItem> People) : IReadModel;
 [VisibleTo(RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner)]
@@ -49,6 +53,8 @@ public sealed record ListDocumentsQuery(DocumentOwnerType? OwnerType, Guid? Owne
 public sealed record GetDocumentQuery(Guid? SubjectId) : IQuery<DocumentDetail>, IHasSubject;
 [QueryPolicy("documents.view")]
 public sealed record GetDocumentCountsQuery : IQuery<DocumentCounts>;
+[QueryPolicy("documents.view")]
+public sealed record ListMissingDocumentsQuery(string? Cursor, int Limit) : IQuery<DocumentMissingResult>;
 [QueryPolicy("documents.view")]
 public sealed record SearchDocumentsQuery(string? Search) : IQuery<DocumentSearchResult>;
 [QueryPolicy("documents.view")]

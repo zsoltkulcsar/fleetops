@@ -31,7 +31,47 @@ async function list(page: Page, items: DocumentListItem[] = [row()]) {
     route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ queue: 0, expiring: 0, expired: 0 }),
+      body: JSON.stringify({ queue: 0, expiring: 0, expired: 0, missing: 0 }),
+    }),
+  );
+}
+
+async function session(page: Page, roles: string[]) {
+  await page.route("**/api/v1/auth/session", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ employeeId: "test", roles }),
+    }),
+  );
+}
+
+async function missing(page: Page) {
+  await page.route("**/api/v1/documents/missing?*", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        items: [
+          {
+            ownerType: "employee",
+            ownerId: row().ownerId,
+            ownerName: "Alice Driver",
+            documentType: "medical",
+          },
+        ],
+        nextCursor: null,
+      }),
+    }),
+  );
+}
+
+async function people(page: Page) {
+  await page.route("**/api/v1/people/lookup?*", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ items: [{ id: row().ownerId, name: "Alice Driver" }] }),
     }),
   );
 }
@@ -42,6 +82,28 @@ test("documents list shows rows with status text", async ({ page }) => {
   await expect(page.getByText("KS-DC 1177")).toBeVisible();
   await page.getByRole("button", { name: "All", exact: true }).click();
   await expect(page.locator("tbody").getByText("Uploaded")).toBeVisible();
+});
+
+test("filter missing from the URL selects the missing list", async ({ page }) => {
+  await session(page, ["hr"]);
+  await list(page, []);
+  await missing(page);
+  await page.goto("/documents?filter=missing");
+  await expect(page.getByRole("button", { name: "Missing" })).toHaveClass(/selected/);
+  await expect(page.getByText("Alice Driver", { exact: true })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Medical", exact: true })).toBeVisible();
+});
+
+test("missing row upload opens the prefilled dialog", async ({ page }) => {
+  await session(page, ["hr"]);
+  await list(page, []);
+  await missing(page);
+  await people(page);
+  await page.goto("/documents?filter=missing");
+  await page.getByRole("button", { name: "Upload", exact: true }).last().click();
+  await expect(page.getByRole("heading", { name: "Upload document" })).toBeVisible();
+  await expect(page.getByLabel("Owner", { exact: true })).toHaveValue("Alice Driver");
+  await expect(page.getByRole("combobox", { name: "Type", exact: true })).toHaveValue("medical");
 });
 
 test("documents empty state offers the next step", async ({ page }) => {

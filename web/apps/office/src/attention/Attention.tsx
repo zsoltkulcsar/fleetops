@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router";
 import { useSession } from "../auth/AuthGate";
 import { en } from "../i18n/en";
-import { formatTodayBerlin } from "../shell/date";
+import { formatDocumentDate, formatTodayBerlin } from "../shell/date";
 import { useOnline } from "../shell/Shell";
 import { attentionApi, type AttentionGroup, type AttentionItem } from "./api";
 import "./attention.css";
@@ -131,7 +131,7 @@ export function Attention() {
       <header className="page-title">
         <div>
           <span className="eyebrow" data-testid="today">
-            {en.nav.attention} Â· {formatTodayBerlin()}
+            {en.nav.attention} · {formatTodayBerlin()}
           </span>
           <h1 tabIndex={-1}>{en.attention.title}</h1>
           <p className="ui-muted">{en.attention.openLine(data.totals.open, data.totals.critical)}</p>
@@ -263,7 +263,7 @@ function AttentionCard({
               <div>
                 <h2>{itemTitle(item)}</h2>
                 <p className="ui-muted">
-                  {item.dueAt ? new Date(item.dueAt).toLocaleDateString() : en.attention.noDueDate}
+                  {item.dueAt ? formatDocumentDate(item.dueAt) : en.attention.noDueDate}
                 </p>
               </div>
               <Link className="ui-button primary" to={action.href}>

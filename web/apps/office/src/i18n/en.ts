@@ -177,6 +177,7 @@ export const en = {
     all: "All",
     expiring: "Expiring",
     expired: "Expired",
+    missing: "Missing",
     nothingToVerify: "Nothing to verify.",
     verify: "Verify",
     reject: "Reject",

@@ -61,6 +61,23 @@ async function queue(page: Page, value: Attention) {
   );
 }
 
+async function documents(page: Page) {
+  await page.route("**/api/v1/documents?*", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ items: [], nextCursor: null }),
+    }),
+  );
+  await page.route("**/api/v1/documents/counts", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ queue: 0, expiring: 0, expired: 0, missing: 0 }),
+    }),
+  );
+}
+
 test("critical group renders as a full card first", async ({ page }) => {
   await session(page, ["dispatcher"]);
   await queue(
@@ -135,12 +152,36 @@ test("upload link opens the prefilled dialog", async ({ page }) => {
       }),
     ]),
   );
+  await documents(page);
+  await page.route("**/api/v1/people/lookup?*", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ items: [{ id: ids(4), name: "Alice Driver" }] }),
+    }),
+  );
   await page.goto("/");
   await page.getByRole("link", { name: "Upload document" }).click();
 
   const uploadUrl = new URL(page.url());
   expect(uploadUrl.pathname).toBe("/documents");
   expect(uploadUrl.searchParams.get("upload")).toBe("employee:00000000-0000-0000-0000-000000000004:medical");
+  await expect(page.getByLabel("Owner", { exact: true })).toHaveValue("Alice Driver");
+  await expect(page.getByRole("combobox", { name: "Type", exact: true })).toHaveValue("medical");
+});
+
+test("attention line shows the date with a middle dot", async ({ page }) => {
+  await session(page, ["dispatcher"]);
+  await queue(page, attention([group()]));
+  await page.goto("/");
+  await expect(page.getByTestId("today")).toHaveText(/Attention · \d{2}\.\d{2}\.\d{4}/);
+});
+
+test("due date shows as DD.MM.YYYY", async ({ page }) => {
+  await session(page, ["dispatcher"]);
+  await queue(page, attention([group({ items: [item({ dueAt: "2026-11-20" })] })]));
+  await page.goto("/");
+  await expect(page.getByText("20.11.2026", { exact: true })).toBeVisible();
 });
 
 test("critical card offers no snooze", async ({ page }) => {

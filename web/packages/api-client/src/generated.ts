@@ -535,6 +535,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/documents/missing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    cursor?: string;
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DocumentMissingResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/documents/{id}/files/{fileId}/link": {
         parameters: {
             query?: never;
@@ -1407,6 +1445,8 @@ export interface components {
             expiring: number;
             /** Format: int32 */
             expired: number;
+            /** Format: int32 */
+            missing: number;
         };
         DocumentCreateRequest: {
             ownerType: components["schemas"]["DocumentOwnerType"];
@@ -1483,6 +1523,17 @@ export interface components {
         };
         DocumentListResult: {
             items: components["schemas"]["DocumentListItem"][];
+            nextCursor: null | string;
+        };
+        DocumentMissingItem: {
+            ownerType: components["schemas"]["DocumentOwnerType"];
+            /** Format: uuid */
+            ownerId: string;
+            ownerName: string;
+            documentType: components["schemas"]["DocumentType"];
+        };
+        DocumentMissingResult: {
+            items: components["schemas"]["DocumentMissingItem"][];
             nextCursor: null | string;
         };
         /** @enum {unknown} */

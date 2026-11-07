@@ -7,6 +7,7 @@ import { useSession } from "../auth/AuthGate";
 import { AuthRequestError } from "../auth/api";
 import { en } from "../i18n/en";
 import { formatDocumentDate } from "../shell/date";
+import { fleetApi } from "../fleet/api";
 import {
   documentTypes,
   documentsApi,
@@ -40,9 +41,20 @@ export function Documents() {
   const client = useQueryClient();
   const [search, setSearch] = useState("");
   const [term, setTerm] = useState("");
-  const uploadTarget = new URLSearchParams(window.location.search).get("upload")?.split(":") ?? [];
+  const initialParams = new URLSearchParams(window.location.search);
+  const initialUpload = initialParams.get("upload")?.split(":") ?? [];
+  const [uploadRequest, setUploadRequest] = useState({
+    ownerId: initialUpload[1] ?? initialParams.get("ownerId") ?? "",
+    ownerType: (initialUpload[0] === "employee" || initialUpload[0] === "vehicle"
+      ? initialUpload[0]
+      : undefined) as DocumentOwnerType | undefined,
+    ownerName: initialParams.get("ownerName") ?? "",
+    type: initialUpload[2] as DocumentType | undefined,
+  });
   const [filter, setFilter] = useState(() =>
-    new URLSearchParams(window.location.search).get("filter") === "queue" ? "queue" : "queue",
+    ["queue", "all", "expiring", "expired", "missing"].includes(initialParams.get("filter") ?? "")
+      ? (initialParams.get("filter") as string)
+      : "queue",
   );
   const [dialogOpen, setDialogOpen] = useState(false);
   const [openId, setOpenId] = useState<string | null>(
@@ -52,7 +64,8 @@ export function Documents() {
   const canUpload = Boolean(roleOwner(session.data?.roles ?? []));
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if ((params.get("filter") === "missing" || params.has("upload")) && canUpload) setDialogOpen(true);
+    if ((params.has("upload") || params.has("ownerId")) && canUpload)
+      setDialogOpen(true);
   }, [canUpload]);
 
   useEffect(() => {
@@ -67,7 +80,28 @@ export function Documents() {
   const query = useInfiniteQuery({
     queryKey: ["documents", term, filter],
     initialPageParam: "",
-    queryFn: ({ pageParam }) => documentsApi.list({ cursor: pageParam || undefined, search: term, filter }),
+    queryFn: async ({ pageParam }) => {
+      if (filter !== "missing")
+        return documentsApi.list({ cursor: pageParam || undefined, search: term, filter });
+      const result = await documentsApi.missing(pageParam || undefined);
+      return {
+        nextCursor: result.nextCursor,
+        items: result.items.map((item) => ({
+          id: item.ownerId,
+          ownerType: item.ownerType,
+          ownerId: item.ownerId,
+          ownerName: item.ownerName,
+          type: item.documentType,
+          number: null,
+          issuedAt: null,
+          expiresAt: null,
+          status: "rejected" as const,
+          uploadedAt: "",
+          version: 0,
+          canAct: false,
+        })),
+      };
+    },
     getNextPageParam: (page) => page.nextCursor ?? undefined,
   });
   const documents = useMemo(() => query.data?.pages.flatMap((page) => page.items) ?? [], [query.data]);
@@ -134,6 +168,7 @@ export function Documents() {
             {filterLabel("all", en.documents.all)}
             {filterLabel("expiring", en.documents.expiring, counts.data?.expiring)}
             {filterLabel("expired", en.documents.expired, counts.data?.expired)}
+            {filterLabel("missing", en.documents.missing, counts.data?.missing)}
           </div>
         }
       >
@@ -168,42 +203,84 @@ export function Documents() {
                   />
                 ))
               : null}
-            {filter !== "queue" && (
-              <table>
-                <caption className="visually-hidden">{en.documents.tableCaption}</caption>
-                <thead>
-                  <tr>
-                    <th>{en.documents.typeColumn}</th>
-                    <th>{en.documents.ownerColumn}</th>
-                    <th>{en.documents.numberColumn}</th>
-                    <th>{en.documents.issuedColumn}</th>
-                    <th>{en.documents.expiresColumn}</th>
-                    <th>{en.documents.statusColumn}</th>
-                    <th>{en.documents.uploadedColumn}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {documents.map((document) => {
-                    const Icon = statusIcons[document.status];
-                    return (
-                      <tr key={document.id} onClick={() => setOpenId(document.id)} className="document-row">
-                        <td>{en.documents.types[document.type]}</td>
+            {filter !== "queue" &&
+              (filter === "missing" ? (
+                <table>
+                  <caption className="visually-hidden">{en.documents.tableCaption}</caption>
+                  <thead>
+                    <tr>
+                      <th>{en.documents.ownerColumn}</th>
+                      <th>{en.documents.typeColumn}</th>
+                      <th />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {documents.map((document) => (
+                      <tr key={`${document.ownerId}-${document.type}`}>
                         <td>{document.ownerName}</td>
-                        <td>{document.number ?? "—"}</td>
-                        <td className="tabular-nums">{formatDocumentDate(document.issuedAt)}</td>
-                        <td className="tabular-nums">{formatDocumentDate(document.expiresAt)}</td>
+                        <td>{en.documents.types[document.type]}</td>
                         <td>
-                          <span className={`document-status status-${document.status}`}>
-                            <Icon size={15} aria-hidden /> {en.documents.status[document.status]}
-                          </span>
+                          {canUpload &&
+                            ((document.ownerType === "employee" && session.data?.roles.includes("hr")) ||
+                              (document.ownerType === "vehicle" &&
+                                session.data?.roles.includes("dispatcher"))) && (
+                              <button
+                                className="ui-button primary"
+                                type="button"
+                                onClick={() => {
+                                  setUploadRequest({
+                                    ownerId: document.ownerId,
+                                    ownerType: document.ownerType,
+                                    ownerName: document.ownerName,
+                                    type: document.type,
+                                  });
+                                  setDialogOpen(true);
+                                }}
+                              >
+                                {en.documents.upload}
+                              </button>
+                            )}
                         </td>
-                        <td className="tabular-nums">{formatDocumentDate(document.uploadedAt)}</td>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <table>
+                  <caption className="visually-hidden">{en.documents.tableCaption}</caption>
+                  <thead>
+                    <tr>
+                      <th>{en.documents.typeColumn}</th>
+                      <th>{en.documents.ownerColumn}</th>
+                      <th>{en.documents.numberColumn}</th>
+                      <th>{en.documents.issuedColumn}</th>
+                      <th>{en.documents.expiresColumn}</th>
+                      <th>{en.documents.statusColumn}</th>
+                      <th>{en.documents.uploadedColumn}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {documents.map((document) => {
+                      const Icon = statusIcons[document.status];
+                      return (
+                        <tr key={document.id} onClick={() => setOpenId(document.id)} className="document-row">
+                          <td>{en.documents.types[document.type]}</td>
+                          <td>{document.ownerName}</td>
+                          <td>{document.number ?? "—"}</td>
+                          <td className="tabular-nums">{formatDocumentDate(document.issuedAt)}</td>
+                          <td className="tabular-nums">{formatDocumentDate(document.expiresAt)}</td>
+                          <td>
+                            <span className={`document-status status-${document.status}`}>
+                              <Icon size={15} aria-hidden /> {en.documents.status[document.status]}
+                            </span>
+                          </td>
+                          <td className="tabular-nums">{formatDocumentDate(document.uploadedAt)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              ))}
           </div>
         )}
         {query.hasNextPage && (
@@ -218,17 +295,13 @@ export function Documents() {
         )}
       </Panel>
       <UploadDialog
+        key={`${uploadRequest.ownerType ?? ""}:${uploadRequest.ownerId}:${uploadRequest.type ?? ""}:${uploadRequest.ownerName}`}
         open={dialogOpen}
         roles={session.data?.roles ?? []}
-        initialOwnerId={uploadTarget[1] ?? new URLSearchParams(window.location.search).get("ownerId") ?? ""}
-        initialOwnerType={
-          uploadTarget[0] === "employee" || uploadTarget[0] === "vehicle"
-            ? uploadTarget[0]
-            : new URLSearchParams(window.location.search).get("ownerId")
-              ? "vehicle"
-              : undefined
-        }
-        initialType={uploadTarget[2] as DocumentType | undefined}
+        initialOwnerId={uploadRequest.ownerId}
+        initialOwnerType={uploadRequest.ownerType}
+        initialOwnerName={uploadRequest.ownerName}
+        initialType={uploadRequest.type}
         onClose={() => setDialogOpen(false)}
         onSaved={() => {
           setDialogOpen(false);
@@ -458,6 +531,7 @@ function UploadDialog({
   roles,
   initialOwnerId,
   initialOwnerType,
+  initialOwnerName,
   initialType,
   onClose,
   onSaved,
@@ -466,6 +540,7 @@ function UploadDialog({
   roles: string[];
   initialOwnerId: string;
   initialOwnerType?: DocumentOwnerType;
+  initialOwnerName: string;
   initialType?: DocumentType;
   onClose: () => void;
   onSaved: () => void;
@@ -473,7 +548,7 @@ function UploadDialog({
   const initialOwner = initialOwnerType ?? roleOwner(roles) ?? "employee";
   const [ownerType, setOwnerType] = useState<DocumentOwnerType>(initialOwner);
   const [ownerId, setOwnerId] = useState(initialOwnerId);
-  const [ownerName, setOwnerName] = useState("");
+  const [ownerName, setOwnerName] = useState(initialOwnerName);
   const [vehicleKind, setVehicleKind] = useState<components["schemas"]["VehicleKind"] | null>(null);
   const [ownerSearch, setOwnerSearch] = useState("");
   const [type, setType] = useState<DocumentType>(
@@ -500,6 +575,18 @@ function UploadDialog({
     queryFn: () => documentsApi.vehicles(ownerSearch),
     enabled: ownerType === "vehicle" && ownerSearch.trim().length > 1,
   });
+  const ownerNameQuery = useQuery({
+    queryKey: ["document-owner", ownerType, ownerId],
+    queryFn: async () => {
+      if (ownerType === "vehicle") {
+        const vehicle = await fleetApi.detail(ownerId);
+        return `${vehicle.plate} · ${vehicle.make} ${vehicle.model}`;
+      }
+      const result = await documentsApi.people(ownerId);
+      return result.items.find((person) => person.id === ownerId)?.name ?? "";
+    },
+    enabled: open && Boolean(ownerId) && !ownerName,
+  });
   const availableTypes = documentTypes[ownerType].filter(
     (item) =>
       !(
@@ -511,15 +598,21 @@ function UploadDialog({
   const needsPages = type === "licence_c_ce" || type === "driver_card";
 
   useEffect(() => {
+    if (ownerNameQuery.data) setOwnerName(ownerNameQuery.data);
+  }, [ownerNameQuery.data]);
+
+  useEffect(() => {
     if (!availableTypes.includes(type)) setType(availableTypes[0]);
   }, [availableTypes, type]);
-  useEffect(() => {
+  const changeOwnerType = (nextOwnerType: DocumentOwnerType) => {
+    if (nextOwnerType === ownerType) return;
+    setOwnerType(nextOwnerType);
     setOwnerId("");
     setOwnerName("");
     setVehicleKind(null);
     setOwnerSearch("");
     setFiles([]);
-  }, [ownerType]);
+  };
   const selectFiles = (
     event: ChangeEvent<HTMLInputElement>,
     page: components["schemas"]["DocumentFilePage"],
@@ -622,14 +715,14 @@ function UploadDialog({
               <button
                 type="button"
                 className={ownerType === "employee" ? "selected" : ""}
-                onClick={() => setOwnerType("employee")}
+                onClick={() => changeOwnerType("employee")}
               >
                 {en.documents.person}
               </button>
               <button
                 type="button"
                 className={ownerType === "vehicle" ? "selected" : ""}
-                onClick={() => setOwnerType("vehicle")}
+                onClick={() => changeOwnerType("vehicle")}
               >
                 {en.documents.vehicle}
               </button>
