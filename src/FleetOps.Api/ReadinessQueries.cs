@@ -25,9 +25,9 @@ public sealed class DriverReadinessQueryHandler(FleetOpsDbContext db, IReadiness
 {
     public async Task<DriverReadinessList> HandleAsync(ListDriverReadinessQuery query, AccessContext actor, CancellationToken cancellationToken)
     {
-        var employees = await db.Employees.AsNoTracking().Where(x => x.Status != EmployeeStatus.Left && x.Roles.Contains("driver")).OrderBy(x => x.LastName).ThenBy(x => x.FirstName).ToListAsync(cancellationToken);
+        var employees = await db.Employees.AsNoTracking().Where(x => x.Status != EmployeeStatus.Left && x.Roles.Contains("driver")).OrderBy(x => x.LastName).ThenBy(x => x.FirstName).Select(employee => new { employee.Id, employee.FirstName, employee.LastName, Enrolled = db.OfficeSessions.Any(session => session.EmployeeId == employee.Id && session.Device == "driver" && session.RevokedAt == null) }).ToListAsync(cancellationToken);
         var values = await readiness.ForDriversAsync(employees.Select(x => x.Id).ToArray(), companyTime.ToCompanyDate(time.GetUtcNow()), cancellationToken);
-        var items = employees.Select(employee => new DriverReadinessItem(employee.Id, employee.FirstName + " " + employee.LastName, values[employee.Id].CanDrive, Mask(values[employee.Id].Causes, actor))).Where(x => !query.BlockedOnly || !x.CanDrive).Take(Math.Clamp(query.Limit, 1, 100)).ToList();
+        var items = employees.Select(employee => new DriverReadinessItem(employee.Id, employee.FirstName + " " + employee.LastName, values[employee.Id].CanDrive, Mask(values[employee.Id].Causes, actor), employee.Enrolled)).Where(x => !query.BlockedOnly || !x.CanDrive).Take(Math.Clamp(query.Limit, 1, 100)).ToList();
         return new(items, null);
     }
 

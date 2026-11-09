@@ -52,7 +52,7 @@ public static class AuthEndpoints
         var user = await users.Users.SingleOrDefaultAsync(x => x.NormalizedEmail == normalized);
         var locked = user is not null && IsLockedOut(user, time);
 
-        var valid = user is not null
+        var valid = user is not null && user.PasswordHash is not null
             ? await users.CheckPasswordAsync(user, input.Password)
             : DummyPasswordVerification(input.Password);
         if (!valid)
@@ -106,7 +106,11 @@ public static class AuthEndpoints
         return Results.Ok(new { next = Next(stage) });
     }
 
-    private static bool DummyPasswordVerification(string password) => new PasswordHasher<OfficeUser>().VerifyHashedPassword(new OfficeUser(), DummyPasswordHash, password) != PasswordVerificationResult.Failed;
+    private static bool DummyPasswordVerification(string password)
+    {
+        _ = new PasswordHasher<OfficeUser>().VerifyHashedPassword(new OfficeUser(), DummyPasswordHash, password);
+        return false;
+    }
 
     private static bool IsLockedOut(OfficeUser user, TimeProvider time) =>
         user.LockoutEnabled && user.LockoutEnd is DateTimeOffset lockoutEnd && lockoutEnd > time.GetUtcNow();
@@ -179,7 +183,9 @@ public static class AuthEndpoints
         await db.SaveChangesAsync(http.HttpContext!.RequestAborted);
         if (session.Stage == SessionStage.Full)
         {
-            var raw = AuthTokens.New(); session.TokenHash = AuthTokens.Hash(raw); SetCookie(http.HttpContext!, raw);
+            var raw = AuthTokens.New();
+            session.TokenHash = AuthTokens.Hash(raw);
+            SetCookie(http.HttpContext!, raw);
             await db.SaveChangesAsync(http.HttpContext!.RequestAborted);
         }
         return Results.Ok(new { next = Next(session.Stage) });
@@ -203,7 +209,12 @@ public static class AuthEndpoints
         session.Stage = SessionStage.Full;
         session.StageChangedAt = time.GetUtcNow();
         await db.SaveChangesAsync(http.HttpContext!.RequestAborted);
-        var raw = AuthTokens.New(); session.TokenHash = AuthTokens.Hash(raw); SetCookie(http.HttpContext!, raw);
+        var raw = AuthTokens.New();
+        session.TokenHash = AuthTokens.Hash(raw);
+        var maxAge = session.Device == "driver"
+            ? TimeSpan.FromDays(await EnrolmentRules.PositiveSetting(http.HttpContext!.RequestServices.GetRequiredService<FleetOps.Modules.Setup.ISettings>(), "driver.session_days", null, http.HttpContext.RequestAborted))
+            : (TimeSpan?)null;
+        SetCookie(http.HttpContext!, raw, maxAge);
         await db.SaveChangesAsync(http.HttpContext!.RequestAborted);
         return Results.Ok(new { next = Next(session.Stage) });
     }
@@ -332,7 +343,13 @@ public static class AuthEndpoints
         var session = await db.OfficeSessions.SingleOrDefaultAsync(x => x.TokenHash == AuthTokens.Hash(raw!));
         if (session is null || session.RevokedAt is not null) return null;
         var now = time.GetUtcNow();
-        if (now - session.LastSeenAt > options.Value.IdleSessionLifetime || now - session.CreatedAt > options.Value.AbsoluteSessionLifetime) return null;
+        var expired = session.Device == "driver"
+            ? now - session.CreatedAt > TimeSpan.FromDays(await EnrolmentRules.PositiveSetting(http.HttpContext!.RequestServices.GetRequiredService<FleetOps.Modules.Setup.ISettings>(), "driver.session_days", null, http.HttpContext.RequestAborted))
+            : now - session.LastSeenAt > options.Value.IdleSessionLifetime || now - session.CreatedAt > options.Value.AbsoluteSessionLifetime;
+        if (expired) return null;
+        var employee = await db.Employees.FindAsync([session.EmployeeId], http.HttpContext!.RequestAborted);
+        var clock = http.HttpContext.RequestServices.GetRequiredService<ICompanyTimeService>();
+        if (employee is null || employee.Status != EmployeeStatus.Active || employee.EndDate is DateOnly end && clock.ToCompanyDate(now) > end) return null;
         if (session.Stage != SessionStage.Full && now - session.StageChangedAt > options.Value.PendingSessionLifetime) return null;
         return stages.Length == 0 || stages.Contains(session.Stage) ? session : null;
     }
@@ -373,7 +390,7 @@ public static class AuthEndpoints
         SessionStage.Full => "done",
         _ => throw new ArgumentOutOfRangeException(nameof(stage))
     };
-    private static void SetCookie(HttpContext http, string raw) => http.Response.Cookies.Append(CookieName, raw, new CookieOptions { Path = "/", HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict });
+    internal static void SetCookie(HttpContext http, string raw, TimeSpan? maxAge = null) => http.Response.Cookies.Append(CookieName, raw, new CookieOptions { Path = "/", HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict, MaxAge = maxAge });
     public sealed record SignInRequest(string Email, string Password);
     public sealed record SecondFactorRequest(string Code);
     public sealed record PrivacyRequest(string Version);

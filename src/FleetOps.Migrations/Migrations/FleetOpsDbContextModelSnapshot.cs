@@ -23,6 +23,51 @@ namespace FleetOps.Migrations.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("FleetOps.Identity.EnrolmentCode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempts");
+
+                    b.Property<string>("CodeHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("code_hash");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("employee_id");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<Guid>("IssuedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("issued_by");
+
+                    b.Property<DateTimeOffset?>("UsedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("used_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmployeeId", "ExpiresAt")
+                        .HasFilter("used_at IS NULL");
+
+                    b.ToTable("enrolment_codes", "fleetops");
+                });
+
             modelBuilder.Entity("FleetOps.Identity.OfficeSession", b =>
                 {
                     b.Property<Guid>("Id")
@@ -955,6 +1000,16 @@ namespace FleetOps.Migrations.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("last_name");
 
+                    b.Property<string>("PersonnelNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("personnel_number");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("phone");
+
                     b.Property<string>("Roles")
                         .IsRequired()
                         .HasColumnType("text")
@@ -970,6 +1025,10 @@ namespace FleetOps.Migrations.Migrations
                         .HasColumnName("status");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("PersonnelNumber")
+                        .IsUnique()
+                        .HasFilter("personnel_number IS NOT NULL");
 
                     b.ToTable("employees", "fleetops");
                 });
@@ -1124,6 +1183,15 @@ namespace FleetOps.Migrations.Migrations
                     b.HasKey("UserId", "LoginProvider", "Name");
 
                     b.ToTable("user_tokens", "fleetops");
+                });
+
+            modelBuilder.Entity("FleetOps.Identity.EnrolmentCode", b =>
+                {
+                    b.HasOne("FleetOps.People.Employee", null)
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("FleetOps.Identity.OfficeSession", b =>

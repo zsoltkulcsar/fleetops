@@ -12,6 +12,7 @@ public sealed class SessionMiddleware(RequestDelegate next)
         await accessor.LoadAsync(context);
         var normalizedPath = context.Request.Path.Value?.TrimEnd('/') ?? "";
         var allowedDeadCookiePath = normalizedPath.Equals("/api/v1/auth/sign-in", StringComparison.OrdinalIgnoreCase)
+            || normalizedPath.Equals("/api/v1/auth/driver/enrol", StringComparison.OrdinalIgnoreCase)
             || normalizedPath.Equals("/api/v1/auth/forgot-password", StringComparison.OrdinalIgnoreCase)
             || normalizedPath.Equals("/api/v1/auth/reset-password", StringComparison.OrdinalIgnoreCase)
             || normalizedPath.Equals("/api/v1/auth/sign-out", StringComparison.OrdinalIgnoreCase);

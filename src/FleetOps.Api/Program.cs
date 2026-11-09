@@ -59,6 +59,12 @@ builder.Services.AddScoped<SessionAccessor>();
 builder.Services.AddScoped<IAccessContextAccessor>(services => services.GetRequiredService<SessionAccessor>());
 builder.Services.AddScoped<IStepUpContextAccessor>(services => services.GetRequiredService<SessionAccessor>());
 builder.Services.AddSingleton<IMailbox, DemoMailbox>();
+builder.Services.Configure<EnrolmentOptions>(builder.Configuration.GetSection("Enrolment"));
+builder.Services.AddScoped<IEnrolmentStore, EfEnrolmentStore>();
+builder.Services.AddScoped<IEnrolmentSms, DemoEnrolmentSms>();
+builder.Services.AddScoped<EnrolDriverHandler>();
+builder.Services.AddScoped<ICommandHandler<SendEnrolmentCommand, SendEnrolmentResult>, SendEnrolmentHandler>();
+builder.Services.AddScoped<IQueryHandler<GetDriverConfigQuery, DriverConfig>, DriverConfigHandler>();
 builder.Services.AddSingleton<ICompanyTimeService>(_ => new CompanyTimeService(CompanyTimeService.Resolve(builder.Configuration["Company:Timezone"] ?? "Europe/Berlin")));
 builder.Services.AddSingleton<IDatabaseHealth, DatabaseHealth>();
 builder.Services.AddScoped<IReadiness, EfReadinessStore>();
@@ -138,6 +144,16 @@ app.UseExceptionHandler(new ExceptionHandlerOptions
             var status = refusal.Code == "not_signed_in" ? 401 : refusal.Code == "state_conflict" ? 409 : 403;
             await Results.Problem(statusCode: status, extensions: new Dictionary<string, object?> { ["code"] = refusal.Code, ["allowedRoles"] = refusal.AllowedRoles.Select(x => x.Code()).ToArray() }).ExecuteAsync(context); return;
         }
+        if (exception is SmsUnavailableException)
+        {
+            await Results.Problem(statusCode: 503, extensions: new Dictionary<string, object?> { ["code"] = "sms_unavailable" }).ExecuteAsync(context);
+            return;
+        }
+        if (exception is EnrolmentNotPossibleException)
+        {
+            await Results.Problem(statusCode: 409, extensions: new Dictionary<string, object?> { ["code"] = "enrolment_not_possible" }).ExecuteAsync(context);
+            return;
+        }
         if (exception is InvalidOperationException { Message: "mailbox_unavailable" }) { await Results.Json(new { code = "mailbox_unavailable" }, statusCode: 503).ExecuteAsync(context); return; }
         if (exception is VehicleValidationException validation) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "validation_error", ["fields"] = validation.Fields }).ExecuteAsync(context); return; }
         if (exception is StorageUnavailableException) { await Results.Problem(statusCode: 503, extensions: new Dictionary<string, object?> { ["code"] = "storage_unavailable" }).ExecuteAsync(context); return; }
@@ -158,6 +174,18 @@ app.UseExceptionHandler(new ExceptionHandlerOptions
         context.Response.StatusCode = 500; await Results.Problem(statusCode: 500).ExecuteAsync(context);
     }
 });
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/api/v1/auth/driver")
+        || context.Request.Path.StartsWithSegments("/api/v1/driver")
+        || context.Request.Path.StartsWithSegments("/api/v1/people") && context.Request.Path.Value!.TrimEnd('/').EndsWith("/enrolment", StringComparison.OrdinalIgnoreCase))
+        context.Response.OnStarting(() =>
+        {
+            context.Response.Headers.CacheControl = "no-store";
+            return Task.CompletedTask;
+        });
+    await next();
+});
 app.UseMiddleware<SessionMiddleware>();
 app.Use(async (context, next) =>
 {
@@ -172,6 +200,7 @@ app.MapPost("/api/v1/admin/jobs/{name}/run", async (string name, CommandDispatch
 app.MapGet("/api/v1/admin/jobs", async (QueryDispatcher dispatcher, IConfiguration configuration, CancellationToken cancellationToken) => !configuration.GetValue("Jobs:AdminTrigger", false) ? Results.NotFound() : Results.Ok(await dispatcher.DispatchAsync<ListJobsQuery, JobListResult>(new(), cancellationToken))).Produces<JobListResult>();
 app.MapGet("/healthz", async (IDatabaseHealth database, CancellationToken cancellationToken) => await database.IsHealthyAsync(cancellationToken) ? Results.Ok(new { api = "ok", database = "ok" }) : Results.Problem(statusCode: 503, title: "Service unavailable", detail: "Database unavailable", extensions: new Dictionary<string, object?> { ["code"] = "database_unavailable", ["database"] = "unavailable" }));
 AuthEndpoints.Map(app);
+DriverEndpoints.Map(app);
 app.MapPost("/api/v1/fleet/vehicles", async (CreateVehicleCommand command, CommandDispatcher dispatcher, CancellationToken cancellationToken) => { var result = await dispatcher.DispatchAsync<CreateVehicleCommand, VehicleDetail>(command, cancellationToken); return Results.Created($"/api/v1/fleet/vehicles/{result.Id}", result); }).Produces<VehicleDetail>(StatusCodes.Status201Created);
 app.MapPut("/api/v1/fleet/vehicles/{id:guid}", async (Guid id, EditVehicleRequest request, CommandDispatcher dispatcher, CancellationToken cancellationToken) => Results.Ok(await dispatcher.DispatchAsync<EditVehicleCommand, VehicleDetail>(request.ToCommand(id), cancellationToken))).Produces<VehicleDetail>();
 app.MapPost("/api/v1/fleet/vehicles/{id:guid}/retire", async (Guid id, RetireVehicleRequest request, CommandDispatcher dispatcher, CancellationToken cancellationToken) => Results.Ok(await dispatcher.DispatchAsync<RetireVehicleCommand, VehicleDetail>(new(id, request.Version, request.RetiredReason), cancellationToken))).Produces<VehicleDetail>();

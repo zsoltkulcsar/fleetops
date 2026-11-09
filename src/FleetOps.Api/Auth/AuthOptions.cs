@@ -10,6 +10,6 @@ public sealed class AuthOptions
     public int SecondFactorFailureLimit { get; set; } = 5;
     public TimeSpan PendingSessionLifetime { get; set; } = TimeSpan.FromMinutes(10);
     public bool RequireSecondFactor { get; set; } = true;
-    public const string PrivacyVersion = "placeholder-v1";
+    public const string PrivacyVersion = FleetOps.Identity.SessionTokens.PrivacyVersion;
     public string? PublicOrigin { get; set; }
 }

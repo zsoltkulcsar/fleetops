@@ -119,7 +119,7 @@ public sealed class AuthorizationTests
     [Fact]
     public void Matrix_contains_all_permission_rows()
     {
-        Assert.Equal(37, PermissionMatrix.Entries.Count);
+        Assert.Equal(38, PermissionMatrix.Entries.Count);
         Assert.Contains(PermissionMatrix.Entries, x => x.ActionKey == "shifts.approve_reject" && x.AllowedRoles.SetEquals([RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner]));
         Assert.Contains(PermissionMatrix.Entries, x => x.ActionKey == "documents.medical.view" && x.OwnRoles.SetEquals([RoleCode.Driver]));
     }
@@ -162,6 +162,7 @@ public sealed class AuthorizationTests
             ["alerts.view"] = [RoleCode.Dispatcher, RoleCode.Hr],
             ["alerts.snooze"] = [RoleCode.Dispatcher, RoleCode.Hr],
             ["defects.report"] = [RoleCode.Driver],
+            ["driver.config"] = [RoleCode.Driver],
             ["schedule.edit"] = [RoleCode.Dispatcher, RoleCode.Owner],
             ["settings.payroll"] = [RoleCode.Hr, RoleCode.Owner],
             ["notifications.mine"] = [RoleCode.Driver, RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner]
@@ -209,6 +210,7 @@ public sealed class AuthorizationTests
             ["employees.phone.change"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full),
             ["audit.export"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full),
             ["defects.report"] = (PermissionMatrix.Cell.Own, PermissionMatrix.Cell.None, PermissionMatrix.Cell.None, PermissionMatrix.Cell.None),
+            ["driver.config"] = (PermissionMatrix.Cell.Own, PermissionMatrix.Cell.None, PermissionMatrix.Cell.None, PermissionMatrix.Cell.None),
             ["schedule.edit"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.View, PermissionMatrix.Cell.Full),
             ["settings.payroll"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full),
             ["notifications.mine"] = (PermissionMatrix.Cell.Own, PermissionMatrix.Cell.Own, PermissionMatrix.Cell.Own, PermissionMatrix.Cell.Own)
@@ -287,6 +289,7 @@ public sealed class AuthorizationTests
         "alerts.snooze" => role is RoleCode.Dispatcher or RoleCode.Hr,
         "settings.manage" => role == RoleCode.Owner,
         "defects.report" => role == RoleCode.Driver,
+        "driver.config" => role == RoleCode.Driver,
         _ => false
     };
 

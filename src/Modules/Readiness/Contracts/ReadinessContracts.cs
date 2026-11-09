@@ -13,7 +13,7 @@ public interface IReadiness
 public sealed record ReadinessSummary(int VehiclesUsable, int VehiclesTotal, int DriversAbleToDrive, int DriversTotal) : IReadModel;
 
 [VisibleTo(RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner)]
-public sealed record DriverReadinessItem(Guid Id, string Name, bool CanDrive, IReadOnlyList<ReadinessCause> Causes);
+public sealed record DriverReadinessItem(Guid Id, string Name, bool CanDrive, IReadOnlyList<ReadinessCause> Causes, bool Enrolled = false);
 
 [VisibleTo(RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner)]
 public sealed record DriverReadinessList(IReadOnlyList<DriverReadinessItem> Items, string? NextCursor) : IReadModel;

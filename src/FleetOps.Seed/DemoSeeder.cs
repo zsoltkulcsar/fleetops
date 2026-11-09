@@ -58,7 +58,7 @@ public sealed class DemoSeeder
 
     private async Task ResetAsync(FleetOpsDbContext db, CancellationToken cancellationToken)
     {
-        var tables = new[] { "notifications", "alerts", "audit_entries", "document_files", "documents", "pending_files", "vehicle_plate_history", "vehicles", "depots", "user_tokens", "user_logins", "user_claims", "user_roles", "role_claims", "sessions", "privacy_acknowledgements", "password_reset_tokens", "users", "roles", "employees" };
+        var tables = new[] { "notifications", "alerts", "audit_entries", "document_files", "documents", "pending_files", "vehicle_plate_history", "vehicles", "depots", "user_tokens", "user_logins", "user_claims", "user_roles", "role_claims", "sessions", "enrolment_codes", "privacy_acknowledgements", "password_reset_tokens", "users", "roles", "employees" };
         foreach (var table in tables)
         {
             await db.Database.ExecuteSqlRawAsync($"DELETE FROM fleetops.\"{table}\"", cancellationToken);
@@ -98,7 +98,7 @@ public sealed class DemoSeeder
         {
             var firstName = new[] { "Bastian", "Claus", "Dirk", "Erik", "Falk", "Gerd", "Hannes", "Ivo", "Jochen", "Kai", "Lars", "Mats" }[index % 12];
             var lastName = new[] { "Albrecht", "Becker", "Dreher", "Eckert", "Franke", "Günther", "Hartmann", "Jäger" }[index % 8];
-            db.Employees.Add(new Employee { Id = FixedGuid(10 + index), FirstName = firstName, LastName = lastName, Email = $"driver{index + 1}@demo.fleetops.example", Roles = "[\"driver\"]", StartDate = StartDate });
+            db.Employees.Add(new Employee { Id = FixedGuid(10 + index), FirstName = firstName, LastName = lastName, Email = $"driver{index + 1}@demo.fleetops.example", PersonnelNumber = $"D-{index + 1:0000}", Phone = $"+49 170 555{index + 1:0000}", Roles = "[\"driver\"]", StartDate = StartDate });
         }
     }
 

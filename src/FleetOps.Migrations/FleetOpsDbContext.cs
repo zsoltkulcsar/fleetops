@@ -23,6 +23,7 @@ public sealed partial class FleetOpsDbContext(DbContextOptions<FleetOpsDbContext
     public DbSet<PendingFile> PendingFiles => Set<PendingFile>();
     public DbSet<JobRun> JobRuns => Set<JobRun>();
     public DbSet<JobCheckpoint> JobCheckpoints => Set<JobCheckpoint>();
+    public DbSet<EnrolmentCode> EnrolmentCodes => Set<EnrolmentCode>();
     public DbSet<Setting> Settings => Set<Setting>();
     public DbSet<Alert> Alerts => Set<Alert>();
     public DbSet<Notification> Notifications => Set<Notification>();
@@ -110,6 +111,27 @@ public sealed partial class FleetOpsDbContext(DbContextOptions<FleetOpsDbContext
             entity.Property(x => x.LastName).HasColumnName("last_name").HasMaxLength(100).IsRequired(); entity.Property(x => x.Email).HasColumnName("email").HasMaxLength(320).IsRequired();
             entity.Property(x => x.Roles).HasColumnName("roles").IsRequired(); entity.Property(x => x.Status).HasColumnName("status").HasConversion<string>();
             entity.Property(x => x.StartDate).HasColumnName("start_date"); entity.Property(x => x.EndDate).HasColumnName("end_date");
+        });
+        modelBuilder.Entity<FleetOps.People.Employee>(entity =>
+        {
+            entity.Property(x => x.PersonnelNumber).HasColumnName("personnel_number").HasMaxLength(100);
+            entity.Property(x => x.Phone).HasColumnName("phone").HasMaxLength(100);
+            entity.HasIndex(x => x.PersonnelNumber).IsUnique().HasFilter("personnel_number IS NOT NULL");
+        });
+        modelBuilder.Entity<EnrolmentCode>(entity =>
+        {
+            entity.ToTable("enrolment_codes");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasColumnName("id");
+            entity.Property(x => x.EmployeeId).HasColumnName("employee_id");
+            entity.Property(x => x.CodeHash).HasColumnName("code_hash").HasMaxLength(64).IsRequired();
+            entity.Property(x => x.CreatedAt).HasColumnName("created_at");
+            entity.Property(x => x.ExpiresAt).HasColumnName("expires_at");
+            entity.Property(x => x.Attempts).HasColumnName("attempts");
+            entity.Property(x => x.UsedAt).HasColumnName("used_at");
+            entity.Property(x => x.IssuedBy).HasColumnName("issued_by");
+            entity.HasOne<FleetOps.People.Employee>().WithMany().HasForeignKey(x => x.EmployeeId);
+            entity.HasIndex(x => new { x.EmployeeId, x.ExpiresAt }).HasFilter("used_at IS NULL");
         });
         modelBuilder.Entity<FleetOps.Identity.OfficeSession>(entity => { entity.ToTable("sessions"); entity.HasKey(x => x.Id); entity.Property(x => x.Id).HasColumnName("id"); entity.HasIndex(x => x.TokenHash).IsUnique(); entity.HasIndex(x => x.UserId); entity.HasOne<FleetOps.Identity.OfficeUser>().WithMany().HasForeignKey(x => x.UserId); entity.HasOne<FleetOps.People.Employee>().WithMany().HasForeignKey(x => x.EmployeeId); entity.Property(x => x.UserId).HasColumnName("user_id"); entity.Property(x => x.EmployeeId).HasColumnName("employee_id"); entity.Property(x => x.TokenHash).HasColumnName("token_hash"); entity.Property(x => x.Device).HasColumnName("device"); entity.Property(x => x.Stage).HasColumnName("stage").HasConversion(v => v.ToString().ToSnakeCase(), v => Enum.Parse<SessionStage>(v.Replace("_", ""), true)); entity.Property(x => x.CreatedAt).HasColumnName("created_at"); entity.Property(x => x.StageChangedAt).HasColumnName("stage_changed_at"); entity.Property(x => x.LastSeenAt).HasColumnName("last_seen_at"); entity.Property(x => x.RevokedAt).HasColumnName("revoked_at"); entity.Property(x => x.StepUpAt).HasColumnName("step_up_at"); entity.Property(x => x.FailedSecondFactorAttempts).HasColumnName("failed_second_factor_attempts"); });
         modelBuilder.Entity<FleetOps.Identity.PrivacyAcknowledgement>(entity => { entity.ToTable("privacy_acknowledgements"); entity.HasKey(x => x.Id); entity.Property(x => x.Id).HasColumnName("id"); entity.HasIndex(x => x.EmployeeId); entity.HasOne<FleetOps.People.Employee>().WithMany().HasForeignKey(x => x.EmployeeId); entity.Property(x => x.EmployeeId).HasColumnName("employee_id"); entity.Property(x => x.Version).HasColumnName("version"); entity.Property(x => x.AcknowledgedAt).HasColumnName("acknowledged_at"); });

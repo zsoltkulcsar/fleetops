@@ -58,6 +58,25 @@ public sealed class CommandDispatcher(IAccessContextAccessor accessor, ICommandP
         catch { try { await transaction.RollbackAsync(CancellationToken.None); } catch { } throw; }
     }
 
+    // Only the driver authentication command can enter without an existing session.
+    public async Task<FleetOps.Identity.EnrolDriverResult?> DispatchAsync(FleetOps.Identity.EnrolDriverCommand command, CancellationToken cancellationToken = default)
+    {
+        await using var transaction = await transactions.BeginAsync(cancellationToken);
+        try
+        {
+            var handler = services.GetRequiredService<FleetOps.Identity.EnrolDriverHandler>();
+            var result = await handler.ExecuteAsync(command, transaction.Context, cancellationToken);
+            // A refusal commits its failed-attempt increments.
+            await transaction.CommitAsync(CancellationToken.None);
+            return result;
+        }
+        catch
+        {
+            await transaction.RollbackAsync(CancellationToken.None);
+            throw;
+        }
+    }
+
     private static void Refuse(string code, CommandPolicy policy, IReadOnlyCollection<RoleCode> allowed) => throw new AuthorizationException(code, policy.ActionKey, allowed);
 
 }

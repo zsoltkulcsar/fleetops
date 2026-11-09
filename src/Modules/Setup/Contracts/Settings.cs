@@ -13,6 +13,12 @@ public static class SettingCatalog
 {
     public static readonly IReadOnlyDictionary<string, int> Defaults = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
     {
+        ["enrolment.code_minutes"] = 30,
+        ["enrolment.max_tries"] = 5,
+        ["driver.pin_length"] = 6,
+        ["driver.max_pin_tries"] = 5,
+        ["driver.max_offline_days"] = 45,
+        ["driver.session_days"] = 180,
         ["alerts.a03.queue_days"] = 2,
         ["alerts.a03.blocked_hours"] = 1,
         ["alerts.escalation_minutes"] = 15,

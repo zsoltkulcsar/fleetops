@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 
 namespace FleetOps.Api.Auth;
 
-public sealed class SessionAccessor(FleetOpsDbContext db, ICompanyTimeService clock, TimeProvider time, IOptions<AuthOptions> options, IHostEnvironment environment, ILogger<SessionAccessor> logger) : IAccessContextAccessor, IStepUpContextAccessor
+public sealed class SessionAccessor(FleetOpsDbContext db, ICompanyTimeService clock, TimeProvider time, IOptions<AuthOptions> options, IHostEnvironment environment, ILogger<SessionAccessor> logger, FleetOps.Modules.Setup.ISettings settings) : IAccessContextAccessor, IStepUpContextAccessor
 {
     private readonly AuthOptions _options = options.Value;
     public AccessContext? Current { get; private set; }
@@ -33,7 +33,10 @@ public sealed class SessionAccessor(FleetOpsDbContext db, ICompanyTimeService cl
         var employee = await db.Employees.FindAsync([session.EmployeeId], httpContext.RequestAborted);
         var ended = employee?.EndDate is DateOnly end && clock.ToCompanyDate(now) > end;
         var pendingExpired = session.Stage != SessionStage.Full && now - session.StageChangedAt > _options.PendingSessionLifetime;
-        if (employee is null || employee.Status != EmployeeStatus.Active || ended || pendingExpired || now - session.LastSeenAt > _options.IdleSessionLifetime || now - session.CreatedAt > _options.AbsoluteSessionLifetime)
+        var lifetimeExpired = session.Device == "driver"
+            ? now - session.CreatedAt > TimeSpan.FromDays(await EnrolmentRules.PositiveSetting(settings, "driver.session_days", null, httpContext.RequestAborted))
+            : now - session.LastSeenAt > _options.IdleSessionLifetime || now - session.CreatedAt > _options.AbsoluteSessionLifetime;
+        if (employee is null || employee.Status != EmployeeStatus.Active || ended || pendingExpired || lifetimeExpired)
         {
             session.RevokedAt = now;
             httpContext.Items["ProblemCode"] = "session_expired";

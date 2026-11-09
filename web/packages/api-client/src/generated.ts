@@ -109,6 +109,142 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/people/{id}/enrolment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SendEnrolmentResult"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Service Unavailable */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/driver/enrol": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["EnrolDriverCommand"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DriverEnrolmentResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/driver/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DriverConfig"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/fleet/vehicles": {
         parameters: {
             query?: never;
@@ -1691,12 +1827,27 @@ export interface components {
             number?: null | string;
             categories?: null | string[];
         };
+        DriverConfig: {
+            /** Format: int32 */
+            pinLength: number;
+            /** Format: int32 */
+            maxPinTries: number;
+            /** Format: int32 */
+            maxOfflineDays: number;
+            officePhone: string;
+            name: string;
+        };
+        DriverEnrolmentResponse: {
+            stage: components["schemas"]["SessionStage"];
+        };
         DriverReadinessItem: {
             /** Format: uuid */
             id: string;
             name: string;
             canDrive: boolean;
             causes: components["schemas"]["ReadinessCause"][];
+            /** @default false */
+            enrolled: boolean;
         };
         DriverReadinessList: {
             items: components["schemas"]["DriverReadinessItem"][];
@@ -1730,6 +1881,14 @@ export interface components {
             /** Format: date */
             lastTachoDownloadAt: null | string;
             reason: null | string;
+        };
+        EnrolDriverCommand: {
+            personnelNumber: null | string;
+            code: null | string;
+        };
+        EnrolmentTestInbox: {
+            code: string;
+            personnelNumber: string;
         };
         ForgotRequest: {
             email: string;
@@ -1791,6 +1950,14 @@ export interface components {
         PrivacyRequest: {
             version: string;
         };
+        ProblemDetails: {
+            type?: null | string;
+            title?: null | string;
+            /** Format: int32 */
+            status?: null | number;
+            detail?: null | string;
+            instance?: null | string;
+        };
         ReadinessCause: {
             code: components["schemas"]["ReadinessCauseCode"];
             documentType: null | string;
@@ -1827,6 +1994,13 @@ export interface components {
         SecondFactorRequest: {
             code: string;
         };
+        SendEnrolmentResult: {
+            /** Format: date-time */
+            sentAt: string;
+            testInbox: null | components["schemas"]["EnrolmentTestInbox"];
+        };
+        /** @enum {unknown} */
+        SessionStage: "pending_second_factor" | "pending_enrolment" | "pending_privacy" | "full";
         SetVehicleOffRoadRequest: {
             /** Format: int32 */
             version: number;
