@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Plus, Search } from "lucide-react";
-import { Banner, EmptyState, Panel, Plate, StatusPill, Toast } from "@fleetops/ui";
+import { Banner, EmptyState, Plate, StatusPill, Toast } from "@fleetops/ui";
 import { useSession } from "../auth/AuthGate";
 import { en } from "../i18n/en";
 import { fleetApi, type Vehicle } from "./api";
@@ -75,14 +75,12 @@ export function Fleet() {
     [query.data],
   );
   return (
-    <div className="page fleet-page">
+    <div className="page fleet-page directory-page">
       <div className="page-title">
         <div>
-          <span className="eyebrow">Operations / Fleet</span>
           <h1 ref={heading} tabIndex={-1}>
             Fleet
           </h1>
-          <p className="ui-muted">Track every truck and trailer in the workspace.</p>
         </div>
         {canEdit && (
           <button className="ui-button primary" onClick={() => setFormOpen(true)}>
@@ -96,10 +94,36 @@ export function Fleet() {
           Data could not be loaded. Check the connection and try again.
         </Banner>
       )}
-      <Panel
-        title="Vehicles"
-        filters={
+      <section className="ui-panel directory-panel" aria-label="Vehicles">
+        <header className="directory-toolbar">
+          <div className="directory-heading">
+            <h2>Vehicles</h2>
+            {summary.data && (
+              <span className="ui-muted">
+                {summary.data.vehiclesUsable} of {summary.data.vehiclesTotal} usable
+              </span>
+            )}
+          </div>
           <div className="fleet-filters">
+            <div className="directory-chips" role="group" aria-label="Vehicle kind">
+              {(
+                [
+                  ["", "All"],
+                  ["truck", "Trucks"],
+                  ["trailer", "Trailers"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  type="button"
+                  key={value}
+                  className="directory-chip"
+                  aria-pressed={kind === value}
+                  onClick={() => setKind(value)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             <label className="search-field">
               <Search size={16} aria-hidden />
               <span className="visually-hidden">Search fleet</span>
@@ -110,18 +134,6 @@ export function Fleet() {
                 onChange={(event) => setSearch(event.target.value)}
               />
             </label>
-            <select
-              aria-label="Vehicle kind"
-              value={kind}
-              onChange={(event) => {
-                const nextKind = event.target.value;
-                if (nextKind === "" || nextKind === "truck" || nextKind === "trailer") setKind(nextKind);
-              }}
-            >
-              <option value="">All vehicles</option>
-              <option value="truck">Trucks</option>
-              <option value="trailer">Trailers</option>
-            </select>
             <label className="checkbox-field">
               <input
                 type="checkbox"
@@ -131,13 +143,7 @@ export function Fleet() {
               {en.fleet.includeRetired}
             </label>
           </div>
-        }
-      >
-        {summary.data && (
-          <p className="ui-muted">
-            {summary.data.vehiclesUsable} of {summary.data.vehiclesTotal} usable
-          </p>
-        )}
+        </header>
         {query.isLoading ? (
           <div className="fleet-loading">Loading vehicles…</div>
         ) : !vehicles.length && !query.isError ? (
@@ -154,11 +160,11 @@ export function Fleet() {
               <thead>
                 <tr>
                   <th>Plate</th>
-                  <th>Kind</th>
-                  <th>Make and model</th>
-                  <th>Year</th>
+                  <th>Vehicle</th>
                   <th>Status</th>
+                  <th>Kind</th>
                   <th>Ownership</th>
+                  <th>Year</th>
                 </tr>
               </thead>
               <tbody>
@@ -176,13 +182,9 @@ export function Fleet() {
                     <td>
                       <Plate>{vehicle.plate}</Plate>
                     </td>
-                    <td>{en.fleet.kind[vehicle.kind]}</td>
                     <td>
-                      <strong>
-                        {vehicle.make} {vehicle.model}
-                      </strong>
+                      {vehicle.make} {vehicle.model}
                     </td>
-                    <td className="tabular-nums">{vehicle.year}</td>
                     <td>
                       {(() => {
                         const shownStatus =
@@ -201,23 +203,28 @@ export function Fleet() {
                         );
                       })()}
                     </td>
+                    <td>{en.fleet.kind[vehicle.kind]}</td>
                     <td>{en.fleet.ownership[vehicle.ownership]}</td>
+                    <td className="tabular-nums">{vehicle.year}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
-        {query.hasNextPage && (
-          <button
-            className="ui-button load-more"
-            onClick={() => void query.fetchNextPage()}
-            disabled={query.isFetchingNextPage}
-          >
-            {query.isFetchingNextPage ? "Loading…" : "Load more"}
-          </button>
-        )}
-      </Panel>
+        <footer className="directory-footer">
+          <span>{vehicles.length ? `1–${vehicles.length} vehicles` : "0 vehicles"}</span>
+          {query.hasNextPage && (
+            <button
+              className="ui-button load-more"
+              onClick={() => void query.fetchNextPage()}
+              disabled={query.isFetchingNextPage}
+            >
+              {query.isFetchingNextPage ? "Loading…" : "Load more"}
+            </button>
+          )}
+        </footer>
+      </section>
       <VehicleForm
         open={formOpen}
         onClose={() => setFormOpen(false)}

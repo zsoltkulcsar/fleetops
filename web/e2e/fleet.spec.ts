@@ -134,7 +134,7 @@ test("kind filter sends the kind to the server", async ({ page }) => {
     });
   });
   await page.goto("/fleet");
-  await page.getByLabel("Vehicle kind").selectOption("trailer");
+  await page.getByRole("button", { name: "Trailers", exact: true }).click();
   await expect(page.getByText("No vehicles yet.")).toBeVisible();
   expect(kind).toBe("trailer");
 });

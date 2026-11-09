@@ -232,7 +232,178 @@
 }
 
 /* Fleet views: Vehicles and Schedule (design/ia.md O-18 is a tab of Fleet). */
-.fleet-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 16px; }
-.fleet-tabs a { display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; color: var(--ink-2); font-weight: 600; text-decoration: none; border-bottom: 2px solid transparent; margin-bottom: -1px; }
-.fleet-tabs a:hover { color: var(--ink); }
-.fleet-tabs a[aria-current="page"] { color: var(--accent); border-bottom-color: var(--accent); }
+.fleet-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 16px;
+}
+.fleet-tabs a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 14px;
+  color: var(--ink-2);
+  font-weight: 600;
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.fleet-tabs a:hover {
+  color: var(--ink);
+}
+.fleet-tabs a[aria-current="page"] {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* Screenshot reference: compact data views, existing palette and shared primitives. */
+.directory-page .page-title {
+  align-items: center;
+  margin-bottom: 14px;
+}
+.directory-page .fleet-tabs,
+.directory-tabs {
+  display: flex;
+  gap: 6px;
+  border: 0;
+  margin-bottom: 16px;
+}
+.directory-page .fleet-tabs a,
+.directory-tabs > span,
+.directory-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 5px 12px;
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: var(--type-table);
+  font-weight: 400;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.directory-page .fleet-tabs a[aria-current="page"],
+.directory-tabs > [aria-current="page"],
+.directory-chip[aria-pressed="true"],
+.directory-chip.is-selected {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--surface);
+}
+.directory-chip:focus-visible,
+.directory-chip:focus-within {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.directory-panel {
+  padding: 0;
+  overflow: hidden;
+}
+.directory-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.directory-heading,
+.directory-chips {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.directory-heading h2 {
+  margin: 0;
+  font-size: 20px;
+}
+.directory-heading > span {
+  font-size: var(--type-table);
+}
+.directory-panel .search-field input {
+  min-height: 30px;
+  padding-block: 5px;
+}
+.directory-panel .table-wrap {
+  margin: 0;
+  max-width: 100%;
+  max-height: calc(100dvh - 330px);
+  min-height: 180px;
+  overflow: auto;
+}
+.directory-panel .table-wrap table {
+  min-width: 800px;
+}
+.directory-panel .table-wrap th {
+  height: 36px;
+  z-index: 1;
+}
+.directory-panel .table-wrap td {
+  height: 47px;
+  padding: 8px 12px;
+}
+.directory-panel .table-wrap th {
+  padding: 8px 12px;
+}
+.directory-panel .table-wrap td strong {
+  font-weight: 600;
+}
+.people-page .table-wrap tbody tr {
+  cursor: default;
+}
+.directory-reasons span {
+  display: block;
+}
+.directory-actions {
+  white-space: normal !important;
+  min-width: 180px;
+  max-width: 320px;
+}
+.directory-actions p {
+  margin: 6px 0;
+}
+.directory-actions .ui-button {
+  min-height: 30px;
+  padding: 5px 10px;
+}
+.directory-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  min-height: 54px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--line);
+  color: var(--ink-2);
+  font-size: var(--type-caption);
+}
+.directory-footer .load-more {
+  margin: 0;
+}
+@media (max-width: 767px) {
+  .directory-toolbar {
+    align-items: stretch;
+  }
+  .directory-toolbar > .search-field {
+    width: 100%;
+  }
+  .directory-toolbar .fleet-filters {
+    flex-direction: row;
+    align-items: center;
+  }
+  .directory-toolbar .fleet-filters .search-field {
+    flex: 1 1 100%;
+    order: 1;
+  }
+  .directory-panel .table-wrap {
+    max-height: 46dvh;
+  }
+}
