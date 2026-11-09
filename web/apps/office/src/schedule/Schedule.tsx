@@ -10,6 +10,7 @@ import { readinessApi } from "../readiness/api";
 import { fleetApi } from "../fleet/api";
 import { scheduleApi, type ScheduleCycle } from "./api";
 import "./schedule.css";
+import { FleetTabs } from "../fleet/FleetTabs";
 
 const dateValue = (date: Date) => date.toISOString().slice(0, 10);
 function addDays(value: string, days: number) {
@@ -100,6 +101,7 @@ export function Schedule() {
           </div>
         )}
       </div>
+      <FleetTabs />
       {!online && (
         <Banner kind="offline" label="Offline">
           Schedule changes need a connection.
@@ -113,11 +115,11 @@ export function Schedule() {
       {query.isError && (
         <Banner
           kind="error"
-          label="Schedule could not be loaded"
+          label="Error"
           onRetry={() => void query.refetch()}
           retryLabel="Try again"
         >
-          Check your connection and try again.
+          Schedule could not be loaded. Check your connection and try again.
         </Banner>
       )}
       <Panel
@@ -325,6 +327,7 @@ function CycleEditor({
         <label>
           Driver
           <select
+            aria-label="Driver"
             required
             value={employeeId}
             disabled={!canEdit || saving}
@@ -345,10 +348,11 @@ function CycleEditor({
         {patternMode && pattern.isError && (
           <p role="alert">Pattern could not be loaded. Choose the driver again or retry later.</p>
         )}
-        <div key={patternMode ? `${employeeId}:${pattern.data?.version}` : "cycle"} className="schedule-form">
+        <div key={`${patternMode ? `${employeeId}:${pattern.data?.version}` : "cycle"}:${vehicles.isSuccess ? "trucks" : "loading"}`} className="schedule-form">
           <label>
             Truck
             <select
+              aria-label="Truck"
               name="vehicleId"
               required
               defaultValue={cycle?.vehicleId ?? pattern.data?.pattern?.vehicleId ?? ""}

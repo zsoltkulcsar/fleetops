@@ -9,6 +9,7 @@ import { VehicleForm } from "./VehicleForm";
 import "./fleet.css";
 import { readinessApi, type VehicleReadiness } from "../readiness/api";
 import { fleetCauseText } from "../readiness/labels";
+import { FleetTabs } from "./FleetTabs";
 
 type ReadinessVehicle = Vehicle & VehicleReadiness;
 const statusPillFor: Record<ReadinessVehicle["shownStatus"], "usable" | "off-road"> = {
@@ -89,6 +90,7 @@ export function Fleet() {
           </button>
         )}
       </div>
+      <FleetTabs />
       {query.isError && (
         <Banner label="Error" retryLabel="Try again" onRetry={() => void query.refetch()}>
           Data could not be loaded. Check the connection and try again.

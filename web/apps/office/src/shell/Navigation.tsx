@@ -11,7 +11,6 @@ export const navigation: NavigationItem[] = [
   { id: "attention", label: en.nav.attention, icon: Bell },
   { id: "timesheets", label: en.nav.timesheets, icon: CalendarClock },
   { id: "fleet", label: en.nav.fleet, icon: Truck },
-  { id: "schedule", label: "Schedule", icon: CalendarClock },
   { id: "people", label: en.nav.people, icon: Users },
   { id: "documents", label: en.nav.documents, icon: FileText },
   { id: "payroll", label: en.nav.payroll, icon: CalendarClock },
@@ -33,6 +32,16 @@ export function NavigationLink({ item, compact = false }: { item: NavigationItem
     refetchInterval: 60_000,
   });
   const queue = counts.data?.queue ?? 0;
+  const { pathname } = useLocation();
+  // Schedule is a tab of Fleet (design/ia.md O-18), so Fleet stays current on /schedule.
+  const fleetTab = item.id === "fleet" && pathname.toLowerCase().startsWith("/schedule");
+  if (fleetTab)
+    return (
+      <Link to="/fleet" className="active" aria-current="page" aria-label={compact ? item.label : undefined}>
+        <Icon size={18} aria-hidden />
+        <span className={compact ? "visually-hidden" : undefined}>{item.label}</span>
+      </Link>
+    );
   return (
     <NavLink
       to={routeFor(item.id)}
@@ -106,7 +115,7 @@ export function MobileNavigation() {
   const trigger = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
   const { pathname } = useLocation();
-  const moreCurrent = ["/people", "/documents", "/payroll", "/settings"].includes(
+  const moreCurrent = ["/documents", "/payroll", "/settings"].includes(
     pathname.toLowerCase().replace(/\/$/, ""),
   );
   useEffect(() => {
@@ -150,9 +159,6 @@ export function MobileNavigation() {
       </button>
       {moreOpen && (
         <div ref={menu} id="mobile-more-links" className="more-menu">
-          <Link to="/people" onClick={() => setMoreOpen(false)}>
-            {en.nav.people}
-          </Link>
           <Link to="/documents" onClick={() => setMoreOpen(false)}>
             {en.nav.documents}
           </Link>

@@ -230,3 +230,9 @@
     flex-direction: column;
   }
 }
+
+/* Fleet views: Vehicles and Schedule (design/ia.md O-18 is a tab of Fleet). */
+.fleet-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 16px; }
+.fleet-tabs a { display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; color: var(--ink-2); font-weight: 600; text-decoration: none; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.fleet-tabs a:hover { color: var(--ink); }
+.fleet-tabs a[aria-current="page"] { color: var(--accent); border-bottom-color: var(--accent); }

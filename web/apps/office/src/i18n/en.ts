@@ -21,6 +21,11 @@ export const en = {
     settings: "Settings",
     more: "More",
   },
+  fleetTabs: {
+    label: "Fleet views",
+    vehicles: "Vehicles",
+    schedule: "Schedule",
+  },
   states: {
     empty: "Nothing here yet",
     emptyBody: "There is no work to show in this area yet.",

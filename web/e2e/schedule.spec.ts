@@ -189,3 +189,18 @@ for (const theme of ["light", "dark"] as const)
       .analyze();
     expect(result.violations).toEqual([]);
   });
+
+test("schedule is a tab of fleet", async ({ page }) => {
+  await routes(page);
+  await page.goto("/schedule?from=2026-11-09");
+  const tabs = page.getByRole("group", { name: "Fleet views" });
+  await expect(tabs.getByRole("link", { name: "Schedule", exact: true })).toHaveAttribute("aria-current", "page");
+  await expect(tabs.getByRole("link", { name: "Vehicles", exact: true })).not.toHaveAttribute("aria-current", "page");
+  const primary = page.locator("nav");
+  await expect(primary.getByRole("link", { name: "Schedule", exact: true })).toHaveCount(0);
+  if (page.viewportSize()!.width >= 768) {
+    await expect(primary.locator('a[aria-current="page"]')).toHaveText("Fleet");
+  } else {
+    await expect(primary.getByRole("link", { name: "Fleet", exact: true })).toHaveAttribute("aria-current", "page");
+  }
+});
