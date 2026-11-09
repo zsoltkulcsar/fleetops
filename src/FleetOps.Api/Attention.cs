@@ -54,7 +54,7 @@ public static class AlertVisibility
     {
         RoleCode.Owner => true,
         RoleCode.Hr => HrRules.Contains(ruleId) && (ruleId != "A-03" || subjectType == "employee"),
-        RoleCode.Dispatcher => (ruleId == "A-05" && subjectType == "vehicle") || (ruleId == "A-03" && subjectType == "vehicle"),
+        RoleCode.Dispatcher => (ruleId == "A-05" && subjectType == "vehicle") || (ruleId == "A-03" && subjectType == "vehicle") || (ruleId == "A-21" && subjectType == "cycle"),
         _ => false,
     };
 }
@@ -74,7 +74,7 @@ public sealed class AttentionQueryHandler(IConfiguration configuration, TimeProv
             var dispatcher = roles.Contains(RoleCode.Dispatcher);
             visible = visible.Where(x =>
                 (hr && ((x.RuleId == "A-01") || (x.RuleId == "A-02") || (x.RuleId == "A-03" && db.Documents.Where(d => d.Id == x.SubjectId).Select(d => d.OwnerType).FirstOrDefault() == DocumentOwnerType.Employee) || x.RuleId == "A-10" || x.RuleId == "A-13" || x.RuleId == "A-14" || x.RuleId == "A-17" || x.RuleId == "A-18")) ||
-                (dispatcher && (x.RuleId == "A-05" || (x.RuleId == "A-03" && db.Documents.Where(d => d.Id == x.SubjectId).Select(d => d.OwnerType).FirstOrDefault() == DocumentOwnerType.Vehicle))));
+                (dispatcher && (x.RuleId == "A-05" || (x.RuleId == "A-21" && x.SubjectType == "cycle") || (x.RuleId == "A-03" && db.Documents.Where(d => d.Id == x.SubjectId).Select(d => d.OwnerType).FirstOrDefault() == DocumentOwnerType.Vehicle))));
         }
         var rows = await visible.Select(x => new
         {
@@ -83,6 +83,7 @@ public sealed class AttentionQueryHandler(IConfiguration configuration, TimeProv
             SubjectId = x.SubjectType == "document" ? db.Documents.Where(d => d.Id == x.SubjectId).Select(d => (Guid?)d.OwnerId).FirstOrDefault() : x.SubjectId,
             SubjectName = x.SubjectType == "document"
                 ? db.Documents.Where(d => d.Id == x.SubjectId).Select(d => d.OwnerType == DocumentOwnerType.Employee ? db.Employees.Where(e => e.Id == d.OwnerId).Select(e => e.FirstName + " " + e.LastName).FirstOrDefault() : db.Vehicles.Where(v => v.Id == d.OwnerId).Select(v => v.Plate).FirstOrDefault()).FirstOrDefault()
+                : x.SubjectType == "cycle" ? db.Cycles.Where(cycle => cycle.Id == x.SubjectId).Select(cycle => db.Vehicles.Where(vehicle => vehicle.Id == cycle.VehicleId).Select(vehicle => vehicle.Plate).FirstOrDefault() + " / " + db.Employees.Where(employee => employee.Id == cycle.EmployeeId).Select(employee => employee.FirstName + " " + employee.LastName).FirstOrDefault()).FirstOrDefault()
                 : x.SubjectType == "employee" ? db.Employees.Where(e => e.Id == x.SubjectId).Select(e => e.FirstName + " " + e.LastName).FirstOrDefault() : db.Vehicles.Where(v => v.Id == x.SubjectId).Select(v => v.Plate).FirstOrDefault(),
         }).ToListAsync(cancellationToken);
         var groups = rows.Where(x => x.SubjectId.HasValue && x.SubjectName != null).GroupBy(x => new { x.SubjectType, Id = x.SubjectId!.Value, Name = x.SubjectName! }).Select(group => new AttentionGroup(group.Key.SubjectType!, group.Key.Id, group.Key.Name, group.Max(x => x.Alert.Severity), group.OrderByDescending(x => x.Alert.Severity).ThenBy(x => x.Alert.DueAt).Select(x => new AttentionItem(x.Alert.Id, x.Alert.RuleId, x.Alert.Severity, x.Alert.ScopeKey, x.Alert.DueAt, x.Alert.Status, x.Alert.Severity != AlertSeverity.Critical, x.Alert.Version)).ToList())).OrderByDescending(x => x.WorstSeverity).ThenBy(x => x.Items.Min(y => y.DueAt)).ThenBy(x => x.SubjectName).ToList();

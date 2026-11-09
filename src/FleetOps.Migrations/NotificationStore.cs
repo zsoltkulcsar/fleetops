@@ -11,7 +11,7 @@ public sealed class EfNotifications(TimeProvider time, INotificationIds ids) : I
 {
     public async Task<Guid> AddAsync(Guid employeeId, string templateCode, object parameters, Guid? alertId, CommandContext context, CancellationToken cancellationToken)
     {
-        if (templateCode is not ("document_rejected" or "critical_alert")) throw new ArgumentException("Unknown notification template.", nameof(templateCode));
+        if (templateCode is not ("document_rejected" or "critical_alert" or "schedule_changed")) throw new ArgumentException("Unknown notification template.", nameof(templateCode));
         var id = Guid.CreateVersion7();
         await using var command = new NpgsqlCommand("insert into fleetops.notifications (id, employee_id, alert_id, template_code, parameters, channel, created_at, attempts) values ($1,$2,$3,$4,$5::jsonb,'in_app',$6,0)", (NpgsqlConnection)context.DbConnection, (NpgsqlTransaction)context.DbTransaction);
         command.Parameters.AddWithValue(id);
@@ -96,7 +96,7 @@ public sealed class NotificationQueryHandler(IConfiguration configuration) : IQu
                 var template = reader.GetString(1);
                 var parameters = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(reader.GetString(2)) ?? [];
                 var text = NotificationTemplates.Render(template, parameters, "en");
-                var link = template == "document_rejected" && parameters.TryGetValue("documentId", out var documentId) ? $"/documents?open={documentId.GetString()}" : "/";
+                var link = template == "schedule_changed" ? "/driver/#/schedule" : template == "document_rejected" && parameters.TryGetValue("documentId", out var documentId) ? (actor.Roles.Contains(RoleCode.Driver) ? $"/driver/#/me?open={documentId.GetString()}" : $"/documents?open={documentId.GetString()}") : "/";
                 items.Add(new(id, template, text, reader.GetFieldValue<DateTimeOffset>(3), reader.IsDBNull(4) ? null : reader.GetFieldValue<DateTimeOffset>(4), link));
             }
         }

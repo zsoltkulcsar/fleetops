@@ -115,6 +115,14 @@ export function App() {
   }, [officePhone, client]);
 
   useEffect(() => {
+    const expiredSession = () => {
+      void checkSession();
+    };
+    window.addEventListener("fleetops:driver-session-expired", expiredSession);
+    return () => window.removeEventListener("fleetops:driver-session-expired", expiredSession);
+  }, [checkSession]);
+
+  useEffect(() => {
     if (online && (stage === "shell" || stage === "expired")) {
       void checkSession().catch(() => {
         lockVault();

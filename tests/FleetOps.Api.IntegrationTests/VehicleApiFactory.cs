@@ -104,9 +104,9 @@ public sealed class VehicleApiFactory : WebApplicationFactory<Program>, IAsyncLi
                 services.AddSingleton<IObjectStore>(ObjectStore);
             else
                 services.AddScoped<IObjectStore, FleetOps.Api.Files.S3ObjectStore>();
-            services.AddScoped<IVehicleStore>(_ => ThrowAfterWrite
-                ? new FailingVehicleStore(new EfVehicleStore(Clock), () => ThrowAfterWrite = false)
-                : new EfVehicleStore(Clock));
+            services.AddScoped<IVehicleStore>(provider => ThrowAfterWrite
+                ? new FailingVehicleStore(new EfVehicleStore(Clock, provider.GetRequiredService<FleetOps.Kernel.IChangedSubjects>()), () => ThrowAfterWrite = false)
+                : new EfVehicleStore(Clock, provider.GetRequiredService<FleetOps.Kernel.IChangedSubjects>()));
             foreach (var evaluator in AdditionalAlertEvaluators)
                 services.AddSingleton<IAlertEvaluator>(evaluator);
             if (ThrowAfterNotificationWrite)
@@ -134,6 +134,7 @@ public sealed class VehicleApiFactory : WebApplicationFactory<Program>, IAsyncLi
     public HttpClient AsHr(Guid employeeId) => ClientAs(employeeId, RoleCode.Hr);
 
     public HttpClient AsDriver() => ClientAs(RoleCode.Driver);
+    public HttpClient AsDriver(Guid employeeId) => ClientAs(employeeId, RoleCode.Driver);
 
     /// <summary>A client that sends the origin headers but, until a test calls AsX, has no signed-in actor.</summary>
     public HttpClient Anonymous() => ClientWithHeaders();

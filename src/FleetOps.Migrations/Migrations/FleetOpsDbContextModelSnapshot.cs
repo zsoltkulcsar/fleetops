@@ -941,6 +941,73 @@ namespace FleetOps.Migrations.Migrations
                     b.ToTable("notifications", "fleetops");
                 });
 
+            modelBuilder.Entity("FleetOps.Modules.Schedule.Cycle", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("employee_id");
+
+                    b.Property<DateTimeOffset?>("FinishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("finished_at");
+
+                    b.Property<DateOnly>("From")
+                        .HasColumnType("date")
+                        .HasColumnName("from");
+
+                    b.Property<int?>("PatternSlot")
+                        .HasColumnType("integer")
+                        .HasColumnName("pattern_slot");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("source");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.Property<DateOnly>("To")
+                        .HasColumnType("date")
+                        .HasColumnName("to");
+
+                    b.Property<Guid>("VehicleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("vehicle_id");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("VehicleId");
+
+                    b.HasIndex("EmployeeId", "PatternSlot")
+                        .IsUnique();
+
+                    b.ToTable("cycles", "fleetops", t =>
+                        {
+                            t.HasCheckConstraint("ck_cycles_dates", "\"from\" <= \"to\"");
+
+                            t.HasCheckConstraint("ck_cycles_pattern_slot", "pattern_slot IS NULL OR pattern_slot >= 0");
+
+                            t.HasCheckConstraint("ck_cycles_source", "source IN ('Generated', 'Manual') AND (source <> 'Generated' OR pattern_slot IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_cycles_status", "status IN ('Planned', 'Active', 'Overrun', 'Done', 'Cancelled')");
+
+                            t.HasCheckConstraint("ck_cycles_version", "version > 0");
+                        });
+                });
+
             modelBuilder.Entity("FleetOps.Modules.Setup.Depot", b =>
                 {
                     b.Property<Guid>("Id")
@@ -977,6 +1044,17 @@ namespace FleetOps.Migrations.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<string>("CyclePattern")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("cycle_pattern");
+
+                    b.Property<int>("CyclePatternVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("cycle_pattern_version");
 
                     b.Property<string>("Email")
                         .IsRequired()
@@ -1233,6 +1311,21 @@ namespace FleetOps.Migrations.Migrations
                         .WithMany("Files")
                         .HasForeignKey("DocumentId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FleetOps.Modules.Schedule.Cycle", b =>
+                {
+                    b.HasOne("FleetOps.People.Employee", null)
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FleetOps.Modules.Fleet.Vehicle", null)
+                        .WithMany()
+                        .HasForeignKey("VehicleId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

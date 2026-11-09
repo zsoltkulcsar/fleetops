@@ -64,6 +64,7 @@ public static class NotificationTemplates
     public static string Render(string templateCode, IReadOnlyDictionary<string, JsonElement> parameters, string? language)
     {
         var german = string.Equals(language, "de", StringComparison.OrdinalIgnoreCase);
+        if (templateCode == "schedule_changed") return german ? "Ihr Dienstplan wurde geändert" : "Your schedule has changed";
         if (IsMedicalDocument(parameters)) return german ? "Bitte Dokumente prüfen" : "Please check your documents";
         if (templateCode == "document_rejected")
         {

@@ -17,6 +17,8 @@ using FleetOps.Modules.Setup;
 using FleetOps.Modules.Notifications;
 using FleetOps.Api.Files;
 using FleetOps.Api.Jobs;
+using FleetOps.Modules.Schedule;
+using FleetOps.Modules.Views;
 using FleetOps.Kernel.Files;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Identity;
@@ -85,11 +87,31 @@ builder.Services.AddScoped<IPostCommitNotifications>(services => services.GetReq
 builder.Services.AddScoped<IAlertEvaluator, A02EmployeeEvaluator>();
 builder.Services.AddScoped<IAlertEvaluator, A03DocumentEvaluator>();
 builder.Services.AddScoped<IAlertEvaluator, A05VehicleEvaluator>();
+builder.Services.AddScoped<IAlertEvaluator, A21CycleEvaluator>();
+builder.Services.AddScoped<ICycleClashFacts, EfCycleClashFacts>();
+builder.Services.AddScoped<IScheduleEditor, EfScheduleEditor>();
+builder.Services.AddScoped<IScheduleChanged, ScheduleChangedNotifications>();
+builder.Services.AddScoped<IVehicleRetiredEffects, VehicleRetiredScheduleEffects>();
+builder.Services.AddScoped<ICommandHandler<AddManualCycleCommand, CycleDetail>, AddManualCycleHandler>();
+builder.Services.AddScoped<ICommandHandler<EditCycleCommand, CycleDetail>, EditCycleHandler>();
+builder.Services.AddScoped<IQueryHandler<GetScheduleQuery, ScheduleResult>, ScheduleQueryHandler>();
+builder.Services.AddScoped<IQueryHandler<GetCyclePatternQuery, CyclePatternView>, CyclePatternQueryHandler>();
+builder.Services.AddScoped<IQueryHandler<GetVehicleRetirementImpactQuery, VehicleRetirementImpact>, VehicleRetirementImpactQueryHandler>();
+builder.Services.AddScoped<IQueryHandler<GetDriverSnapshotQuery, DriverSnapshot>, DriverSnapshotQueryHandler>();
+builder.Services.AddScoped<IQueryHandler<GetDriverVehicleQuery, DriverVehicleDetail>, DriverVehicleQueryHandler>();
+builder.Services.AddScoped<IQueryHandler<GetDriverDocumentQuery, DriverDocumentDetail>, DriverDocumentQueryHandler>();
+builder.Services.AddScoped<IQueryHandler<GetDriverFileLinkQuery, DriverFileLinkResult>, DriverFileLinkQueryHandler>();
+builder.Services.AddScoped<ICommandHandler<ConfirmDriverDocumentCommand, DriverDocumentDetail>, ConfirmDriverDocumentHandler>();
 builder.Services.AddScoped<QueryDispatcher>();
 builder.Services.AddScoped<JobRunner>();
 builder.Services.AddScoped<IJob, FileOrphansJob>();
 builder.Services.AddScoped<IJob, AlertsSweepJob>();
 builder.Services.AddScoped<IJob, NotificationRetryJob>();
+builder.Services.AddScoped<IJob, CycleRolloverJob>();
+builder.Services.AddScoped<ICycleStore, EfCycleStore>();
+builder.Services.AddScoped<IsInCycle, EfIsInCycle>();
+builder.Services.AddScoped<CyclePatternChangedHandler>();
+builder.Services.AddScoped<ICommandHandler<SaveCyclePatternCommand, CyclePatternResult>, SaveCyclePatternHandler>();
 builder.Services.AddScoped<ICommandHandler<RunJobCommand, JobRunResult>, RunJobCommandHandler>();
 builder.Services.AddScoped<IQueryHandler<ListJobsQuery, JobListResult>, ListJobsQueryHandler>();
 builder.Services.AddScoped<IQueryHandler<GetVehicleQuery, VehicleDetail>, VehicleQueryHandler>();
@@ -155,11 +177,13 @@ app.UseExceptionHandler(new ExceptionHandlerOptions
             return;
         }
         if (exception is InvalidOperationException { Message: "mailbox_unavailable" }) { await Results.Json(new { code = "mailbox_unavailable" }, statusCode: 503).ExecuteAsync(context); return; }
+        if (exception is ScheduleValidationException scheduleValidation) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "validation_error", ["fields"] = scheduleValidation.Fields }).ExecuteAsync(context); return; }
+        if (exception is ScheduleConflictException scheduleConflict) { await Results.Problem(statusCode: 409, extensions: new Dictionary<string, object?> { ["code"] = scheduleConflict.Code }).ExecuteAsync(context); return; }
         if (exception is VehicleValidationException validation) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "validation_error", ["fields"] = validation.Fields }).ExecuteAsync(context); return; }
         if (exception is StorageUnavailableException) { await Results.Problem(statusCode: 503, extensions: new Dictionary<string, object?> { ["code"] = "storage_unavailable" }).ExecuteAsync(context); return; }
         if (exception is DocumentValidationException documentValidation) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = documentValidation.Code, ["fields"] = documentValidation.Fields }).ExecuteAsync(context); return; }
         var jsonException = VehicleJsonException.Find(exception);
-        if (context.Request.Method is "POST" or "PUT" && (context.Request.Path.StartsWithSegments("/api/v1/fleet/vehicles") || context.Request.Path.StartsWithSegments("/api/v1/documents")) && jsonException is not null)
+        if (context.Request.Method is "POST" or "PUT" && (context.Request.Path.StartsWithSegments("/api/v1/fleet/vehicles") || context.Request.Path.StartsWithSegments("/api/v1/documents") || context.Request.Path.StartsWithSegments("/api/v1/people") || context.Request.Path.StartsWithSegments("/api/v1/driver") || context.Request.Path.StartsWithSegments("/api/v1/schedule")) && jsonException is not null)
         {
             var field = VehicleJsonException.FieldName(jsonException.Path);
             await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "validation_error", ["fields"] = field is null ? Array.Empty<string>() : new[] { field } }).ExecuteAsync(context); return;
@@ -167,7 +191,7 @@ app.UseExceptionHandler(new ExceptionHandlerOptions
         if (exception is InvalidCursorException) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "invalid_cursor" }).ExecuteAsync(context); return; }
         if (exception is DocumentInvalidCursorException) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "invalid_cursor" }).ExecuteAsync(context); return; }
         if (exception is VehicleConflictException conflict) { await Results.Problem(statusCode: conflict.Code is "duplicate_vehicle" or "version_conflict" or "state_conflict" or "undo_window_closed" or "plate_in_use" ? 409 : 404, extensions: new Dictionary<string, object?> { ["code"] = conflict.Code }).ExecuteAsync(context); return; }
-        if (exception is DocumentConflictException documentConflict) { await Results.Problem(statusCode: documentConflict.Code is "state_conflict" or "version_conflict" ? 409 : 404, extensions: new Dictionary<string, object?> { ["code"] = documentConflict.Code }).ExecuteAsync(context); return; }
+        if (exception is DocumentConflictException documentConflict) { await Results.Problem(statusCode: documentConflict.Code is "state_conflict" or "version_conflict" or "upload_pending" ? 409 : 404, extensions: new Dictionary<string, object?> { ["code"] = documentConflict.Code }).ExecuteAsync(context); return; }
         if (exception is AlertValidationException alertValidation) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "validation_error", ["fields"] = alertValidation.Fields }).ExecuteAsync(context); return; }
         if (exception is AlertConflictException alertConflict) { await Results.Problem(statusCode: alertConflict.Code is "state_conflict" or "version_conflict" or "not_snoozable" ? 409 : 404, extensions: new Dictionary<string, object?> { ["code"] = alertConflict.Code }).ExecuteAsync(context); return; }
         try { app.Logger.LogError("Unhandled exception {ExceptionType} TraceId {TraceId}", exception?.GetType().Name ?? "Unknown", context.TraceIdentifier); } catch { }
@@ -198,8 +222,10 @@ app.MapGet("/jobs/{name}", async (string name, HttpContext context, JobRunner ru
 app.MapGet("/jobs/nightly", async (HttpContext context, JobRunner runner, CancellationToken cancellationToken) => await JobEndpoints.RunNightlyAsync(context, runner, cancellationToken)).ExcludeFromDescription();
 app.MapPost("/api/v1/admin/jobs/{name}/run", async (string name, CommandDispatcher dispatcher, JobRunner runner, IConfiguration configuration, CancellationToken cancellationToken) => !configuration.GetValue("Jobs:AdminTrigger", false) || !runner.Contains(name) ? Results.NotFound() : Results.Ok(await dispatcher.DispatchAsync<RunJobCommand, JobRunResult>(new(name), cancellationToken))).Produces<JobRunResult>();
 app.MapGet("/api/v1/admin/jobs", async (QueryDispatcher dispatcher, IConfiguration configuration, CancellationToken cancellationToken) => !configuration.GetValue("Jobs:AdminTrigger", false) ? Results.NotFound() : Results.Ok(await dispatcher.DispatchAsync<ListJobsQuery, JobListResult>(new(), cancellationToken))).Produces<JobListResult>();
+app.MapPut("/api/v1/people/{id:guid}/cycle-pattern", async (Guid id, SaveCyclePatternRequest request, CommandDispatcher dispatcher, CancellationToken cancellationToken) => Results.Ok(await dispatcher.DispatchAsync<SaveCyclePatternCommand, CyclePatternResult>(new(id, request.Version, request.Pattern), cancellationToken))).Produces<CyclePatternResult>();
 app.MapGet("/healthz", async (IDatabaseHealth database, CancellationToken cancellationToken) => await database.IsHealthyAsync(cancellationToken) ? Results.Ok(new { api = "ok", database = "ok" }) : Results.Problem(statusCode: 503, title: "Service unavailable", detail: "Database unavailable", extensions: new Dictionary<string, object?> { ["code"] = "database_unavailable", ["database"] = "unavailable" }));
 AuthEndpoints.Map(app);
+EpicThreeEndpoints.Map(app);
 DriverEndpoints.Map(app);
 app.MapPost("/api/v1/fleet/vehicles", async (CreateVehicleCommand command, CommandDispatcher dispatcher, CancellationToken cancellationToken) => { var result = await dispatcher.DispatchAsync<CreateVehicleCommand, VehicleDetail>(command, cancellationToken); return Results.Created($"/api/v1/fleet/vehicles/{result.Id}", result); }).Produces<VehicleDetail>(StatusCodes.Status201Created);
 app.MapPut("/api/v1/fleet/vehicles/{id:guid}", async (Guid id, EditVehicleRequest request, CommandDispatcher dispatcher, CancellationToken cancellationToken) => Results.Ok(await dispatcher.DispatchAsync<EditVehicleCommand, VehicleDetail>(request.ToCommand(id), cancellationToken))).Produces<VehicleDetail>();

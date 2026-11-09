@@ -38,13 +38,15 @@ public sealed class EditVehicleHandler(IVehicleStore store) : ICommandHandler<Ed
     }
 }
 
-public sealed class RetireVehicleHandler(IVehicleStore store) : ICommandHandler<RetireVehicleCommand, VehicleDetail>
+public sealed class RetireVehicleHandler(IVehicleStore store, IVehicleRetiredEffects? effects = null) : ICommandHandler<RetireVehicleCommand, VehicleDetail>
 {
-    public Task<VehicleDetail> HandleAsync(RetireVehicleCommand command, AccessContext actor, CommandContext context, CancellationToken cancellationToken)
+    public async Task<VehicleDetail> HandleAsync(RetireVehicleCommand command, AccessContext actor, CommandContext context, CancellationToken cancellationToken)
     {
         if (command.SubjectId is not Guid) throw new VehicleValidationException(["id"]);
         if (!Enum.IsDefined(command.RetiredReason)) throw new VehicleValidationException(["retiredReason"]);
-        return store.RetireAsync(command, actor, context, cancellationToken);
+        var detail = await store.RetireAsync(command, actor, context, cancellationToken);
+        if (effects is not null) await effects.HandleAsync(new(detail.Id), actor, context, cancellationToken);
+        return detail;
     }
 }
 

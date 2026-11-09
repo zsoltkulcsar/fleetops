@@ -6,6 +6,7 @@ import { AuthRequestError } from "../auth/api";
 import { useSession } from "../auth/AuthGate";
 import { en } from "../i18n/en";
 import { fleetApi, type ApiProblem, type RetiredReason, type VehicleDetail } from "./api";
+import { apiClient } from "@fleetops/api-client";
 import { VehicleForm } from "./VehicleForm";
 import "./fleet.css";
 import { readinessApi } from "../readiness/api";
@@ -269,6 +270,18 @@ function RetireDrawer({
   onSaved: () => void;
 }) {
   const [reason, setReason] = useState<RetiredReason | "">("");
+  const impact = useQuery({
+    queryKey: ["retirement-impact", vehicle.id],
+    enabled: open,
+    queryFn: async () => {
+      const result = await apiClient.GET("/api/v1/fleet/vehicles/{id}/retirement-impact", {
+        params: { path: { id: vehicle.id } },
+        cache: "no-store",
+      });
+      if (!result.response.ok || !result.data) throw new Error("impact_unavailable");
+      return result.data;
+    },
+  });
   const [failure, setFailure] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const submit = async () => {
@@ -317,11 +330,33 @@ function RetireDrawer({
           <li>{en.fleet.retire.readOnly}</li>
           <li>{en.fleet.retire.historyStays}</li>
         </ul>
+        {impact.isPending && <p role="status">Checking scheduled drivers…</p>}
+        {impact.isError && <p role="alert">Scheduled drivers could not be checked. Close and try again.</p>}
+        {impact.data?.items.length ? (
+          <div>
+            <h3>Cycles that will end</h3>
+            <ul className="drawer-list">
+              {impact.data.items.map((cycle) => (
+                <li key={cycle.id}>
+                  {cycle.employeeName}: {retiredDate(cycle.from)} to {retiredDate(cycle.to)}
+                </li>
+              ))}
+            </ul>
+            <p>Affected drivers will be told.</p>
+          </div>
+        ) : impact.data ? (
+          <p>No future cycles on this vehicle.</p>
+        ) : null}
         <div className="drawer-actions">
           <button type="button" className="ui-button" onClick={onClose}>
             {en.fleet.retire.cancel}
           </button>
-          <button type="button" className="ui-button primary" disabled={saving} onClick={() => void submit()}>
+          <button
+            type="button"
+            className="ui-button primary"
+            disabled={saving || !impact.data}
+            onClick={() => void submit()}
+          >
             {en.fleet.retire.confirm}
           </button>
         </div>

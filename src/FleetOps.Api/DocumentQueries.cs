@@ -15,7 +15,7 @@ using FleetOps.Modules.Fleet;
 
 namespace FleetOps.Api;
 
-public sealed record DocumentListCursor(DateTimeOffset UploadedAt, Guid Id);
+public sealed record DocumentListCursor(DateTimeOffset UploadedAt, Guid Id, bool Priority = false);
 public sealed class DocumentInvalidCursorException : Exception { public DocumentInvalidCursorException() : base("invalid_cursor") { } }
 public sealed class DocumentListQueryHandler(IConfiguration configuration, IDataProtectionProvider protectionProvider, ICompanyTimeService companyTime, TimeProvider time, ISettings settings) : IQueryHandler<ListDocumentsQuery, DocumentListResult>
 {
@@ -36,8 +36,20 @@ public sealed class DocumentListQueryHandler(IConfiguration configuration, IData
         if (actor.Roles.Contains(RoleCode.Dispatcher)) rows = rows.Where(x => x.OwnerType == DocumentOwnerType.Vehicle);
         if (!string.IsNullOrWhiteSpace(query.Search)) { var s = query.Search.Replace("%", "\\%", StringComparison.Ordinal).Replace("_", "\\_", StringComparison.Ordinal); rows = rows.Where(x => EF.Functions.ILike(x.Number ?? "", $"%{s}%", "\\") || (x.OwnerType == DocumentOwnerType.Vehicle && db.Vehicles.Where(v => v.Id == x.OwnerId).Select(v => v.Plate).Any(p => EF.Functions.ILike(p, $"%{s}%", "\\"))) || (x.OwnerType == DocumentOwnerType.Employee && db.Set<Employee>().Where(e => e.Id == x.OwnerId).Any(e => EF.Functions.ILike(e.FirstName + " " + e.LastName, $"%{s}%", "\\")))); }
         var ascending = string.Equals(query.Filter, "queue", StringComparison.OrdinalIgnoreCase);
-        if (cursor is not null) rows = ascending ? rows.Where(x => x.CreatedAt > cursor.UploadedAt || x.CreatedAt == cursor.UploadedAt && x.Id.CompareTo(cursor.Id) > 0) : rows.Where(x => x.CreatedAt < cursor.UploadedAt || x.CreatedAt == cursor.UploadedAt && x.Id.CompareTo(cursor.Id) < 0);
-        var entities = ascending ? await rows.OrderBy(x => x.CreatedAt).ThenBy(x => x.Id).Take(query.Limit + 1).ToListAsync(cancellationToken) : await rows.OrderByDescending(x => x.CreatedAt).ThenByDescending(x => x.Id).Take(query.Limit + 1).ToListAsync(cancellationToken);
+        var blockedIds = Array.Empty<Guid>();
+        if (ascending)
+        {
+            var queuedEmployeeIds = await rows.Where(document => document.OwnerType == DocumentOwnerType.Employee).Select(document => document.OwnerId).Distinct().ToArrayAsync(cancellationToken);
+            var readiness = await new EfReadinessStore(db).ForDriversAsync(queuedEmployeeIds, today, cancellationToken);
+            blockedIds = readiness.Where(driver => !driver.Value.CanDrive).Select(driver => driver.Key).ToArray();
+        }
+        if (cursor is not null)
+        {
+            if (ascending && cursor.Priority) rows = rows.Where(document => !(document.OwnerType == DocumentOwnerType.Employee && blockedIds.Contains(document.OwnerId)) || document.CreatedAt > cursor.UploadedAt || document.CreatedAt == cursor.UploadedAt && document.Id.CompareTo(cursor.Id) > 0);
+            else if (ascending) rows = rows.Where(document => !(document.OwnerType == DocumentOwnerType.Employee && blockedIds.Contains(document.OwnerId)) && (document.CreatedAt > cursor.UploadedAt || document.CreatedAt == cursor.UploadedAt && document.Id.CompareTo(cursor.Id) > 0));
+            else rows = rows.Where(document => document.CreatedAt < cursor.UploadedAt || document.CreatedAt == cursor.UploadedAt && document.Id.CompareTo(cursor.Id) < 0);
+        }
+        var entities = ascending ? await rows.OrderByDescending(document => document.OwnerType == DocumentOwnerType.Employee && blockedIds.Contains(document.OwnerId)).ThenBy(document => document.CreatedAt).ThenBy(document => document.Id).Take(query.Limit + 1).ToListAsync(cancellationToken) : await rows.OrderByDescending(document => document.CreatedAt).ThenByDescending(document => document.Id).Take(query.Limit + 1).ToListAsync(cancellationToken);
         var hasNext = entities.Count > query.Limit;
         if (hasNext) entities.RemoveAt(entities.Count - 1);
         var employeeIds = entities.Where(x => x.OwnerType == DocumentOwnerType.Employee).Select(x => x.OwnerId).ToArray();
@@ -45,7 +57,7 @@ public sealed class DocumentListQueryHandler(IConfiguration configuration, IData
         var names = await db.Set<Employee>().Where(x => employeeIds.Contains(x.Id)).ToDictionaryAsync(x => x.Id, x => x.FirstName + " " + x.LastName, cancellationToken);
         var plates = await db.Vehicles.Where(x => vehicleIds.Contains(x.Id)).ToDictionaryAsync(x => x.Id, x => x.Plate, cancellationToken);
         var result = entities.Select(x => new DocumentListItem(x.Id, x.OwnerType, x.OwnerId, x.OwnerType == DocumentOwnerType.Employee ? names.GetValueOrDefault(x.OwnerId, "") : plates.GetValueOrDefault(x.OwnerId, ""), x.Type, x.Number, x.IssuedAt, x.ExpiresAt, x.Status, x.CreatedAt, x.Version, CanAct(x, actor))).ToList();
-        return new(result, hasNext ? protector.Protect(JsonSerializer.Serialize(new DocumentListCursor(entities[^1].CreatedAt, entities[^1].Id))) : null);
+        return new(result, hasNext ? protector.Protect(JsonSerializer.Serialize(new DocumentListCursor(entities[^1].CreatedAt, entities[^1].Id, ascending && entities[^1].OwnerType == DocumentOwnerType.Employee && blockedIds.Contains(entities[^1].OwnerId)))) : null);
     }
     private static async Task<IQueryable<Document>> ApplyExpiringFilterAsync(IQueryable<Document> rows, DateOnly today, ISettings settings, CancellationToken cancellationToken)
     {

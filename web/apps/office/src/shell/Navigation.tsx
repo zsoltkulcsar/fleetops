@@ -11,6 +11,7 @@ export const navigation: NavigationItem[] = [
   { id: "attention", label: en.nav.attention, icon: Bell },
   { id: "timesheets", label: en.nav.timesheets, icon: CalendarClock },
   { id: "fleet", label: en.nav.fleet, icon: Truck },
+  { id: "schedule", label: "Schedule", icon: CalendarClock },
   { id: "people", label: en.nav.people, icon: Users },
   { id: "documents", label: en.nav.documents, icon: FileText },
   { id: "payroll", label: en.nav.payroll, icon: CalendarClock },
@@ -105,7 +106,7 @@ export function MobileNavigation() {
   const trigger = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
   const { pathname } = useLocation();
-  const moreCurrent = ["/documents", "/payroll", "/settings"].includes(
+  const moreCurrent = ["/people", "/documents", "/payroll", "/settings"].includes(
     pathname.toLowerCase().replace(/\/$/, ""),
   );
   useEffect(() => {
@@ -149,6 +150,9 @@ export function MobileNavigation() {
       </button>
       {moreOpen && (
         <div ref={menu} id="mobile-more-links" className="more-menu">
+          <Link to="/people" onClick={() => setMoreOpen(false)}>
+            {en.nav.people}
+          </Link>
           <Link to="/documents" onClick={() => setMoreOpen(false)}>
             {en.nav.documents}
           </Link>

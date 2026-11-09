@@ -33,6 +33,7 @@ public sealed partial class FleetOpsDbContext(DbContextOptions<FleetOpsDbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        ConfigureSchedule(modelBuilder);
         modelBuilder.HasDefaultSchema("fleetops");
         modelBuilder.Ignore<IdentityPasskeyData>();
         modelBuilder.Entity<FleetOps.Identity.OfficeUser>(entity =>

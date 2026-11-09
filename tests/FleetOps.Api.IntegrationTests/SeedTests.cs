@@ -86,6 +86,27 @@ public sealed class SeedTests
     }
 
     [Fact]
+    public async Task Reset_clears_cycles_before_their_employee_and_vehicle_references()
+    {
+        await using var postgres = await TestPostgres.StartAsync(nameof(SeedTests));
+        await SeedAsync(postgres);
+        var before = await SnapshotAsync(postgres);
+        await using (var connection = new NpgsqlConnection(postgres.MigratorConnectionString))
+        {
+            await connection.OpenAsync(TestContext.Current.CancellationToken);
+            await using var insert = new NpgsqlCommand("insert into fleetops.cycles (id, employee_id, vehicle_id, pattern_slot, \"from\", \"to\", status, source, version) select $1, employee.id, vehicle.id, 0, date '2026-11-06', date '2026-11-19', 'Planned', 'Generated', 1 from (select id from fleetops.employees where email = 'driver1@demo.fleetops.example') employee cross join (select id from fleetops.vehicles where plate = 'B-D 0001') vehicle", connection);
+            insert.Parameters.AddWithValue(Guid.NewGuid());
+            Assert.Equal(1, await insert.ExecuteNonQueryAsync(TestContext.Current.CancellationToken));
+        }
+        await SeedAsync(postgres);
+        Assert.Equal(before, await SnapshotAsync(postgres));
+        await using var verification = new NpgsqlConnection(postgres.MigratorConnectionString);
+        await verification.OpenAsync(TestContext.Current.CancellationToken);
+        await using var count = new NpgsqlCommand("select count(*) from fleetops.cycles", verification);
+        Assert.Equal(0L, await count.ExecuteScalarAsync(TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
     public async Task Seed_refuses_production_and_writes_nothing()
     {
         await using var postgres = await TestPostgres.StartAsync(nameof(SeedTests));

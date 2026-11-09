@@ -12,6 +12,7 @@ import { Documents } from "./documents/Documents";
 import { People } from "./people/People";
 import { Settings } from "./settings/Settings";
 import { Attention } from "./attention/Attention";
+import { Schedule } from "./schedule/Schedule";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -29,7 +30,7 @@ installAuthExpiryHandler();
 const page = (section: string) => <OfficePage section={section} />;
 function CanonicalRedirect() {
   const path = window.location.pathname.toLowerCase().replace(/\/$/, "") || "/";
-  const known = ["/", "/timesheets", "/fleet", "/people", "/documents", "/payroll", "/settings"];
+  const known = ["/", "/schedule", "/timesheets", "/fleet", "/people", "/documents", "/payroll", "/settings"];
   if (import.meta.env.DEV) known.push("/__gallery");
   return <Navigate to={known.includes(path) ? path : "/"} replace />;
 }
@@ -47,6 +48,7 @@ createRoot(document.getElementById("app")!).render(
           >
             <Route path="/" element={<Attention />} />
             <Route path="/timesheets" element={page("timesheets")} />
+            <Route path="/schedule" element={<Schedule />} />
             <Route path="/fleet" element={<Fleet />} />
             <Route path="/fleet/:id" element={<FleetRecordRoute />} />
             <Route path="/people" element={<People />} />

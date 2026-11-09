@@ -16,6 +16,21 @@ export async function driverRoutes(page: Page) {
   await page.route("**/api/v1/auth/privacy-notice", (route) => route.fulfill({ status: 200 }));
   await page.route("**/api/v1/driver/config", (route) => route.fulfill({ json: config }));
   await page.route("**/api/v1/auth/session", (route) => route.fulfill({ status: 200 }));
+  const snapshot: components["schemas"]["DriverSnapshot"] = {
+    employeeId: "00000000-0000-0000-0000-000000000031",
+    generatedAt: "2026-11-09T10:00:00Z",
+    cycles: [],
+    documents: [],
+    canDrive: true,
+    readinessCauses: [],
+  };
+  await page.route("**/api/v1/driver/snapshot", (route) => route.fulfill({ json: snapshot }));
+  const notifications: components["schemas"]["NotificationListResult"] = {
+    items: [],
+    unread: 0,
+    nextCursor: null,
+  };
+  await page.route("**/api/v1/notifications?*", (route) => route.fulfill({ json: notifications }));
 }
 
 export async function openEnrol(page: Page) {

@@ -1,0 +1,17 @@
+# Story 3.2 infrastructure evidence
+
+Recorded 2026-11-09. Worktree: `fleetops-story-3-2`; branch: `story/3-2-cycles-roll-forward`.
+
+- EF generated migration `20261109101151_AddCycleGeneration`, its designer and the model snapshot. The migration adds nullable `employees.cycle_pattern` JSON, `cycle_pattern_version` with default zero, and `cycles` with restrictive employee/vehicle foreign keys, a unique employee/pattern-slot index, and date, version, source, slot and status checks. Multiple independent manual cycles may have null slots.
+- Generation used the already-built Release migrations project with `--no-build`, `MSBUILDDISABLENODEREUSE=1` and `DOTNET_CLI_USE_MSBUILD_SERVER=0`, after user authorization to override the repository's EF restriction for this task. No migration was handwritten.
+- The latest infrastructure build used `dotnet build src/FleetOps.Migrations/FleetOps.Migrations.csproj -c Release -m:1 -nodeReuse:false -p:UseSharedCompilation=false --no-restore`. Exact result: `Build succeeded.`, `9 Warning(s)`, `0 Error(s)`. These warnings concern existing nullable assignments in `VehicleStore.cs`.
+- After rebuilding the generated migration/snapshot, `migrations has-pending-model-changes --configuration Release --no-build` returned exit zero: `No changes have been made to the model since the last migration.` The first check before that rebuild saw the old compiled snapshot and correctly reported pending changes.
+- `migrations script --idempotent --configuration Release --no-build` returned exit zero. The generated script was checked for the migration ID, pattern-version column, cycles table, source constraint and unique slot index: `Idempotent migration script verified: pattern columns, cycles table, constraints and unique slot index.` The scratch SQL file is ignored under `obj/story32-postgres`.
+- The cached EF tool is 10.0.4; the EF runtime is 10.0.14. Each EF invocation warned that the tool is older. Generation, the rebuilt pending-model check and SQL generation succeeded; no package download was needed.
+- Existing `/api/(.*)` and `/jobs/(.*)` rewrites cover the new pattern endpoint and rollover job. The existing nightly schedule calls `/jobs/nightly`; its default job ordering now starts with `cycles-rollover`. No additional hosting route or schedule is required.
+- Existing migrator default privileges grant runtime access to new tables. No deployment grants were changed. The existing broad grants in `deploy/db/migration.sql` also regrant update/delete rights on previously append-only tables; that pre-existing issue remains outside this story.
+- The normal local test endpoint on port 55432 was unavailable. An isolated PostgreSQL 18.4 server was started at `127.0.0.1:55433`, listening only on loopback, with 40 maximum connections and 32 MB shared buffers. Its data and logs are ignored under `obj/story32-postgres`. After the backend agent completed its integration runs, `pg_ctl stop -m immediate -w` reported `server stopped`; `pg_isready` reported `127.0.0.1:55433 - no response`, and the postmaster PID file was removed. The scratch server is stopped.
+
+This evidence does not establish CI success or deployment. No commit, push or deployment was performed by the infrastructure agent.
+
+Cleanup limitation: the `pg_ctl` helper from the first unsuccessful sandbox startup still appeared as PID 6488 after the server stopped. An elevated `Stop-Process` attempt returned `Access is denied`. This helper has no database listener; the actual server shutdown was independently verified as above.

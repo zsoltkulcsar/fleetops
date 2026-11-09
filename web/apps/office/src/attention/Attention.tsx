@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useState } from "react";
-import { Check, ChevronDown, CircleAlert, Clock3, Info, Truck, UserRound } from "lucide-react";
+import { CalendarDays, Check, ChevronDown, CircleAlert, Clock3, Info, Truck, UserRound } from "lucide-react";
 import { Banner, Plate, SegmentedControl, Skeleton, Toast } from "@fleetops/ui";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router";
@@ -12,6 +12,7 @@ import "./attention.css";
 
 const severityRank = { critical: 2, warning: 1, info: 0 } as const;
 function itemTitle(item: AttentionItem) {
+  if (item.ruleId === "A-21") return "Schedule clash";
   if (item.ruleId === "A-02")
     return `${en.attention.rules.a02} · ${en.documents.types[item.scopeKey as keyof typeof en.documents.types] ?? item.scopeKey}`;
   if (item.ruleId === "A-03")
@@ -21,6 +22,7 @@ function itemTitle(item: AttentionItem) {
   return item.ruleId;
 }
 function actionFor(item: AttentionItem, group: AttentionGroup, owner: boolean) {
+  if (item.ruleId === "A-21") return { label: "Open Schedule", href: `/schedule?cycleId=${group.subjectId}${item.dueAt ? `&from=${item.dueAt.slice(0, 10)}` : ""}` };
   if (owner)
     return {
       label: en.attention.view,
@@ -253,11 +255,17 @@ function AttentionCard({
     <article className={`attention-card ${critical ? "critical" : "compact"}`}>
       <header>
         <span className="eyebrow">
-          {group.subjectType === "vehicle" ? en.attention.vehicle : en.attention.person}
+          {group.subjectType === "cycle"
+            ? "Schedule"
+            : group.subjectType === "vehicle"
+              ? en.attention.vehicle
+              : en.attention.person}
         </span>
         <span className="attention-subject">
           {group.subjectType === "vehicle" ? (
             <Truck size={17} aria-hidden />
+          ) : group.subjectType === "cycle" ? (
+            <CalendarDays size={17} aria-hidden />
           ) : (
             <UserRound size={17} aria-hidden />
           )}

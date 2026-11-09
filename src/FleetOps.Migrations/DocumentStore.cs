@@ -20,6 +20,8 @@ public sealed class EfDocumentStore(IObjectStore objects, IConfiguration configu
         if (sizeBytes is < 1 || sizeBytes > max) throw new DocumentValidationException(["sizeBytes"]);
         await using var db = CreateDb(context, actor.EmployeeId);
         await ValidateOwnerAsync(db, ownerType, ownerId, type, cancellationToken);
+        if (actor.Roles.Contains(RoleCode.Driver) && await db.Documents.AnyAsync(document => document.OwnerType == ownerType && document.OwnerId == ownerId && document.Type == type && document.Status == DocumentStatus.Uploaded, cancellationToken))
+            throw new DocumentConflictException("upload_pending");
         var now = clock.GetUtcNow();
         var expiration = now.AddMinutes(configuration.GetValue("Storage:LinkMinutes", 5));
         var pending = new PendingFile { ObjectKey = $"documents/{Guid.CreateVersion7()}", ActorId = actor.EmployeeId, ContentType = contentType, MaxSizeBytes = sizeBytes, CreatedAt = now, ExpiresAt = expiration };
@@ -37,6 +39,12 @@ public sealed class EfDocumentStore(IObjectStore objects, IConfiguration configu
         if (files.Count is < 1 or > 10 || (catalog.TwoSided && (files.Count != 2 || files.Select(x => x.Page).OrderBy(x => x).SequenceEqual([DocumentFilePage.Front, DocumentFilePage.Back]) is false)) || (!catalog.TwoSided && files.Any(x => x.Page != DocumentFilePage.Page))) throw new DocumentValidationException(["files"]);
         await using var db = CreateDb(context, actor.EmployeeId);
         await ValidateOwnerAsync(db, ownerType, ownerId, type, cancellationToken);
+        if (actor.Roles.Contains(RoleCode.Driver))
+        {
+            var lockKey = $"{ownerType}:{ownerId}:{type}";
+            await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({lockKey}, 0))", cancellationToken);
+            if (await db.Documents.AnyAsync(document => document.OwnerType == ownerType && document.OwnerId == ownerId && document.Type == type && document.Status == DocumentStatus.Uploaded, cancellationToken)) throw new DocumentConflictException("upload_pending");
+        }
         var pending = await db.PendingFiles.Where(x => files.Select(y => y.FileId).Contains(x.Id)).ToListAsync(cancellationToken);
         if (pending.Count != files.Count || pending.Any(x => x.ConfirmedAt.HasValue)) throw new DocumentValidationException([], "file_not_found");
         foreach (var input in files)

@@ -10,6 +10,7 @@ using FleetOps.People;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using FleetOps.Modules.Notifications;
+using FleetOps.Modules.Schedule;
 
 namespace FleetOps.Migrations;
 
@@ -49,7 +50,7 @@ public sealed class AlertEngine(IEnumerable<IAlertEvaluator> evaluators, ISettin
         command.Parameters.AddWithValue(subjectId);
         command.Parameters.AddWithValue(scopes);
         await command.ExecuteNonQueryAsync(cancellationToken);
-        var assignedRole = evaluator.RuleId == "A-05" ? "dispatcher" : "hr";
+        var assignedRole = evaluator.RuleId is "A-05" or "A-21" ? "dispatcher" : "hr";
         if (evaluator.RuleId == "A-03" && evaluator.SubjectType == "document")
         {
             await using var ownerTypeCommand = new NpgsqlCommand("select owner_type from fleetops.documents where id = $1", (NpgsqlConnection)context.DbConnection, (NpgsqlTransaction)context.DbTransaction);
@@ -154,7 +155,37 @@ public sealed class AlertPostCommandEvaluation(IAlertEngine engine, ILogger<Aler
 {
     public async Task EvaluateAsync(IReadOnlyCollection<(string SubjectType, Guid Id)> subjects, CommandContext context, CancellationToken cancellationToken)
     {
-        foreach (var subject in subjects)
+        var expanded = subjects.ToHashSet();
+        await using (var savepoint = new NpgsqlCommand("savepoint alert_fanout", (NpgsqlConnection)context.DbConnection, (NpgsqlTransaction)context.DbTransaction))
+        {
+            await savepoint.ExecuteNonQueryAsync(cancellationToken);
+            try
+            {
+                await using var db = AlertEvaluatorDb.CreateDb(context);
+                foreach (var subject in subjects)
+                {
+                    if (subject.SubjectType == "document")
+                    {
+                        var owner = await db.Documents.AsNoTracking().Where(document => document.Id == subject.Id).Select(document => new { document.OwnerType, document.OwnerId }).SingleOrDefaultAsync(cancellationToken);
+                        if (owner is not null) expanded.Add((owner.OwnerType == DocumentOwnerType.Vehicle ? "vehicle" : "employee", owner.OwnerId));
+                    }
+                }
+                var vehicleIds = expanded.Where(subject => subject.SubjectType == "vehicle").Select(subject => subject.Id).ToHashSet();
+                var cycleIds = expanded.Where(subject => subject.SubjectType == "cycle").Select(subject => subject.Id).ToArray();
+                var cycleVehicles = await db.Cycles.AsNoTracking().Where(cycle => cycleIds.Contains(cycle.Id)).Select(cycle => cycle.VehicleId).ToListAsync(cancellationToken);
+                vehicleIds.UnionWith(cycleVehicles);
+                var affectedCycles = await db.Cycles.AsNoTracking().Where(cycle => vehicleIds.Contains(cycle.VehicleId)).Select(cycle => cycle.Id).ToListAsync(cancellationToken);
+                foreach (var cycleId in affectedCycles) expanded.Add(("cycle", cycleId));
+            }
+            catch (Exception exception)
+            {
+                await using var rollback = new NpgsqlCommand("rollback to savepoint alert_fanout", (NpgsqlConnection)context.DbConnection, (NpgsqlTransaction)context.DbTransaction);
+                await rollback.ExecuteNonQueryAsync(CancellationToken.None);
+                logger.LogError("Alert fanout failed. ExceptionType={ExceptionType}", exception.GetType().Name);
+                expanded = subjects.ToHashSet();
+            }
+        }
+        foreach (var subject in expanded)
         {
             await using var savepoint = new NpgsqlCommand("savepoint alerts", (NpgsqlConnection)context.DbConnection, (NpgsqlTransaction)context.DbTransaction);
             await savepoint.ExecuteNonQueryAsync(cancellationToken);

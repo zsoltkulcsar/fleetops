@@ -1,4 +1,4 @@
-/* Driver transactional forms and bottom navigation; existing FleetOps tokens; no decorative motion. */
+/* tastemaker · driver transactional/data screens · existing FleetOps tokens · critique: ShowTell 4 · Phil 4 · Hier 4 · Spec 5 · Restr 5 · Var 3 */
 :root {
   color-scheme: dark;
   --bg: #0e141b;
@@ -180,4 +180,145 @@ main:has(.driver-nav) .driver-screen {
 .driver-app button:active:not(:disabled),
 .driver-button:active {
   filter: brightness(0.9);
+}
+.driver-data-screen {
+  gap: var(--space-4);
+}
+.driver-card {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+}
+.driver-label,
+.driver-sync {
+  color: var(--ink-2);
+  font-size: 0.875rem;
+}
+.driver-plate {
+  font-family: var(--font-data);
+  font-size: 2rem;
+}
+.driver-card button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+}
+.driver-cycle-list,
+.driver-document-list {
+  list-style: none;
+  padding: 0;
+  margin: var(--space-3) 0;
+  display: grid;
+}
+.driver-cycle-list li,
+.driver-document-list li {
+  display: flex;
+  align-items: start;
+  gap: var(--space-3);
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--line);
+}
+.driver-cycle-list li > div,
+.driver-document-list li > div {
+  display: grid;
+  gap: var(--space-3);
+  flex: 1;
+  min-width: 0;
+}
+.driver-cycle-list small,
+.driver-document-list small {
+  color: var(--ink-2);
+}
+.driver-badge {
+  width: fit-content;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  padding: var(--space-1) var(--space-2);
+  font-size: 0.875rem;
+  text-transform: capitalize;
+}
+.driver-callout {
+  padding: var(--space-4);
+  border: 1px solid var(--warn);
+  border-left: 3px solid var(--warn);
+  border-radius: var(--radius-control);
+  background: var(--warn-bg);
+  color: var(--ink);
+  display: grid;
+  gap: var(--space-3);
+}
+.driver-notifications {
+  display: grid;
+  gap: var(--space-3);
+}
+.driver-notifications a {
+  min-height: 3rem;
+  display: flex;
+  align-items: center;
+  width: fit-content;
+  color: var(--ink);
+  text-decoration: underline;
+}
+.driver-sheet {
+  display: grid;
+  gap: var(--space-4);
+}
+.driver-sheet label {
+  display: grid;
+  gap: var(--space-2);
+  font-weight: 500;
+}
+.driver-sheet input,
+.driver-sheet select {
+  width: 100%;
+  min-width: 0;
+  min-height: 3.5rem;
+  padding: var(--space-3);
+  font-size: 1rem;
+}
+.driver-sheet button,
+.driver-sheet .primary {
+  min-height: 3rem;
+  border: 2px solid var(--line);
+  border-radius: var(--radius-control);
+  padding: var(--space-3);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+}
+.driver-sheet .primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+.drawer:has(.driver-sheet) header button {
+  min-height: 3rem;
+  min-width: 3rem;
+}
+.driver-photo {
+  display: grid;
+  gap: var(--space-3);
+}
+.driver-photo-preview {
+  background: var(--bg);
+  border: 1px solid var(--line);
+}
+.driver-photo-preview img {
+  width: 100%;
+  height: 12.5rem;
+  object-fit: contain;
+}
+.driver-sheet input[type="range"] {
+  padding-inline: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .driver-sheet * {
+    animation-duration: 0.01ms;
+    transition-duration: 0.01ms;
+  }
 }

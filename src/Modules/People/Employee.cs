@@ -14,4 +14,6 @@ public sealed class Employee
     public EmployeeStatus Status { get; set; } = EmployeeStatus.Active;
     public DateOnly StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
+    public CyclePattern? CyclePattern { get; set; }
+    public int CyclePatternVersion { get; set; }
 }

@@ -11,6 +11,10 @@ export const test = base.extend({
       }),
     );
     const emptyList: components["schemas"]["VehicleListResult"] = { items: [], nextCursor: null };
+    const emptyImpact: components["schemas"]["VehicleRetirementImpact"] = { items: [] };
+    await page.route("**/api/v1/fleet/vehicles/*/retirement-impact", (route) =>
+      route.fulfill({ json: emptyImpact }),
+    );
     await page.route("**/api/v1/fleet/vehicles?*", (route) =>
       route.fulfill({
         status: 200,

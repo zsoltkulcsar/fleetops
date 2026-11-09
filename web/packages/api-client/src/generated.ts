@@ -76,6 +76,68 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/people/{id}/cycle-pattern": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CyclePatternView"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SaveCyclePatternRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CyclePatternResult"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/healthz": {
         parameters: {
             query?: never;
@@ -103,6 +165,388 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/schedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query: {
+                    from: string;
+                    to: string;
+                    employeeId?: string;
+                    vehicleId?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ScheduleResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/schedule/cycles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ManualCycleRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CycleDetail"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/schedule/cycles/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["EditCycleRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CycleDetail"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fleet/vehicles/{id}/retirement-impact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["VehicleRetirementImpact"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/driver/snapshot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DriverSnapshot"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/driver/vehicles/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DriverVehicleDetail"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/driver/documents/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DriverDocumentDetail"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/driver/documents/{id}/files/{fileId}/link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                    fileId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DriverFileLinkResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/driver/documents/upload-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DriverUploadLinkRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UploadLinkResult"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/driver/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DriverDocumentCreateRequest"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DriverDocumentDetail"];
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -1681,6 +2125,57 @@ export interface components {
             lastTachoDownloadAt: null | string;
             reason: null | string;
         };
+        CycleDetail: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            employeeId: string;
+            employeeName: string;
+            /** Format: uuid */
+            vehicleId: string;
+            vehiclePlate: string;
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            status: components["schemas"]["CycleStatus"];
+            source: components["schemas"]["CycleSource"];
+            /** Format: int32 */
+            patternSlot: null | number;
+            /** Format: int32 */
+            version: number;
+            /** @default false */
+            hasClash: boolean;
+        };
+        CyclePattern: {
+            /** Format: int32 */
+            onWeeks: number;
+            /** Format: int32 */
+            offWeeks: number;
+            /** Format: date */
+            anchorDate: string;
+            /** Format: uuid */
+            vehicleId: string;
+        };
+        CyclePatternResult: {
+            /** Format: uuid */
+            employeeId: string;
+            /** Format: int32 */
+            version: number;
+            /** Format: int32 */
+            generated: number;
+        };
+        CyclePatternView: {
+            /** Format: uuid */
+            employeeId: string;
+            /** Format: int32 */
+            version: number;
+            pattern: null | components["schemas"]["CyclePattern"];
+        };
+        /** @enum {unknown} */
+        CycleSource: "generated" | "manual";
+        /** @enum {unknown} */
+        CycleStatus: "planned" | "active" | "overrun" | "done" | "cancelled";
         DocumentCounts: {
             /** Format: int32 */
             queue: number;
@@ -1837,8 +2332,65 @@ export interface components {
             officePhone: string;
             name: string;
         };
+        DriverCycle: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            vehicleId: string;
+            vehiclePlate: string;
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            status: components["schemas"]["CycleStatus"];
+            source: components["schemas"]["CycleSource"];
+            /** Format: int32 */
+            version: number;
+        };
+        DriverDocument: {
+            /** Format: uuid */
+            id: string;
+            type: components["schemas"]["DocumentType"];
+            status: components["schemas"]["DocumentStatus"];
+            /** Format: date */
+            expiresAt: null | string;
+            rejectReason: null | string;
+        };
+        DriverDocumentCreateRequest: {
+            type: components["schemas"]["DocumentType"];
+            number: null | string;
+            /** Format: date */
+            issuedAt: null | string;
+            /** Format: date */
+            expiresAt: null | string;
+            categories: null | string[];
+            files: components["schemas"]["ConfirmFileInput"][];
+        };
+        DriverDocumentDetail: {
+            /** Format: uuid */
+            id: string;
+            type: components["schemas"]["DocumentType"];
+            status: components["schemas"]["DocumentStatus"];
+            /** Format: date */
+            expiresAt: null | string;
+            rejectReason: null | string;
+            files: components["schemas"]["DriverFile"][];
+        };
         DriverEnrolmentResponse: {
             stage: components["schemas"]["SessionStage"];
+        };
+        DriverFile: {
+            /** Format: uuid */
+            id: string;
+            page: components["schemas"]["DocumentFilePage"];
+            contentType: string;
+            /** Format: int64 */
+            sizeBytes: number;
+        };
+        DriverFileLinkResult: {
+            url: string;
+            /** Format: date-time */
+            expiresAt: string;
         };
         DriverReadinessItem: {
             /** Format: uuid */
@@ -1852,6 +2404,63 @@ export interface components {
         DriverReadinessList: {
             items: components["schemas"]["DriverReadinessItem"][];
             nextCursor: null | string;
+        };
+        DriverSnapshot: {
+            /** Format: uuid */
+            employeeId: string;
+            /** Format: date-time */
+            generatedAt: string;
+            cycles: components["schemas"]["DriverCycle"][];
+            documents: components["schemas"]["DriverDocument"][];
+            canDrive: boolean;
+            readinessCauses: components["schemas"]["ReadinessCause"][];
+        };
+        DriverUploadLinkRequest: {
+            type: components["schemas"]["DocumentType"];
+            contentType: string;
+            /** Format: int64 */
+            sizeBytes: number;
+        };
+        DriverVehicleDetail: {
+            /** Format: uuid */
+            id: string;
+            plate: string;
+            items: components["schemas"]["DriverVehicleItem"][];
+            documents: components["schemas"]["DriverVehicleDocument"][];
+        };
+        DriverVehicleDocument: {
+            /** Format: uuid */
+            id: string;
+            type: components["schemas"]["DocumentType"];
+            status: components["schemas"]["DocumentStatus"];
+            /** Format: date */
+            expiresAt: null | string;
+            files: components["schemas"]["DriverFile"][];
+        };
+        DriverVehicleItem: {
+            /** Format: uuid */
+            id: string;
+            category: string;
+            severity: string;
+            /** Format: date */
+            date: string;
+            /** Format: uuid */
+            documentId: null | string;
+            /** Format: uuid */
+            fileId: null | string;
+        };
+        EditCycleRequest: {
+            /** Format: int32 */
+            version: number;
+            /** Format: uuid */
+            employeeId: string;
+            /** Format: uuid */
+            vehicleId: string;
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            reason: string;
         };
         EditVehicleRequest: {
             /** Format: int32 */
@@ -1911,6 +2520,17 @@ export interface components {
             /** Format: int32 */
             processed: number;
             errorType?: null | string;
+        };
+        ManualCycleRequest: {
+            /** Format: uuid */
+            employeeId: string;
+            /** Format: uuid */
+            vehicleId: string;
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            reason: string;
         };
         NotificationItem: {
             /** Format: uuid */
@@ -1990,6 +2610,16 @@ export interface components {
             /** Format: int32 */
             version: number;
             retiredReason: components["schemas"]["RetiredReason"];
+        };
+        SaveCyclePatternRequest: {
+            /** Format: int32 */
+            version: number;
+            pattern: components["schemas"]["CyclePattern"];
+        };
+        ScheduleResult: {
+            /** Format: date-time */
+            generatedAt: string;
+            items: components["schemas"]["CycleDetail"][];
         };
         SecondFactorRequest: {
             code: string;
@@ -2105,6 +2735,9 @@ export interface components {
         };
         /** @enum {unknown} */
         VehicleOwnership: "owned" | "leased" | "rented_in";
+        VehicleRetirementImpact: {
+            items: components["schemas"]["CycleDetail"][];
+        };
         VehicleSearchItem: {
             /** Format: uuid */
             id: string;
