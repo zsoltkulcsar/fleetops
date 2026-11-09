@@ -1,0 +1,183 @@
+/* Driver transactional forms and bottom navigation; existing FleetOps tokens; no decorative motion. */
+:root {
+  color-scheme: dark;
+  --bg: #0e141b;
+  --surface: #161f29;
+  --ink: #e6ecf2;
+  --ink-2: #a2b0be;
+  --line: #8494a4;
+  --accent: #78a9ea;
+  --accent-ink: #0e141b;
+  --warn: #f2c257;
+  --warn-bg: #352909;
+  --crit: #ff8c7c;
+  --type-body: 1.125rem;
+  --type-h1: 2rem;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+    --bg: #edf0f3;
+    --surface: #ffffff;
+    --ink: #15202b;
+    --ink-2: #4b5968;
+    --line: #5a6676;
+    --accent: #1b4e91;
+    --accent-ink: #ffffff;
+    --warn: #8a5600;
+    --warn-bg: #fff1d1;
+    --crit: #af1f14;
+  }
+}
+body {
+  min-width: 20rem;
+}
+.driver-app {
+  max-width: 34rem;
+  margin-inline: auto;
+  padding: env(safe-area-inset-top) var(--space-5) 0;
+}
+.driver-header {
+  min-height: 4.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-weight: 600;
+}
+.offline-pill {
+  border: 2px solid var(--warn);
+  border-radius: 2rem;
+  padding: 0.25rem 0.75rem;
+  background: var(--warn-bg);
+  color: var(--warn);
+  font-size: 0.875rem;
+}
+.driver-screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-height: calc(100svh - 5rem);
+  padding: var(--space-6) 0 max(var(--space-6), env(safe-area-inset-bottom));
+}
+.driver-screen h1 {
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.driver-screen p {
+  margin: 0;
+}
+.driver-screen label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-weight: 500;
+}
+.driver-screen input {
+  width: 100%;
+  min-height: 3.5rem;
+  padding: 0.75rem;
+  border: 2px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 1.25rem;
+}
+.driver-screen input[inputmode="numeric"] {
+  font-family: var(--font-data);
+  letter-spacing: 0.15em;
+}
+.driver-app button,
+.driver-button {
+  min-height: 3rem;
+  border: 2px solid var(--line);
+  border-radius: var(--radius-primary);
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  touch-action: manipulation;
+}
+.driver-actions {
+  margin-top: auto;
+  padding-top: var(--space-6);
+  display: grid;
+  gap: var(--space-3);
+}
+.driver-app .primary {
+  min-height: 5.5rem;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  font-size: 1.375rem;
+}
+.driver-error {
+  color: var(--crit);
+  border-left: 2px solid var(--crit);
+  padding: var(--space-3);
+  overflow-wrap: anywhere;
+}
+.install-steps {
+  padding-left: 1.5rem;
+  display: grid;
+  gap: var(--space-5);
+}
+.driver-greeting {
+  font-size: 1.5rem;
+}
+.driver-nav {
+  position: sticky;
+  bottom: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  background: var(--surface);
+  border-top: 2px solid var(--line);
+  margin-inline: calc(-1 * var(--space-5));
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.driver-nav a {
+  min-height: 4.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  color: var(--ink-2);
+  text-decoration: none;
+  font-size: 1rem;
+  border-top: 2px solid transparent;
+}
+.driver-nav a.active {
+  color: var(--accent);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+main:has(.driver-nav) .driver-screen {
+  min-height: calc(100svh - 10rem - env(safe-area-inset-bottom));
+}
+.skip-link {
+  position: absolute;
+  transform: translateY(-200%);
+  background: var(--surface);
+  color: var(--ink);
+  padding: 1rem;
+  z-index: 2;
+}
+.skip-link:focus {
+  transform: none;
+}
+@media (hover: hover) {
+  .driver-app button:hover:not(:disabled),
+  .driver-button:hover,
+  .driver-nav a:hover {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}
+.driver-app button:active:not(:disabled),
+.driver-button:active {
+  filter: brightness(0.9);
+}

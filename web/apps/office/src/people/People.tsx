@@ -4,8 +4,13 @@ import { EmptyState, Panel, StatusPill } from "@fleetops/ui";
 import { readinessApi } from "../readiness/api";
 import { peopleCauseText } from "../readiness/labels";
 import { en } from "../i18n/en";
+import { useSession } from "../auth/AuthGate";
+import { SendEnrolment } from "./SendEnrolment";
 
 export function People() {
+  const session = useSession();
+  const canSendEnrolment =
+    session.data?.roles.some((role) => ["hr", "dispatcher", "owner"].includes(role)) === true;
   const [blockedOnly, setBlockedOnly] = useState(false);
   useEffect(() => {
     document.title = `People · ${en.appName}`;
@@ -37,6 +42,8 @@ export function People() {
           {drivers.data.items.map((driver) => (
             <div key={driver.id}>
               <strong>{driver.name}</strong>
+              {driver.enrolled && <span>{en.enrolment.enrolled}</span>}
+              {canSendEnrolment && <SendEnrolment id={driver.id} name={driver.name} />}
               {driver.canDrive ? (
                 <>
                   <StatusPill status="usable" />

@@ -16,6 +16,7 @@ export type DriverReadinessItem = {
   id: string;
   name: string;
   canDrive: boolean;
+  enrolled?: boolean;
   causes: ReadinessCause[];
 };
 export type DriverReadinessList = { items: DriverReadinessItem[]; nextCursor: string | null };

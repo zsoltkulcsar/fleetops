@@ -7,6 +7,11 @@ export default defineConfig({
   use: { baseURL: "http://127.0.0.1:4173", trace: "retain-on-failure" },
   webServer: [
     {
+      command: "npm run dev --workspace @fleetops/driver -- --strictPort",
+      port: 4175,
+      reuseExistingServer: !process.env.CI,
+    },
+    {
       command: "npm run dev --workspace @fleetops/office -- --strictPort",
       port: 4173,
       reuseExistingServer: !process.env.CI,
@@ -21,26 +26,36 @@ export default defineConfig({
   projects: [
     {
       name: "desktop",
-      testIgnore: /production\.spec\.ts/,
+      testIgnore: [/production\.spec\.ts/, /driver.*\.spec\.ts/],
       use: { ...devices["Desktop Chrome"], viewport: { width: 1280, height: 900 } },
     },
     {
       name: "tablet",
-      testIgnore: /production\.spec\.ts/,
+      testIgnore: [/production\.spec\.ts/, /driver.*\.spec\.ts/],
       use: { ...devices["Desktop Chrome"], viewport: { width: 1000, height: 800 } },
     },
     {
       name: "mobile",
-      testIgnore: /production\.spec\.ts/,
+      testIgnore: [/production\.spec\.ts/, /driver.*\.spec\.ts/],
       use: { ...devices["Desktop Chrome"], viewport: { width: 390, height: 844 } },
     },
     {
       name: "production",
+      testIgnore: /driver.*\.spec\.ts/,
       testMatch: /production\.spec\.ts/,
       use: {
         ...devices["Desktop Chrome"],
         baseURL: "http://127.0.0.1:4174",
         viewport: { width: 1280, height: 900 },
+      },
+    },
+    {
+      name: "driver",
+      testMatch: /driver.*\.spec\.ts/,
+      use: {
+        ...devices["Desktop Chrome"],
+        baseURL: "http://127.0.0.1:4175/driver/",
+        viewport: { width: 390, height: 844 },
       },
     },
   ],

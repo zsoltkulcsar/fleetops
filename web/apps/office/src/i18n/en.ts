@@ -1,5 +1,16 @@
 export const en = {
   appName: "FleetOps Office",
+  enrolment: {
+    send: "Send enrolment",
+    enrolled: "Enrolled",
+    sent: (name: string) => `Enrolment sent to ${name}.`,
+    inbox: (code: string, personnelNumber: string) =>
+      `Test inbox: code ${code}, personnel number ${personnelNumber}`,
+    inboxLabel: "Test inbox",
+    refusal: "This driver needs a personnel number and phone first.",
+    failed: "Enrolment could not be sent. Please try again.",
+    sending: "Sending…",
+  },
   nav: {
     attention: "Attention",
     timesheets: "Timesheets",
