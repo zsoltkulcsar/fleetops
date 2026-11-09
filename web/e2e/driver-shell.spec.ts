@@ -80,7 +80,8 @@ test("offline pill appears", async ({ page, context }) => {
   await enrolDriver(page);
   await expect(page.getByText("Offline", { exact: true })).toHaveCount(0);
   await context.setOffline(true);
-  await expect(page.getByRole("status")).toHaveText("Offline");
+  // Schedule loading is also a live status; assert the offline indicator specifically.
+  await expect(page.getByRole("status").filter({ hasText: /^Offline$/ })).toHaveText("Offline");
   await context.setOffline(false);
   await expect(page.getByText("Offline", { exact: true })).toHaveCount(0);
 });

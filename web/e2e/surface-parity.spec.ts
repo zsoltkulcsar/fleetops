@@ -55,7 +55,11 @@ test("fleet and verification queue contain their content at office breakpoints",
     await page.evaluate(() => document.fonts.ready);
     await page.screenshot({ path: testInfo.outputPath(`fleet-${colorScheme}.png`), fullPage: true });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    expect((await page.locator("tbody tr").boundingBox())?.height).toBeLessThanOrEqual(40);
+    // The supplied Fleet reference uses 47px rows, replacing the earlier 38px density.
+    const rowBounds = await page.locator("tbody tr").boundingBox();
+    expect(rowBounds).not.toBeNull();
+    expect(rowBounds!.height).toBeGreaterThanOrEqual(46);
+    expect(rowBounds!.height).toBeLessThanOrEqual(48);
     await page.goto("/documents?filter=queue");
     await expect(page.locator(".queue-card")).toHaveCount(1);
     await page.screenshot({ path: testInfo.outputPath(`documents-${colorScheme}.png`), fullPage: true });

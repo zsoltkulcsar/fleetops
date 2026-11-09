@@ -1,4 +1,5 @@
 import { test, expect } from "./fixtures";
+import type { components } from "@fleetops/api-client";
 
 const routes = [
   ["/", "Attention"],
@@ -9,6 +10,8 @@ const routes = [
 ] as const;
 
 test("every route shows its empty state heading", async ({ page }) => {
+  const people: components["schemas"]["DriverReadinessList"] = { items: [], nextCursor: null };
+  await page.route("**/api/v1/readiness/drivers?*", (route) => route.fulfill({ json: people }));
   for (const [route, label] of routes) {
     await page.goto(route);
     await expect(page.getByRole("heading", { level: 1, name: label })).toBeVisible();
