@@ -72,9 +72,13 @@ public static class AuthEndpoints
         {
             return Results.Json(new { code = "sign_in_failed" }, statusCode: StatusCodes.Status401Unauthorized);
         }
+        var roles = AuthTokens.ParseRoles(employee.Roles);
+        if (!OfficeSignInPolicy.IsAllowed(roles))
+        {
+            return Results.Json(new { code = "sign_in_failed" }, statusCode: StatusCodes.Status401Unauthorized);
+        }
         await users.ResetAccessFailedCountAsync(user);
 
-        var roles = AuthTokens.ParseRoles(employee.Roles);
         var requiresFactor = SecondFactorPolicy.IsRequired(roles, authOptions.Value, environment);
         var authenticatorKey = await users.GetAuthenticatorKeyAsync(user);
         if (requiresFactor && (!user.TwoFactorEnabled || string.IsNullOrWhiteSpace(authenticatorKey)))

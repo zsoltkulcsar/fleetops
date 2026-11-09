@@ -200,6 +200,30 @@ public sealed class SeedTests
         Assert.True((long)(await otherDrivers.ExecuteScalarAsync())! > 0);
     }
 
+    [Fact]
+    public async Task Seed_gives_drivers_numbers_and_phones()
+    {
+        await using var postgres = await TestPostgres.StartAsync(nameof(SeedTests));
+        await SeedAsync(postgres);
+        await using var connection = new NpgsqlConnection(postgres.ConnectionString);
+        await connection.OpenAsync();
+        await using var command = new NpgsqlCommand("select personnel_number, phone from fleetops.employees where roles like '%driver%'", connection);
+        await using var reader = await command.ExecuteReaderAsync();
+        var numbers = new HashSet<string>();
+        var count = 0;
+        while (await reader.ReadAsync())
+        {
+            Assert.False(reader.IsDBNull(0));
+            Assert.False(reader.IsDBNull(1));
+            var number = reader.GetString(0);
+            var phone = reader.GetString(1);
+            Assert.False(string.IsNullOrWhiteSpace(number));
+            Assert.False(string.IsNullOrWhiteSpace(phone));
+            Assert.True(numbers.Add(number), "Driver personnel numbers must be unique.");
+            count++;
+        }
+        Assert.Equal(24, count);
+    }
     private static async Task SeedAsync(TestPostgres postgres) => await RunAsync(postgres, "Demo", Password);
 
     private static async Task RunAsync(TestPostgres postgres, string? environment, string? password, Func<int, Exception?>? failureFactory = null)
