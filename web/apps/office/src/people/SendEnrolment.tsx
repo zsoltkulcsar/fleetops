@@ -7,18 +7,14 @@ export function SendEnrolment({ id, name }: { id: string; name: string }) {
     mutationFn: async () => {
       const result = await apiClient.POST("/api/v1/people/{id}/enrolment", { params: { path: { id } } });
       if (!result.response.ok || !result.data) {
-        throw new Error(
-          result.response.status === 409 || result.response.status === 403
-            ? en.enrolment.refusal
-            : en.enrolment.failed,
-        );
+        throw new Error(result.response.status === 409 ? en.enrolment.refusal : en.enrolment.failed);
       }
       return result.data;
     },
   });
   return (
     <div>
-      <button type="button" className="button" disabled={send.isPending} onClick={() => send.mutate()}>
+      <button type="button" className="ui-button" disabled={send.isPending} onClick={() => send.mutate()}>
         {send.isPending ? en.enrolment.sending : en.enrolment.send}
       </button>
       {send.isError && <p role="alert">{send.error.message}</p>}
