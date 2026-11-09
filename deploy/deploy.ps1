@@ -22,3 +22,10 @@ foreach ($page in @(@{ Path = '/timesheets'; Title = 'FleetOps Office' }, @{ Pat
   if ($response.StatusCode -ne 200 -or $response.Content -notmatch $page.Title) { throw "Deep link $($page.Path) failed" }
   Write-Host "Deep link $($page.Path) passed"
 }
+
+# Evidence only: list the Vercel Schedules so the CI log shows the nightly schedule exists. Never fails the deploy.
+try {
+  npx --yes vercel@65.8.0 schedules ls --token=$env:VERCEL_TOKEN --scope=$env:VERCEL_SCOPE
+  if ($LASTEXITCODE) { Write-Host "Listing schedules returned exit code $LASTEXITCODE" }
+} catch { Write-Host "Listing schedules failed: $($_.Exception.Message)" }
+$global:LASTEXITCODE = 0
