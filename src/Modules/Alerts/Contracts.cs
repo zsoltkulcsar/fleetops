@@ -41,3 +41,8 @@ public interface IAlertEngine
 {
     Task ApplyAsync(string subjectType, Guid subjectId, CommandContext context, CancellationToken cancellationToken);
 }
+
+public interface IAlertOpened
+{
+    Task HandleAsync(string ruleId, string subjectType, Guid subjectId, Guid alertId, CommandContext context, CancellationToken cancellationToken);
+}

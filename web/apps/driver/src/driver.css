@@ -128,6 +128,70 @@ body {
 .driver-greeting {
   font-size: 1.5rem;
 }
+.driver-shift-hours {
+  font: 600 3.5rem var(--font-data);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.driver-shift-hours span {
+  display: block;
+  color: var(--ink-2);
+  font: 400 1rem var(--font-body);
+}
+.driver-activity-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+.driver-activity-grid button {
+  min-height: 4.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  flex-direction: column;
+  min-width: 0;
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+.driver-sync-status {
+  display: grid;
+  gap: var(--space-2);
+  padding-block: var(--space-3);
+}
+.driver-sync-status ul {
+  max-height: 10rem;
+  overflow-y: auto;
+  margin: 0;
+}
+.driver-app button[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.driver-backdate,
+.driver-week-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.driver-week-nav {
+  justify-content: space-between;
+}
+.driver-shift-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+.driver-shift-list button {
+  width: 100%;
+  text-align: left;
+}
+.driver-shift-list span {
+  display: block;
+}
 .driver-nav {
   position: sticky;
   bottom: 0;

@@ -10,6 +10,18 @@ namespace FleetOps.Migrations;
 
 public sealed class EfReadinessStore(FleetOpsDbContext db) : IReadiness
 {
+    public async Task<DriverReadiness?> ForDriverAtAsync(Guid employeeId, DateOnly date, DateTimeOffset instant, CancellationToken cancellationToken)
+    {
+        var employee = await db.Employees.AsNoTracking().SingleOrDefaultAsync(employee => employee.Id == employeeId, cancellationToken);
+        if (employee is null) return null;
+        var documents = await db.Documents.AsNoTracking().Where(document => document.OwnerType == DocumentOwnerType.Employee && document.OwnerId == employeeId &&
+            (document.Status == DocumentStatus.Verified || document.Status == DocumentStatus.Replaced) && (document.VerifiedAt ?? document.CreatedAt) <= instant).ToListAsync(cancellationToken);
+        var superseded = await db.Documents.AsNoTracking().Where(document => document.OwnerType == DocumentOwnerType.Employee && document.OwnerId == employeeId &&
+            document.ReplacesId != null && document.VerifiedAt <= instant).Select(document => document.ReplacesId!.Value).ToListAsync(cancellationToken);
+        var validAtStart = documents.Where(document => !superseded.Contains(document.Id)).ToArray();
+        foreach (var document in validAtStart) document.Status = DocumentStatus.Verified;
+        return Driver(employee, validAtStart, date);
+    }
     public async Task<IReadOnlyDictionary<Guid, VehicleReadiness>> ForVehiclesAsync(IReadOnlyCollection<Guid> ids, DateOnly date, CancellationToken cancellationToken)
     {
         if (ids.Count == 0) return new Dictionary<Guid, VehicleReadiness>();

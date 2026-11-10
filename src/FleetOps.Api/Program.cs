@@ -19,6 +19,7 @@ using FleetOps.Api.Files;
 using FleetOps.Api.Jobs;
 using FleetOps.Modules.Schedule;
 using FleetOps.Modules.Views;
+using FleetOps.Modules.Shifts;
 using FleetOps.Kernel.Files;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Identity;
@@ -84,7 +85,20 @@ builder.Services.AddScoped<INotificationIds, NotificationIds>();
 builder.Services.AddScoped<InAppSender>();
 builder.Services.AddScoped<INotificationSender>(services => services.GetRequiredService<InAppSender>());
 builder.Services.AddScoped<IPostCommitNotifications>(services => services.GetRequiredService<InAppSender>());
-builder.Services.AddScoped<IAlertEvaluator, A02EmployeeEvaluator>();
+builder.Services.AddScoped<A02EmployeeEvaluator>();
+builder.Services.AddScoped<IAlertEvaluator>(services => new ShiftAwareEmployeeEvaluator(services.GetRequiredService<A02EmployeeEvaluator>(), services.GetRequiredService<IShiftAlertFacts>()));
+builder.Services.AddScoped<IAlertEvaluator, A17ShiftConflictEvaluator>();
+builder.Services.AddScoped<IAlertEvaluator, A09MissingShiftEvaluator>();
+builder.Services.AddScoped<IAlertEvaluator, A15WeekSubmissionEvaluator>();
+builder.Services.AddScoped<IShiftReminderFacts, EfShiftReminderFacts>();
+builder.Services.AddScoped<IAlertOpened, WeekReminderNotification>();
+builder.Services.AddScoped<IShiftAlertFacts, EfShiftAlertFacts>();
+builder.Services.AddScoped<IShiftCommandStore, EfShiftCommandStore>();
+builder.Services.AddScoped<IOfflineCommandResults, EfOfflineCommandResults>();
+builder.Services.AddScoped<IShiftStartFacts, EfShiftStartFacts>();
+builder.Services.AddScoped<IShiftEvents, ShiftEvents>();
+builder.Services.AddScoped<ICommandHandler<ApplyDriverCommand, DriverCommandResult>, ApplyDriverCommandHandler>();
+builder.Services.AddScoped<IQueryHandler<GetDriverShiftsQuery, ShiftSnapshot>, DriverShiftQueryHandler>();
 builder.Services.AddScoped<IAlertEvaluator, A03DocumentEvaluator>();
 builder.Services.AddScoped<IAlertEvaluator, A05VehicleEvaluator>();
 builder.Services.AddScoped<IAlertEvaluator, A21CycleEvaluator>();
@@ -108,6 +122,11 @@ builder.Services.AddScoped<IJob, FileOrphansJob>();
 builder.Services.AddScoped<IJob, AlertsSweepJob>();
 builder.Services.AddScoped<IJob, NotificationRetryJob>();
 builder.Services.AddScoped<IJob, CycleRolloverJob>();
+builder.Services.AddScoped<IJob, CycleDayJob>();
+builder.Services.AddScoped<ICycleStateWriter, EfCycleStateWriter>();
+builder.Services.AddScoped<CycleCompletion>();
+builder.Services.AddScoped<ICycleOverrunFacts, EfCycleOverrunFacts>();
+builder.Services.AddScoped<IAlertEvaluator, A20OverrunEvaluator>();
 builder.Services.AddScoped<ICycleStore, EfCycleStore>();
 builder.Services.AddScoped<IsInCycle, EfIsInCycle>();
 builder.Services.AddScoped<CyclePatternChangedHandler>();
@@ -191,7 +210,7 @@ app.UseExceptionHandler(new ExceptionHandlerOptions
         if (exception is InvalidCursorException) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "invalid_cursor" }).ExecuteAsync(context); return; }
         if (exception is DocumentInvalidCursorException) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "invalid_cursor" }).ExecuteAsync(context); return; }
         if (exception is VehicleConflictException conflict) { await Results.Problem(statusCode: conflict.Code is "duplicate_vehicle" or "version_conflict" or "state_conflict" or "undo_window_closed" or "plate_in_use" ? 409 : 404, extensions: new Dictionary<string, object?> { ["code"] = conflict.Code }).ExecuteAsync(context); return; }
-        if (exception is DocumentConflictException documentConflict) { await Results.Problem(statusCode: documentConflict.Code is "state_conflict" or "version_conflict" or "upload_pending" ? 409 : 404, extensions: new Dictionary<string, object?> { ["code"] = documentConflict.Code }).ExecuteAsync(context); return; }
+        if (exception is DocumentConflictException documentConflict) { await Results.Problem(statusCode: documentConflict.Code is "state_conflict" or "version_conflict" or "upload_pending" or "command_id_reused" ? 409 : 404, extensions: new Dictionary<string, object?> { ["code"] = documentConflict.Code }).ExecuteAsync(context); return; }
         if (exception is AlertValidationException alertValidation) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "validation_error", ["fields"] = alertValidation.Fields }).ExecuteAsync(context); return; }
         if (exception is AlertConflictException alertConflict) { await Results.Problem(statusCode: alertConflict.Code is "state_conflict" or "version_conflict" or "not_snoozable" ? 409 : 404, extensions: new Dictionary<string, object?> { ["code"] = alertConflict.Code }).ExecuteAsync(context); return; }
         try { app.Logger.LogError("Unhandled exception {ExceptionType} TraceId {TraceId}", exception?.GetType().Name ?? "Unknown", context.TraceIdentifier); } catch { }
@@ -226,6 +245,7 @@ app.MapPut("/api/v1/people/{id:guid}/cycle-pattern", async (Guid id, SaveCyclePa
 app.MapGet("/healthz", async (IDatabaseHealth database, CancellationToken cancellationToken) => await database.IsHealthyAsync(cancellationToken) ? Results.Ok(new { api = "ok", database = "ok" }) : Results.Problem(statusCode: 503, title: "Service unavailable", detail: "Database unavailable", extensions: new Dictionary<string, object?> { ["code"] = "database_unavailable", ["database"] = "unavailable" }));
 AuthEndpoints.Map(app);
 EpicThreeEndpoints.Map(app);
+ShiftEndpoints.Map(app);
 DriverEndpoints.Map(app);
 app.MapPost("/api/v1/fleet/vehicles", async (CreateVehicleCommand command, CommandDispatcher dispatcher, CancellationToken cancellationToken) => { var result = await dispatcher.DispatchAsync<CreateVehicleCommand, VehicleDetail>(command, cancellationToken); return Results.Created($"/api/v1/fleet/vehicles/{result.Id}", result); }).Produces<VehicleDetail>(StatusCodes.Status201Created);
 app.MapPut("/api/v1/fleet/vehicles/{id:guid}", async (Guid id, EditVehicleRequest request, CommandDispatcher dispatcher, CancellationToken cancellationToken) => Results.Ok(await dispatcher.DispatchAsync<EditVehicleCommand, VehicleDetail>(request.ToCommand(id), cancellationToken))).Produces<VehicleDetail>();

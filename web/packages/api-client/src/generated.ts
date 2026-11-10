@@ -553,6 +553,80 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/driver/shifts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ShiftSnapshot"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/driver/commands/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DriverCommandBatch"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DriverCommandBatchResult"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/people/{id}/enrolment": {
         parameters: {
             query?: never;
@@ -2050,6 +2124,17 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @enum {unknown} */
+        ActivityType: "driving" | "other_work" | "availability" | "break";
+        ActivityView: {
+            /** Format: uuid */
+            id: string;
+            type: components["schemas"]["ActivityType"];
+            /** Format: date-time */
+            startAt: string;
+            /** Format: date-time */
+            endAt: null | string;
+        };
         AlertActionResult: {
             /** Format: uuid */
             id: string;
@@ -2322,6 +2407,33 @@ export interface components {
             number?: null | string;
             categories?: null | string[];
         };
+        DriverCommand: {
+            /** Format: uuid */
+            commandId: string;
+            type: string;
+            /** Format: int32 */
+            schemaVersion: number;
+            /** Format: uuid */
+            aggregateId: string;
+            /** Format: int32 */
+            baseVersion: number;
+            /** Format: date-time */
+            deviceTime: string;
+            payload: components["schemas"]["JsonElement"];
+        };
+        DriverCommandBatch: {
+            commands: components["schemas"]["DriverCommand"][];
+        };
+        DriverCommandBatchResult: {
+            results: components["schemas"]["DriverCommandResult"][];
+        };
+        DriverCommandResult: {
+            /** Format: uuid */
+            commandId: string;
+            status: string;
+            code: null | string;
+            shift: null | components["schemas"]["ShiftView"];
+        };
         DriverConfig: {
             /** Format: int32 */
             pinLength: number;
@@ -2365,6 +2477,15 @@ export interface components {
             expiresAt: null | string;
             categories: null | string[];
             files: components["schemas"]["ConfirmFileInput"][];
+            /** Format: uuid */
+            commandId?: null | string;
+            /** Format: date-time */
+            deviceTime?: null | string;
+            /**
+             * Format: int32
+             * @default 1
+             */
+            schemaVersion: number;
         };
         DriverDocumentDetail: {
             /** Format: uuid */
@@ -2405,6 +2526,21 @@ export interface components {
             items: components["schemas"]["DriverReadinessItem"][];
             nextCursor: null | string;
         };
+        DriverShiftConflict: {
+            /** Format: uuid */
+            commandId: string;
+            /** Format: uuid */
+            shiftId: string;
+            action: string;
+            changedBy: string;
+            changedFields: string[];
+            /** Format: date-time */
+            proposedStartAt: null | string;
+            /** Format: date-time */
+            proposedEndAt: null | string;
+            /** Format: int32 */
+            officeVersion: number;
+        };
         DriverSnapshot: {
             /** Format: uuid */
             employeeId: string;
@@ -2414,6 +2550,14 @@ export interface components {
             documents: components["schemas"]["DriverDocument"][];
             canDrive: boolean;
             readinessCauses: components["schemas"]["ReadinessCause"][];
+        };
+        DriverTruckAssignment: {
+            /** Format: uuid */
+            vehicleId: string;
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: null | string;
         };
         DriverUploadLinkRequest: {
             type: components["schemas"]["DocumentType"];
@@ -2521,6 +2665,7 @@ export interface components {
             processed: number;
             errorType?: null | string;
         };
+        JsonElement: unknown;
         ManualCycleRequest: {
             /** Format: uuid */
             employeeId: string;
@@ -2553,6 +2698,16 @@ export interface components {
             url: string;
             /** Format: date-time */
             expiresAt: string;
+        };
+        /** @enum {unknown} */
+        OvernightKind: "cab" | "hotel";
+        OvernightView: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date */
+            night: string;
+            countryCode: string;
+            kind: components["schemas"]["OvernightKind"];
         };
         PeopleLookupItem: {
             /** Format: uuid */
@@ -2636,6 +2791,51 @@ export interface components {
             version: number;
             manualOffRoad: boolean;
             reason: null | string;
+        };
+        ShiftSnapshot: {
+            /** Format: date-time */
+            generatedAt: string;
+            companyTimeZone: string;
+            shifts: components["schemas"]["ShiftView"][];
+            appliedCommandIds: string[];
+            trucks: components["schemas"]["ShiftTruckChoice"][];
+            /** Format: uuid */
+            suggestedTruckId: null | string;
+            conflicts: components["schemas"]["DriverShiftConflict"][];
+            assignments: components["schemas"]["DriverTruckAssignment"][];
+        };
+        /** @enum {unknown} */
+        ShiftStatus: "running" | "draft" | "submitted" | "approved" | "rejected" | "exported";
+        ShiftTruckChoice: {
+            /** Format: uuid */
+            id: string;
+            plate: string;
+            kind: string;
+            usable: boolean;
+            reason: null | string;
+            licenceClassWarning: boolean;
+        };
+        ShiftView: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date */
+            date: string;
+            /** Format: date-time */
+            startAt: string;
+            /** Format: date-time */
+            endAt: null | string;
+            /** Format: uuid */
+            truckId: null | string;
+            /** Format: uuid */
+            trailerId: null | string;
+            status: components["schemas"]["ShiftStatus"];
+            /** Format: int32 */
+            version: number;
+            rejectReason: null | string;
+            blockedAtStart: null | string;
+            deviceTimeGap: boolean;
+            activities: components["schemas"]["ActivityView"][];
+            overnights: components["schemas"]["OvernightView"][];
         };
         SignInRequest: {
             email: string;

@@ -4,7 +4,10 @@ import { Drawer } from "@fleetops/ui";
 import type { components } from "@fleetops/api-client";
 import type { DriverSnapshot } from "./storage/snapshot";
 import { driverDate } from "./DriverSchedule";
-import { DriverRequestError, scheduleApi } from "./scheduleApi";
+import { scheduleApi } from "./scheduleApi";
+import { compressPhoto, ensurePhotoSpace, photoPayload } from "./storage/photo";
+import { commandQueue, newCommand } from "./storage/commandQueue";
+import type { DocumentUploadPayload } from "./storage/documentReplay";
 import { openFreshFile } from "./DriverTruck";
 
 type DocumentType = components["schemas"]["DocumentType"];
@@ -34,7 +37,8 @@ export function DriverDocuments({
 }) {
   const [opened, setOpened] = useState<string>();
   const [uploadType, setUploadType] = useState<DocumentType>();
-  const [sent, setSent] = useState(false);
+  const [sent, setSent] = useState<string>();
+  const confirmed = snapshot?.documents.some((document) => document.id === sent);
   const waiting = new Set(
     snapshot?.documents.filter((document) => document.status === "uploaded").map((document) => document.type),
   );
@@ -44,7 +48,9 @@ export function DriverDocuments({
       <h2>Your documents</h2>
       {sent && (
         <p className="driver-callout" role="status">
-          Sent to HR. Awaiting verification.
+          {confirmed
+            ? "Sent to HR. Your document status is shown below."
+            : "Saved on this device. Waiting to sync with HR."}
         </p>
       )}
       {snapshot?.documents.length ? (
@@ -68,10 +74,7 @@ export function DriverDocuments({
                   View document
                 </button>
                 {document.status !== "uploaded" && document.status !== "replaced" && (
-                  <button
-                    disabled={!online || waiting.has(document.type)}
-                    onClick={() => setUploadType(document.type)}
-                  >
+                  <button disabled={waiting.has(document.type)} onClick={() => setUploadType(document.type)}>
                     {document.status === "rejected" ? "Upload again" : "Upload renewal"}
                   </button>
                 )}
@@ -86,12 +89,13 @@ export function DriverDocuments({
             : "Connect and refresh your schedule to see your documents."}
         </p>
       )}
-      <button disabled={!online} onClick={() => setUploadType("licence_c_ce")}>
+      <button disabled={!snapshot} onClick={() => setUploadType("licence_c_ce")}>
         Upload a document
       </button>
       {!online && (
         <p className="driver-sync">
-          Document files and uploads need a connection. Your saved statuses remain available.
+          You can save document photos offline. They will be sent when you reconnect. Viewing files needs a
+          connection.
         </p>
       )}
       <div className="driver-actions">
@@ -123,12 +127,12 @@ export function DriverDocuments({
       {uploadType && (
         <UploadDocument
           initialType={uploadType}
-          online={online}
+          employeeId={snapshot!.employeeId}
           waiting={waiting}
           onClose={() => setUploadType(undefined)}
-          onSaved={async () => {
+          onSaved={async (commandId) => {
             setUploadType(undefined);
-            setSent(true);
+            setSent(commandId);
             await onRefresh();
           }}
         />
@@ -291,90 +295,64 @@ function PhotoInput({
     </div>
   );
 }
-async function cropped(photo: Photo): Promise<Blob> {
-  if (photo.crop === 0) return photo.file;
-  const bitmap = await createImageBitmap(photo.file);
-  try {
-    const insetX = Math.round((bitmap.width * photo.crop) / 100);
-    const insetY = Math.round((bitmap.height * photo.crop) / 100);
-    const canvas = document.createElement("canvas");
-    canvas.width = bitmap.width - insetX * 2;
-    canvas.height = bitmap.height - insetY * 2;
-    const context = canvas.getContext("2d");
-    if (!context) throw new Error("image_unavailable");
-    context.drawImage(bitmap, insetX, insetY, canvas.width, canvas.height, 0, 0, canvas.width, canvas.height);
-    return await new Promise<Blob>((resolve, reject) =>
-      canvas.toBlob(
-        (blob) => (blob ? resolve(blob) : reject(new Error("image_unavailable"))),
-        "image/jpeg",
-        0.9,
-      ),
-    );
-  } finally {
-    bitmap.close();
-  }
-}
 function UploadDocument({
   initialType,
-  online,
+  employeeId,
   waiting,
   onClose,
   onSaved,
 }: {
   initialType: DocumentType;
-  online: boolean;
+  employeeId: string;
   waiting: Set<DocumentType>;
   onClose: () => void;
-  onSaved: () => Promise<void>;
+  onSaved: (commandId: string) => Promise<void>;
 }) {
   const [type, setType] = useState(initialType);
   const [front, setFront] = useState<Photo>();
   const [back, setBack] = useState<Photo>();
-  const [twoSides, setTwoSides] = useState(["licence_c_ce", "driver_card", "id_card"].includes(initialType));
+  const twoSides = ["licence_c_ce", "driver_card"].includes(type);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [progress, setProgress] = useState("");
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!front || !online || waiting.has(type) || (twoSides && !back)) return;
+    if (!front || waiting.has(type) || (twoSides && !back)) return;
     const form = new FormData(event.currentTarget);
     setBusy(true);
     setError("");
     try {
-      const confirmed: components["schemas"]["ConfirmFileInput"][] = [];
-      const photos = [
-        { photo: front, page: "front" as const },
+      const photos: DocumentUploadPayload["photos"] = [];
+      const inputs = [
+        { photo: front, page: twoSides ? ("front" as const) : ("page" as const) },
         ...(back && twoSides ? [{ photo: back, page: "back" as const }] : []),
       ];
-      for (const [index, item] of photos.entries()) {
-        setProgress(`Sending photo ${index + 1} of ${photos.length}…`);
-        const file = await cropped(item.photo);
-        const grant = await scheduleApi.upload({ type, contentType: file.type, sizeBytes: file.size });
-        const upload = await fetch(grant.url.url, {
-          method: "PUT",
-          headers: grant.requiredHeaders,
-          body: file,
-          credentials: "omit",
-        });
-        if (!upload.ok) throw new Error("upload_failed");
-        confirmed.push({ fileId: grant.fileId, page: item.page });
+      let bytes = 0;
+      for (const [index, item] of inputs.entries()) {
+        setProgress(`Saving photo ${index + 1} of ${inputs.length}…`);
+        const file = await compressPhoto(item.photo.file, item.photo.crop);
+        bytes += file.size;
+        photos.push({ page: item.page, contentType: file.type, data: await photoPayload(file) });
       }
-      await scheduleApi.confirm({
+      await ensurePhotoSpace(bytes);
+      const payload: DocumentUploadPayload = {
         type,
         number: String(form.get("number") ?? "").trim() || null,
-        issuedAt: null,
         expiresAt: String(form.get("expiresAt") ?? "") || null,
-        categories: null,
-        files: confirmed,
-      });
+        photos,
+      };
+      const command = newCommand("document.upload", `document:${employeeId}:${type}`, 0, payload);
+      await commandQueue.enqueue(command);
       setFront(undefined);
       setBack(undefined);
-      await onSaved();
+      await onSaved(command.commandId);
     } catch (failure) {
       setError(
-        failure instanceof DriverRequestError && failure.code === "storage_unavailable"
-          ? "Uploads are temporarily unavailable. Please try again later or call the office."
-          : "Your document was not sent. Check your connection and try again.",
+        failure instanceof Error && failure.message === "photo_storage_low"
+          ? "There is not enough space to save these photos. Free space and retry. Your waiting items are kept."
+          : failure instanceof Error && failure.message === "upload_already_queued"
+            ? "This document is already saved and waiting to sync."
+            : "Your photos could not be saved. Keep this screen open and retry.",
       );
     } finally {
       setBusy(false);
@@ -399,7 +377,6 @@ function UploadDocument({
             onChange={(event) => {
               const next = event.target.value as DocumentType;
               setType(next);
-              setTwoSides(["licence_c_ce", "driver_card", "id_card"].includes(next));
             }}
           >
             {documentTypes.map((item) => (
@@ -417,13 +394,7 @@ function UploadDocument({
           <>
             <p>Keep all corners visible. Crop only empty space around the document.</p>
             <PhotoInput side="front" photo={front} onPhoto={setFront} />
-            {twoSides ? (
-              <PhotoInput side="back" photo={back} onPhoto={setBack} />
-            ) : (
-              <button type="button" disabled={busy} onClick={() => setTwoSides(true)}>
-                Add second side
-              </button>
-            )}
+            {twoSides && <PhotoInput side="back" photo={back} onPhoto={setBack} />}
             <label>
               Document number (optional)
               <input name="number" autoComplete="off" maxLength={100} disabled={busy} />
@@ -432,12 +403,8 @@ function UploadDocument({
               Expiry date
               <input name="expiresAt" type="date" disabled={busy} />
             </label>
-            <button
-              type="submit"
-              className="primary"
-              disabled={busy || !online || !front || (twoSides && !back)}
-            >
-              {busy ? "Sending…" : "Send to HR"}
+            <button type="submit" className="primary" disabled={busy || !front || (twoSides && !back)}>
+              {busy ? "Saving…" : "Send to HR"}
             </button>
           </>
         )}

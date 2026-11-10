@@ -27,6 +27,7 @@ export function DriverSchedule({
   onTruck,
   shift = false,
   name,
+  embedded = false,
 }: {
   snapshot?: DriverSnapshot;
   online: boolean;
@@ -36,6 +37,7 @@ export function DriverSchedule({
   onTruck: (id: string) => void;
   shift?: boolean;
   name?: string;
+  embedded?: boolean;
 }) {
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Berlin",
@@ -53,7 +55,12 @@ export function DriverSchedule({
   const next = cycles.find((cycle) => cycle.from > today);
   return (
     <section className="driver-screen driver-data-screen">
-      <h1>{shift ? "Shift" : "Week"}</h1>
+      {!embedded && <h1>{shift ? "Shift" : "Week"}</h1>}
+      {next && cycles.some((cycle) => cycle.status === "overrun") && (
+        <p className="driver-callout">
+          Your current Cycle has overrun. The next Cycle may need to change; contact dispatch.
+        </p>
+      )}
       {shift && <p className="driver-greeting">Hello, {name?.trim().split(/\s+/)[0]}.</p>}
       {snapshot && (
         <p className="driver-sync">

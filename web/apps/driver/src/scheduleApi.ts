@@ -16,6 +16,9 @@ async function checked<T>(result: { data?: T; error?: unknown; response: Respons
   return result.data;
 }
 export const scheduleApi = {
+  shifts: () => apiClient.GET("/api/v1/driver/shifts", { cache: "no-store" }).then(checked),
+  commands: (commands: components["schemas"]["DriverCommand"][]) =>
+    apiClient.POST("/api/v1/driver/commands/batch", { body: { commands } }).then(checked),
   snapshot: () => apiClient.GET("/api/v1/driver/snapshot", { cache: "no-store" }).then(checked),
   vehicle: (id: string) =>
     apiClient
@@ -34,6 +37,6 @@ export const scheduleApi = {
       .then(checked),
   upload: (body: { type: components["schemas"]["DocumentType"]; contentType: string; sizeBytes: number }) =>
     apiClient.POST("/api/v1/driver/documents/upload-links", { body }).then(checked),
-  confirm: (body: Omit<components["schemas"]["DocumentCreateRequest"], "ownerId" | "ownerType">) =>
+  confirm: (body: components["schemas"]["DriverDocumentCreateRequest"]) =>
     apiClient.POST("/api/v1/driver/documents", { body }).then(checked),
 };

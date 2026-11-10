@@ -5,7 +5,7 @@ namespace FleetOps.Modules.Documents;
 public interface IDocumentStore
 {
     Task<UploadLinkResult> RequestAsync(Guid ownerId, DocumentOwnerType ownerType, DocumentType type, string contentType, long sizeBytes, AccessContext actor, CommandContext context, CancellationToken cancellationToken);
-    Task<DocumentDetail> ConfirmAsync(Guid ownerId, DocumentOwnerType ownerType, DocumentType type, string? number, DateOnly? issuedAt, DateOnly? expiresAt, string[]? categories, IReadOnlyList<ConfirmFileInput> files, AccessContext actor, CommandContext context, CancellationToken cancellationToken);
+    Task<DocumentDetail> ConfirmAsync(Guid ownerId, DocumentOwnerType ownerType, DocumentType type, string? number, DateOnly? issuedAt, DateOnly? expiresAt, string[]? categories, IReadOnlyList<ConfirmFileInput> files, AccessContext actor, CommandContext context, CancellationToken cancellationToken, Guid? commandId = null);
     Task<DocumentDetail> VerifyAsync(Guid id, int version, DateOnly? expiresAt, DateOnly? issuedAt, string? number, string[]? categories, AccessContext actor, CommandContext context, CancellationToken cancellationToken);
     Task<DocumentDetail> RejectAsync(Guid id, int version, string reason, AccessContext actor, CommandContext context, CancellationToken cancellationToken);
     Task<DocumentDetail> DeleteAsync(Guid id, int version, string reason, AccessContext actor, CommandContext context, CancellationToken cancellationToken);

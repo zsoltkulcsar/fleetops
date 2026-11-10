@@ -36,7 +36,7 @@ public sealed class JobRunner(IConfiguration configuration, IEnumerable<IJob> jo
     public async Task<JobRunResult> RunNightlyAsync(JobTrigger trigger, CancellationToken cancellationToken)
     {
         var budget = time.GetUtcNow().AddSeconds(configuration.GetValue("Jobs:BudgetSeconds", 50));
-        var order = configuration.GetSection("Jobs:NightlyOrder").Get<string[]>() ?? ["cycles-rollover", "alerts-sweep", "notifications-retry", "file-orphans"];
+        var order = configuration.GetSection("Jobs:NightlyOrder").Get<string[]>() ?? ["cycles-rollover", "cycles-day", "alerts-sweep", "notifications-retry", "file-orphans"];
         var names = order.Length == 0
             ? jobs.Keys
             : order.Distinct(StringComparer.OrdinalIgnoreCase).Where(Contains);

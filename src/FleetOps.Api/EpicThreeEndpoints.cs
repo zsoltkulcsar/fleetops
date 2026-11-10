@@ -9,7 +9,7 @@ namespace FleetOps.Api;
 public sealed record ManualCycleRequest(Guid EmployeeId, Guid VehicleId, DateOnly From, DateOnly To, string Reason);
 public sealed record EditCycleRequest(int Version, Guid EmployeeId, Guid VehicleId, DateOnly From, DateOnly To, string Reason);
 public sealed record DriverUploadLinkRequest(DocumentType Type, string ContentType, long SizeBytes);
-public sealed record DriverDocumentCreateRequest(DocumentType Type, string? Number, DateOnly? IssuedAt, DateOnly? ExpiresAt, string[]? Categories, IReadOnlyList<ConfirmFileInput> Files);
+public sealed record DriverDocumentCreateRequest(DocumentType Type, string? Number, DateOnly? IssuedAt, DateOnly? ExpiresAt, string[]? Categories, IReadOnlyList<ConfirmFileInput> Files, Guid? CommandId = null, DateTimeOffset? DeviceTime = null, int SchemaVersion = 1);
 
 public static class EpicThreeEndpoints
 {
@@ -29,6 +29,6 @@ public static class EpicThreeEndpoints
         app.MapGet("/api/v1/driver/documents/{id:guid}", async (Guid id, IAccessContextAccessor access, QueryDispatcher dispatcher, CancellationToken cancellationToken) => Results.Ok(await dispatcher.DispatchAsync<GetDriverDocumentQuery, DriverDocumentDetail>(new(access.Current?.EmployeeId, id), cancellationToken))).Produces<DriverDocumentDetail>();
         app.MapGet("/api/v1/driver/documents/{id:guid}/files/{fileId:guid}/link", async (Guid id, Guid fileId, IAccessContextAccessor access, QueryDispatcher dispatcher, CancellationToken cancellationToken) => Results.Ok(await dispatcher.DispatchAsync<GetDriverFileLinkQuery, DriverFileLinkResult>(new(access.Current?.EmployeeId, id, fileId), cancellationToken))).Produces<DriverFileLinkResult>();
         app.MapPost("/api/v1/driver/documents/upload-links", async (DriverUploadLinkRequest request, IAccessContextAccessor access, CommandDispatcher dispatcher, CancellationToken cancellationToken) => Results.Ok(await dispatcher.DispatchAsync<RequestEmployeeDocumentUploadCommand, UploadLinkResult>(new(access.Current?.EmployeeId, request.Type, request.ContentType, request.SizeBytes), cancellationToken))).Produces<UploadLinkResult>();
-        app.MapPost("/api/v1/driver/documents", async (DriverDocumentCreateRequest request, IAccessContextAccessor access, CommandDispatcher dispatcher, CancellationToken cancellationToken) => Results.Created("/api/v1/driver/documents", await dispatcher.DispatchAsync<ConfirmDriverDocumentCommand, DriverDocumentDetail>(new(access.Current?.EmployeeId, request.Type, request.Number, request.IssuedAt, request.ExpiresAt, request.Categories, request.Files), cancellationToken))).Produces<DriverDocumentDetail>(201);
+        app.MapPost("/api/v1/driver/documents", async (DriverDocumentCreateRequest request, IAccessContextAccessor access, CommandDispatcher dispatcher, CancellationToken cancellationToken) => Results.Created("/api/v1/driver/documents", await dispatcher.DispatchAsync<ConfirmDriverDocumentCommand, DriverDocumentDetail>(new(access.Current?.EmployeeId, request.Type, request.Number, request.IssuedAt, request.ExpiresAt, request.Categories, request.Files, request.CommandId, request.DeviceTime, request.SchemaVersion), cancellationToken))).Produces<DriverDocumentDetail>(201);
     }
 }

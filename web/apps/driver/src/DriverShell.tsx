@@ -2,22 +2,29 @@ import { CalendarDays, CircleUserRound, TriangleAlert, Truck } from "lucide-reac
 import { NavLink, Navigate, Route, Routes } from "react-router";
 import { en } from "./i18n/en";
 import { useState } from "react";
+import { useShifts } from "./useShifts";
+import { DriverDay } from "./DriverDay";
+import { DriverWeek } from "./DriverWeek";
 import { useSnapshot } from "./useSnapshot";
 import { DriverSchedule } from "./DriverSchedule";
 import { DriverDocuments } from "./DriverDocuments";
 import { DriverTruck } from "./DriverTruck";
+import { QueueStatus } from "./QueueStatus";
 import { DriverNotifications } from "./DriverNotifications";
 
 export function DriverShell({
   name,
+  officePhone,
   busy,
   onSignOut,
 }: {
   name: string;
+  officePhone: string;
   busy: boolean;
   onSignOut: () => Promise<void>;
 }) {
   const state = useSnapshot();
+  const shifts = useShifts();
   const [truck, setTruck] = useState<string>();
   const pages = [
     { path: "shift", title: en.shift, icon: Truck },
@@ -28,16 +35,20 @@ export function DriverShell({
   return (
     <>
       <DriverNotifications online={state.online} />
+      <QueueStatus online={state.online} />
       <Routes>
         <Route
           path="shift"
-          element={
-            <DriverSchedule {...state} name={name} shift onRefresh={state.refresh} onTruck={setTruck} />
-          }
+          element={<DriverDay state={shifts} driver={state.snapshot} name={name} officePhone={officePhone} />}
         />
         <Route
           path="week"
-          element={<DriverSchedule {...state} onRefresh={state.refresh} onTruck={setTruck} />}
+          element={
+            <>
+              <DriverWeek state={shifts} />
+              <DriverSchedule {...state} embedded onRefresh={state.refresh} onTruck={setTruck} />
+            </>
+          }
         />
         <Route
           path="me"

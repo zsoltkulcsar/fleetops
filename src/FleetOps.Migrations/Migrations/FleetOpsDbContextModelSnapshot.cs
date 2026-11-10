@@ -402,6 +402,55 @@ namespace FleetOps.Migrations.Migrations
                     b.ToTable("settings", "fleetops");
                 });
 
+            modelBuilder.Entity("FleetOps.Modules.Absences.Absence", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("DecidedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("decided_by");
+
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("employee_id");
+
+                    b.Property<DateOnly>("From")
+                        .HasColumnType("date")
+                        .HasColumnName("from");
+
+                    b.Property<string>("HalfDay")
+                        .HasColumnType("text")
+                        .HasColumnName("half_day");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.Property<DateOnly>("To")
+                        .HasColumnType("date")
+                        .HasColumnName("to");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DecidedBy");
+
+                    b.HasIndex("EmployeeId", "From", "To");
+
+                    b.ToTable("absences", "fleetops", t =>
+                        {
+                            t.HasCheckConstraint("ck_absences_dates", "\"from\" <= \"to\" AND (half_day IS NULL OR \"from\" = \"to\")");
+                        });
+                });
+
             modelBuilder.Entity("FleetOps.Modules.Alerts.Alert", b =>
                 {
                     b.Property<Guid>("Id")
@@ -724,6 +773,49 @@ namespace FleetOps.Migrations.Migrations
                     b.ToTable("pending_files", "fleetops");
                 });
 
+            modelBuilder.Entity("FleetOps.Modules.Fleet.Assignment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("employee_id");
+
+                    b.Property<DateOnly>("From")
+                        .HasColumnType("date")
+                        .HasColumnName("from");
+
+                    b.Property<Guid?>("MaintenanceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("maintenance_id");
+
+                    b.Property<string>("Note")
+                        .HasColumnType("text")
+                        .HasColumnName("note");
+
+                    b.Property<DateOnly?>("To")
+                        .HasColumnType("date")
+                        .HasColumnName("to");
+
+                    b.Property<Guid>("VehicleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("vehicle_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("VehicleId");
+
+                    b.HasIndex("EmployeeId", "From");
+
+                    b.ToTable("assignments", "fleetops", t =>
+                        {
+                            t.HasCheckConstraint("ck_assignments_dates", "\"to\" IS NULL OR \"to\" >= \"from\"");
+                        });
+                });
+
             modelBuilder.Entity("FleetOps.Modules.Fleet.PlateHistory", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1038,6 +1130,297 @@ namespace FleetOps.Migrations.Migrations
                         });
                 });
 
+            modelBuilder.Entity("FleetOps.Modules.Shifts.CommandReceipt", b =>
+                {
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("employee_id");
+
+                    b.Property<Guid>("CommandId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("command_id");
+
+                    b.Property<Guid>("AggregateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("aggregate_id");
+
+                    b.Property<int>("BaseVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("base_version");
+
+                    b.Property<DateTimeOffset>("DeviceTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("device_time");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("outcome");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("payload");
+
+                    b.Property<string>("Result")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("result");
+
+                    b.Property<int>("SchemaVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("schema_version");
+
+                    b.Property<DateTimeOffset>("ServerReceivedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("server_received_at");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("type");
+
+                    b.HasKey("EmployeeId", "CommandId");
+
+                    b.HasIndex("EmployeeId", "AggregateId", "ServerReceivedAt");
+
+                    b.ToTable("command_receipts", "fleetops");
+                });
+
+            modelBuilder.Entity("FleetOps.Modules.Shifts.ConflictRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("BaseVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("base_version");
+
+                    b.Property<Guid>("CommandId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("command_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("DriverPayload")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("driver_payload");
+
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("employee_id");
+
+                    b.Property<string>("OfficeSnapshot")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("office_snapshot");
+
+                    b.Property<int>("OfficeVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("office_version");
+
+                    b.Property<Guid>("ShiftId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("shift_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ShiftId");
+
+                    b.HasIndex("EmployeeId", "CommandId")
+                        .IsUnique();
+
+                    b.ToTable("shift_conflicts", "fleetops");
+                });
+
+            modelBuilder.Entity("FleetOps.Modules.Shifts.Overnight", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("CountryCode")
+                        .IsRequired()
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)")
+                        .HasColumnName("country_code");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("kind");
+
+                    b.Property<DateOnly>("Night")
+                        .HasColumnType("date")
+                        .HasColumnName("night");
+
+                    b.Property<Guid>("ShiftId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("shift_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ShiftId", "Night")
+                        .IsUnique();
+
+                    b.ToTable("overnights", "fleetops");
+                });
+
+            modelBuilder.Entity("FleetOps.Modules.Shifts.Shift", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("BlockedAtStart")
+                        .HasColumnType("text")
+                        .HasColumnName("blocked_at_start");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date")
+                        .HasColumnName("date");
+
+                    b.Property<bool?>("DepartureCheckOk")
+                        .HasColumnType("boolean")
+                        .HasColumnName("departure_check_ok");
+
+                    b.Property<DateTimeOffset>("DeviceTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("device_time");
+
+                    b.Property<bool>("DeviceTimeGap")
+                        .HasColumnType("boolean")
+                        .HasColumnName("device_time_gap");
+
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("employee_id");
+
+                    b.Property<DateTimeOffset?>("EndAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("end_at");
+
+                    b.Property<int>("LastOfficeVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("last_office_version");
+
+                    b.Property<int?>("OdometerEndKm")
+                        .HasColumnType("integer")
+                        .HasColumnName("odometer_end_km");
+
+                    b.Property<int?>("OdometerStartKm")
+                        .HasColumnType("integer")
+                        .HasColumnName("odometer_start_km");
+
+                    b.Property<string>("RejectReason")
+                        .HasColumnType("text")
+                        .HasColumnName("reject_reason");
+
+                    b.Property<DateTimeOffset>("ServerReceivedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("server_received_at");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("source");
+
+                    b.Property<DateTimeOffset>("StartAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("start_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.Property<Guid?>("TrailerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("trailer_id");
+
+                    b.Property<Guid?>("TruckId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("truck_id");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmployeeId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_shifts_one_running_per_employee")
+                        .HasFilter("status = 'Running'");
+
+                    b.HasIndex("TrailerId");
+
+                    b.HasIndex("TruckId");
+
+                    b.HasIndex("EmployeeId", "Date");
+
+                    b.ToTable("shifts", "fleetops", t =>
+                        {
+                            t.HasCheckConstraint("ck_shifts_dates", "end_at IS NULL OR end_at >= start_at");
+
+                            t.HasCheckConstraint("ck_shifts_odometer", "(odometer_start_km IS NULL OR odometer_start_km >= 0) AND (odometer_end_km IS NULL OR odometer_end_km >= COALESCE(odometer_start_km, 0))");
+
+                            t.HasCheckConstraint("ck_shifts_running", "(status = 'Running' AND end_at IS NULL) OR (status <> 'Running' AND end_at IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_shifts_status", "status IN ('Running', 'Draft', 'Submitted', 'Approved', 'Rejected', 'Exported')");
+
+                            t.HasCheckConstraint("ck_shifts_version", "version > 0 AND last_office_version >= 0 AND last_office_version <= version");
+                        });
+                });
+
+            modelBuilder.Entity("FleetOps.Modules.Shifts.ShiftActivity", b =>
+                {
+                    b.Property<Guid>("ShiftId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("shift_id");
+
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset?>("EndAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("end_at");
+
+                    b.Property<DateTimeOffset>("RecordedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("recorded_at");
+
+                    b.Property<DateTimeOffset>("StartAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("start_at");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("type");
+
+                    b.HasKey("ShiftId", "Id");
+
+                    b.HasIndex("ShiftId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_activities_one_running_per_shift")
+                        .HasFilter("end_at IS NULL");
+
+                    b.ToTable("activities", "fleetops", t =>
+                        {
+                            t.HasCheckConstraint("ck_activities_dates", "end_at IS NULL OR end_at >= start_at");
+                        });
+                });
+
             modelBuilder.Entity("FleetOps.People.Employee", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1305,12 +1688,41 @@ namespace FleetOps.Migrations.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("FleetOps.Modules.Absences.Absence", b =>
+                {
+                    b.HasOne("FleetOps.People.Employee", null)
+                        .WithMany()
+                        .HasForeignKey("DecidedBy")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("FleetOps.People.Employee", null)
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("FleetOps.Modules.Documents.DocumentFile", b =>
                 {
                     b.HasOne("FleetOps.Modules.Documents.Document", null)
                         .WithMany("Files")
                         .HasForeignKey("DocumentId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FleetOps.Modules.Fleet.Assignment", b =>
+                {
+                    b.HasOne("FleetOps.People.Employee", null)
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FleetOps.Modules.Fleet.Vehicle", null)
+                        .WithMany()
+                        .HasForeignKey("VehicleId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 
@@ -1326,6 +1738,61 @@ namespace FleetOps.Migrations.Migrations
                         .WithMany()
                         .HasForeignKey("VehicleId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FleetOps.Modules.Shifts.CommandReceipt", b =>
+                {
+                    b.HasOne("FleetOps.People.Employee", null)
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FleetOps.Modules.Shifts.ConflictRecord", b =>
+                {
+                    b.HasOne("FleetOps.Modules.Shifts.Shift", null)
+                        .WithMany()
+                        .HasForeignKey("ShiftId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FleetOps.Modules.Shifts.Overnight", b =>
+                {
+                    b.HasOne("FleetOps.Modules.Shifts.Shift", null)
+                        .WithMany("Overnights")
+                        .HasForeignKey("ShiftId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FleetOps.Modules.Shifts.Shift", b =>
+                {
+                    b.HasOne("FleetOps.People.Employee", null)
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FleetOps.Modules.Fleet.Vehicle", null)
+                        .WithMany()
+                        .HasForeignKey("TrailerId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("FleetOps.Modules.Fleet.Vehicle", null)
+                        .WithMany()
+                        .HasForeignKey("TruckId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("FleetOps.Modules.Shifts.ShiftActivity", b =>
+                {
+                    b.HasOne("FleetOps.Modules.Shifts.Shift", null)
+                        .WithMany("Activities")
+                        .HasForeignKey("ShiftId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
@@ -1383,6 +1850,13 @@ namespace FleetOps.Migrations.Migrations
             modelBuilder.Entity("FleetOps.Modules.Documents.Document", b =>
                 {
                     b.Navigation("Files");
+                });
+
+            modelBuilder.Entity("FleetOps.Modules.Shifts.Shift", b =>
+                {
+                    b.Navigation("Activities");
+
+                    b.Navigation("Overnights");
                 });
 #pragma warning restore 612, 618
         }

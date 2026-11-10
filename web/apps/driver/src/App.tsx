@@ -6,6 +6,7 @@ import { InstallGuide, isStandalone } from "./InstallGuide";
 import { PinForm } from "./PinForm";
 import { en } from "./i18n/en";
 import { localStore } from "./storage/localStore";
+import { commandQueue } from "./storage/commandQueue";
 import {
   createVault,
   eraseVault,
@@ -339,15 +340,24 @@ export function App() {
     content = (
       <DriverShell
         name={vault.config.name}
+        officePhone={vault.config.officePhone}
         busy={busy}
         onSignOut={() =>
           run(async () => {
-            await driverApi.signOut();
-            await eraseVault();
-            client.clear();
-            sessionStorage.removeItem("driver-onboarding");
-            setVault(undefined);
-            setStage("enrol");
+            await navigator.locks.request("fleetops-driver-command-queue", async () => {
+              if ((await commandQueue.list()).length > 0) {
+                setError(
+                  "Sync your saved work before signing out. Signing out would remove it from this device.",
+                );
+                return;
+              }
+              await driverApi.signOut();
+              await eraseVault();
+              client.clear();
+              sessionStorage.removeItem("driver-onboarding");
+              setVault(undefined);
+              setStage("enrol");
+            });
           })
         }
       />

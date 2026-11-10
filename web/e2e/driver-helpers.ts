@@ -25,6 +25,17 @@ export async function driverRoutes(page: Page) {
     readinessCauses: [],
   };
   await page.route("**/api/v1/driver/snapshot", (route) => route.fulfill({ json: snapshot }));
+  const shifts: components["schemas"]["ShiftSnapshot"] = {
+    generatedAt: "2026-11-09T10:00:00Z",
+    companyTimeZone: "Europe/Berlin",
+    shifts: [],
+    appliedCommandIds: [],
+    trucks: [],
+    suggestedTruckId: null,
+    conflicts: [],
+    assignments: [],
+  };
+  await page.route("**/api/v1/driver/shifts", (route) => route.fulfill({ json: shifts }));
   const notifications: components["schemas"]["NotificationListResult"] = {
     items: [],
     unread: 0,

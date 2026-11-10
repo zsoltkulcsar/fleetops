@@ -24,6 +24,9 @@ jobs:
       - run: dotnet build FleetOps.slnx --configuration Release
       - working-directory: web
         run: npm ci && npm run build
+      - name: Driver offline queue and storage boundary tests
+        working-directory: web
+        run: node --test --test-isolation=none scripts/driver-command-queue.test.mjs scripts/driver-storage-boundary.test.mjs
       - name: Validate vercel.json routes with the Vercel parser
         working-directory: web
         run: npm install --no-save @vercel/routing-utils@6.6.1 && node scripts/check-vercel-routes.mjs

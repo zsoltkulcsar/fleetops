@@ -30,7 +30,7 @@ public sealed class EfDocumentStore(IObjectStore objects, IConfiguration configu
         var link = await objects.CreateUploadLinkAsync(pending.ObjectKey, contentType, expiration - now, cancellationToken);
         return new(pending.Id, link, expiration, new UploadRequiredHeaders(contentType));
     }
-    public async Task<DocumentDetail> ConfirmAsync(Guid ownerId, DocumentOwnerType ownerType, DocumentType type, string? number, DateOnly? issuedAt, DateOnly? expiresAt, string[]? categories, IReadOnlyList<ConfirmFileInput> files, AccessContext actor, CommandContext context, CancellationToken cancellationToken)
+    public async Task<DocumentDetail> ConfirmAsync(Guid ownerId, DocumentOwnerType ownerType, DocumentType type, string? number, DateOnly? issuedAt, DateOnly? expiresAt, string[]? categories, IReadOnlyList<ConfirmFileInput> files, AccessContext actor, CommandContext context, CancellationToken cancellationToken, Guid? commandId = null)
     {
         ValidateType(ownerType, type);
         if (expiresAt < issuedAt) throw new DocumentValidationException(["expiresAt"]);
@@ -39,6 +39,20 @@ public sealed class EfDocumentStore(IObjectStore objects, IConfiguration configu
         if (files.Count is < 1 or > 10 || (catalog.TwoSided && (files.Count != 2 || files.Select(x => x.Page).OrderBy(x => x).SequenceEqual([DocumentFilePage.Front, DocumentFilePage.Back]) is false)) || (!catalog.TwoSided && files.Any(x => x.Page != DocumentFilePage.Page))) throw new DocumentValidationException(["files"]);
         await using var db = CreateDb(context, actor.EmployeeId);
         await ValidateOwnerAsync(db, ownerType, ownerId, type, cancellationToken);
+        if (commandId is Guid replayId)
+        {
+            var replayLock = $"document-command:{replayId}";
+            await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({replayLock}, 0))", cancellationToken);
+            var existing = await db.Documents.AsNoTracking().SingleOrDefaultAsync(document => document.Id == replayId, cancellationToken);
+            if (existing is not null)
+            {
+                if (existing.OwnerId != ownerId || existing.OwnerType != ownerType || existing.CreatedBy != actor.EmployeeId || existing.Type != type)
+                    throw new DocumentConflictException("command_id_reused");
+                // The document is the durable acknowledgement. Return it even if
+                // HR has already reviewed it or the original upload link expired.
+                return await ReadDetailAsync(db, replayId, cancellationToken) ?? throw new DocumentConflictException("not_found");
+            }
+        }
         if (actor.Roles.Contains(RoleCode.Driver))
         {
             var lockKey = $"{ownerType}:{ownerId}:{type}";
@@ -58,6 +72,7 @@ public sealed class EfDocumentStore(IObjectStore objects, IConfiguration configu
             }
         }
         var document = new Document { OwnerType = ownerType, OwnerId = ownerId, Type = type, Number = number, IssuedAt = issuedAt, ExpiresAt = expiresAt, Categories = categories ?? [], CreatedBy = actor.EmployeeId, CreatedAt = clock.GetUtcNow() };
+        if (commandId is Guid documentId) document.Id = documentId;
         db.Documents.Add(document);
         for (var i = 0; i < files.Count; i++) { var input = files[i]; var row = pending.Single(x => x.Id == input.FileId); var info = await objects.GetInfoAsync(row.ObjectKey, cancellationToken) ?? throw new DocumentValidationException([], "file_rejected"); row.ConfirmedAt = clock.GetUtcNow(); document.Files.Add(new DocumentFile { DocumentId = document.Id, ObjectKey = row.ObjectKey, ContentType = row.ContentType, SizeBytes = info.SizeBytes, Page = input.Page, SortOrder = i }); }
         await db.SaveChangesAsync(cancellationToken);

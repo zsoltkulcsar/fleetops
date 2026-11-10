@@ -7,6 +7,13 @@ namespace FleetOps.Modules.Schedule;
 public interface IsInCycle
 {
     Task<bool> ForEmployeeAsync(Guid employeeId, DateOnly date, CancellationToken cancellationToken = default);
+    async Task<IReadOnlySet<DateOnly>> ForEmployeeDatesAsync(Guid employeeId, IReadOnlyCollection<DateOnly> dates, CancellationToken cancellationToken = default)
+    {
+        var result = new HashSet<DateOnly>();
+        foreach (var date in dates)
+            if (await ForEmployeeAsync(employeeId, date, cancellationToken)) result.Add(date);
+        return result;
+    }
 }
 
 [VisibleTo(RoleCode.Dispatcher, RoleCode.Owner)]

@@ -19,6 +19,8 @@ public static class SettingCatalog
         ["driver.max_pin_tries"] = 5,
         ["driver.max_offline_days"] = 45,
         ["driver.session_days"] = 180,
+        ["company.device_time_gap_minutes"] = 5,
+        ["timesheets.submit_reminder_hour"] = 7,
         ["alerts.a03.queue_days"] = 2,
         ["alerts.a03.blocked_hours"] = 1,
         ["alerts.escalation_minutes"] = 15,

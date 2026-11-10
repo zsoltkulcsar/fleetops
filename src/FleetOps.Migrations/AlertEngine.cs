@@ -14,7 +14,7 @@ using FleetOps.Modules.Schedule;
 
 namespace FleetOps.Migrations;
 
-public sealed class AlertEngine(IEnumerable<IAlertEvaluator> evaluators, ISettings settings, IReadiness readiness, ICompanyTimeService companyTime, TimeProvider time, ILogger<AlertEngine> logger, INotifications notifications) : IAlertEngine
+public sealed class AlertEngine(IEnumerable<IAlertEvaluator> evaluators, ISettings settings, IReadiness readiness, ICompanyTimeService companyTime, TimeProvider time, ILogger<AlertEngine> logger, INotifications notifications, IEnumerable<IAlertOpened> openedObservers) : IAlertEngine
 {
     public async Task ApplyAsync(string subjectType, Guid subjectId, CommandContext context, CancellationToken cancellationToken)
     {
@@ -28,7 +28,7 @@ public sealed class AlertEngine(IEnumerable<IAlertEvaluator> evaluators, ISettin
             try
             {
                 var conditions = await evaluator.EvaluateAsync(subjectId, today, now, evaluation, cancellationToken);
-                await ApplyRuleAsync(evaluator, subjectId, conditions, now, context, notifications, cancellationToken);
+                await ApplyRuleAsync(evaluator, subjectId, conditions, now, context, notifications, openedObservers, cancellationToken);
             }
             catch (Exception exception)
             {
@@ -39,7 +39,7 @@ public sealed class AlertEngine(IEnumerable<IAlertEvaluator> evaluators, ISettin
         }
     }
 
-    private static async Task ApplyRuleAsync(IAlertEvaluator evaluator, Guid subjectId, IReadOnlyList<AlertCondition> conditions, DateTimeOffset now, CommandContext context, INotifications notifications, CancellationToken cancellationToken)
+    private static async Task ApplyRuleAsync(IAlertEvaluator evaluator, Guid subjectId, IReadOnlyList<AlertCondition> conditions, DateTimeOffset now, CommandContext context, INotifications notifications, IEnumerable<IAlertOpened> openedObservers, CancellationToken cancellationToken)
     {
         await using var command = new NpgsqlCommand("", (NpgsqlConnection)context.DbConnection, (NpgsqlTransaction)context.DbTransaction);
         var scopes = conditions.Select(x => x.ScopeKey).Distinct(StringComparer.Ordinal).ToArray();
@@ -50,7 +50,7 @@ public sealed class AlertEngine(IEnumerable<IAlertEvaluator> evaluators, ISettin
         command.Parameters.AddWithValue(subjectId);
         command.Parameters.AddWithValue(scopes);
         await command.ExecuteNonQueryAsync(cancellationToken);
-        var assignedRole = evaluator.RuleId is "A-05" or "A-21" ? "dispatcher" : "hr";
+        var assignedRole = evaluator.RuleId is "A-05" or "A-09" or "A-15" or "A-20" or "A-21" ? "dispatcher" : "hr";
         if (evaluator.RuleId == "A-03" && evaluator.SubjectType == "document")
         {
             await using var ownerTypeCommand = new NpgsqlCommand("select owner_type from fleetops.documents where id = $1", (NpgsqlConnection)context.DbConnection, (NpgsqlTransaction)context.DbTransaction);
@@ -72,6 +72,9 @@ public sealed class AlertEngine(IEnumerable<IAlertEvaluator> evaluators, ISettin
             insert.Parameters.AddWithValue(assignedRole);
             insert.Parameters.AddWithValue(now);
             var inserted = await insert.ExecuteScalarAsync(cancellationToken);
+            if (inserted is Guid openedId)
+                foreach (var observer in openedObservers)
+                    await observer.HandleAsync(evaluator.RuleId, evaluator.SubjectType, subjectId, openedId, context, cancellationToken);
             if (inserted is Guid insertedAlertId && condition.Severity == AlertSeverity.Critical)
             {
                 await using var employees = new NpgsqlCommand("select id from fleetops.employees where status = 'Active' and roles::jsonb @> $1::jsonb", (NpgsqlConnection)context.DbConnection, (NpgsqlTransaction)context.DbTransaction);

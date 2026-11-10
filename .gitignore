@@ -15,3 +15,4 @@ TestResults/
 *.nupkg
 web/packages/api-client/src/generated.ts.tmp
 .npm-cache/
+.test-data/
