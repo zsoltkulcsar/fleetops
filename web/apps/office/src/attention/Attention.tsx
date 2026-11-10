@@ -22,7 +22,13 @@ function itemTitle(item: AttentionItem) {
   return item.ruleId;
 }
 function actionFor(item: AttentionItem, group: AttentionGroup, owner: boolean) {
-  if (item.ruleId === "A-21") return { label: "Open Schedule", href: `/schedule?cycleId=${group.subjectId}${item.dueAt ? `&from=${item.dueAt.slice(0, 10)}` : ""}` };
+  if (item.ruleId === "A-10" || item.ruleId === "A-16")
+    return { label: "Open shift", href: `/timesheets?shiftId=${group.subjectId}` };
+  if (item.ruleId === "A-21")
+    return {
+      label: "Open Schedule",
+      href: `/schedule?cycleId=${group.subjectId}${item.dueAt ? `&from=${item.dueAt.slice(0, 10)}` : ""}`,
+    };
   if (owner)
     return {
       label: en.attention.view,

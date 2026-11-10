@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from "react";
-import { Drawer } from "@fleetops/ui";
+import { Drawer, StatusPill } from "@fleetops/ui";
 import type { DriverShiftState } from "./useShifts";
 import { companyDate, shiftHours, type ShiftView, type ActivityType } from "./storage/shiftProjection";
 import { companyInstant, displayTime, wallTime } from "./shiftTime";
 import { driverDate } from "./DriverSchedule";
+import { OfficeChanges } from "./OfficeChanges";
 
 function weekStart(date: string): string {
   const value = new Date(`${date}T12:00:00Z`);
@@ -137,7 +138,7 @@ export function DriverWeek({ state }: { state: DriverShiftState }) {
                       {driverDate(shift.date)} · {shiftHours(shift).toFixed(2)} h
                     </strong>
                     <span>
-                      {shift.status}
+                      <StatusPill status={shift.status === "rejected" ? "shift-rejected" : shift.status} />
                       {pending(shift)
                         ? state.commands.some(
                             (command) => command.aggregateId === shift.id && command.state !== "waiting",
@@ -146,6 +147,9 @@ export function DriverWeek({ state }: { state: DriverShiftState }) {
                           : " · Waiting to sync"
                         : ""}
                     </span>
+                    {(shift.officeChanges?.length ?? 0) > 0 && (
+                      <span>Changed by the office. Open for differences.</span>
+                    )}
                     {shift.rejectReason && <span>Rejected: {shift.rejectReason} · Fix and resubmit</span>}
                   </button>
                 </li>
@@ -174,7 +178,8 @@ export function DriverWeek({ state }: { state: DriverShiftState }) {
         >
           <div className="driver-sheet">
             <p>
-              {detail.status} · {shiftHours(detail).toFixed(2)} hours · {zone}
+              <StatusPill status={detail.status === "rejected" ? "shift-rejected" : detail.status} /> ·{" "}
+              {shiftHours(detail).toFixed(2)} hours · {zone}
             </p>
             {detail.rejectReason && <p className="driver-error">{detail.rejectReason}. Fix and resubmit.</p>}
             {(detail.blockedAtStart || detail.deviceTimeGap) && (
@@ -203,6 +208,7 @@ export function DriverWeek({ state }: { state: DriverShiftState }) {
                   )}
                 </div>
               ))}
+            <OfficeChanges changes={detail.officeChanges ?? []} zone={zone} />
             {detail.activities.map((activity) => (
               <div className="driver-card" key={activity.id}>
                 <strong>{activity.type.replaceAll("_", " ")}</strong>

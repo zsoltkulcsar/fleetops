@@ -13,6 +13,7 @@ import { People } from "./people/People";
 import { Settings } from "./settings/Settings";
 import { Attention } from "./attention/Attention";
 import { Schedule } from "./schedule/Schedule";
+import { Timesheets } from "./timesheets/Timesheets";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -47,7 +48,7 @@ createRoot(document.getElementById("app")!).render(
             }
           >
             <Route path="/" element={<Attention />} />
-            <Route path="/timesheets" element={page("timesheets")} />
+            <Route path="/timesheets" element={<Timesheets />} />
             <Route path="/schedule" element={<Schedule />} />
             <Route path="/fleet" element={<Fleet />} />
             <Route path="/fleet/:id" element={<FleetRecordRoute />} />
