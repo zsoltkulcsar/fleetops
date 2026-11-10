@@ -1464,6 +1464,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/timesheets/drivers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    search?: string;
+                    id?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TimesheetDrivers"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/people/lookup": {
         parameters: {
             query?: never;
@@ -3528,6 +3566,15 @@ export interface components {
             /** Format: date-time */
             until: string;
             reason: string;
+        };
+        TimesheetDriver: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            personnelNumber: null | string;
+        };
+        TimesheetDrivers: {
+            items: components["schemas"]["TimesheetDriver"][];
         };
         /** @enum {unknown} */
         TrailerType: "curtainsider" | "box" | "reefer" | "flatbed" | "tanker" | null;

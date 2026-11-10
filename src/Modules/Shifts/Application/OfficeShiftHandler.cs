@@ -79,7 +79,6 @@ public sealed class OfficeShiftHandler(IOfficeShiftStore store, IShiftCommandSto
         var shift = await LoadAsync(command.SubjectId, command.ShiftId, command.Version, actor, context, cancellationToken);
         if (command.EndAt == default || command.EndAt > clock.GetUtcNow()) throw new TimesheetValidationException("endAt");
         ShiftRules.End(shift, command.EndAt, command.OdometerEndKm);
-        shift.Source = ShiftSource.Office;
         return await SaveAsync(shift, actor, command.Reason.Trim(), "shift_edited_by_office", context, cancellationToken);
     }
 

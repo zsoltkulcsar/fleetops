@@ -28,10 +28,10 @@ export function ShiftDrawer({
   const [error, setError] = useState("");
   const detail = query.data;
   const shift = detail?.shift;
-  const saved = () => {
-    onSaved();
+  const saved = async () => {
+    await query.refetch();
     setMode("view");
-    void query.refetch();
+    onSaved();
   };
   const decide = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -53,7 +53,7 @@ export function ShiftDrawer({
           endAt: instant(String(form.get("endAt")), zone),
           odometerEndKm: form.get("odometer") ? Number(form.get("odometer")) : null,
         });
-      saved();
+      await saved();
     } catch {
       setError(
         "The shift could not be updated. Check reason and end time. Close and reopen the shift if it changed, then try again.",

@@ -82,6 +82,11 @@ The Testcontainers path must keep working too, because CI uses it. Change both o
 
 Migrations come from `dotnet ef`, run by the orchestrator, never by hand. Never edit a migration that is already on `main`.
 
+## CI scripts
+
+Never change `web/scripts/*.mjs`, `scripts/*.mjs` or `.github/workflows/*` unless the contract names the file. If one
+gets in your way, say so in your result. `check-client.mjs` builds Debug on purpose: CI compares against that output.
+
 ## Git
 
 Never commit or push. The orchestrator does that.

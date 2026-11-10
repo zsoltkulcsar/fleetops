@@ -55,7 +55,7 @@ public sealed class TimesheetQueries(ITimesheetReadStore store, ICompanyTimeServ
             var minutes = shifts.Sum(shift => WorkMinutes(shift, now));
             var status = missing ? "missing" : shifts.Length > 0 ? Status(shifts) : absences.Length > 0 ? "absence" : "empty";
             var warning = shifts.Any(shift => shift.DeviceTimeGap || shift.BlockedAtStart is not null || driver.FlaggedShifts.Contains(shift.Id));
-            var label = status switch { "missing" => "Missing", "approved" => "Approved", "awaiting" => "Awaiting approval", "rejected" => "Rejected", "draft" => "Draft", "absence" => "Absence", _ => "No shift" };
+            var label = status switch { "missing" => "Missing", "approved" => "Approved", "awaiting" => "Awaiting approval", "rejected" => "Rejected", "running" => "Running", "draft" => "Draft", "absence" => "Absence", _ => "No shift" };
             return new WeekCell(date, minutes, status, label, missing, warning,
                 shifts.Select(shift => new GridShift(shift.Id, shift.Version, shift.Status, shift.DeviceTimeGap || shift.BlockedAtStart is not null || driver.FlaggedShifts.Contains(shift.Id))).ToArray(), absences);
         }).ToArray();
@@ -67,6 +67,7 @@ public sealed class TimesheetQueries(ITimesheetReadStore store, ICompanyTimeServ
     private static string Status(IEnumerable<Shift> shifts)
     {
         var statuses = shifts.Select(shift => shift.Status).ToArray();
+        if (statuses.Contains(ShiftStatus.Running)) return "running";
         if (statuses.Contains(ShiftStatus.Rejected)) return "rejected";
         if (statuses.Contains(ShiftStatus.Submitted)) return "awaiting";
         return statuses.All(status => status is ShiftStatus.Approved or ShiftStatus.Exported) ? "approved" : "draft";

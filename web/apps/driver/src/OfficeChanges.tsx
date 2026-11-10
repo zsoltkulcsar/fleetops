@@ -59,7 +59,8 @@ function historyLabel(entity: string, field: string) {
     kind: "Night kind",
     status: "Status",
   };
-  return labels[field] ?? "Shift";
+  const key = field.charAt(0).toLowerCase() + field.slice(1);
+  return labels[key] ?? "Shift";
 }
 function formatHistory(value: string | null, zone: string) {
   if (!value) return "None";

@@ -164,6 +164,8 @@ builder.Services.AddScoped<ICommandHandler<SightCheckDocumentCommand, DocumentDe
 builder.Services.AddScoped<IQueryHandler<ListDocumentsQuery, DocumentListResult>, DocumentListQueryHandler>();
 builder.Services.AddScoped<IQueryHandler<GetDocumentQuery, DocumentDetail>, DocumentDetailQueryHandler>();
 builder.Services.AddScoped<IQueryHandler<LookupPeopleQuery, PeopleLookupResult>, PeopleLookupQueryHandler>();
+builder.Services.AddScoped<ITimesheetDriverStore, EfTimesheetDriverStore>();
+builder.Services.AddScoped<IQueryHandler<GetTimesheetDriversQuery, TimesheetDrivers>, TimesheetDriversQueryHandler>();
 builder.Services.AddScoped<IQueryHandler<GetDocumentCountsQuery, DocumentCounts>, DocumentCountsQueryHandler>();
 builder.Services.AddScoped<IQueryHandler<ListMissingDocumentsQuery, DocumentMissingResult>, MissingDocumentQueryHandler>();
 builder.Services.AddScoped<IQueryHandler<SearchDocumentsQuery, DocumentSearchResult>, SearchDocumentsQueryHandler>();
@@ -294,6 +296,11 @@ app.MapPost("/api/v1/documents/{id:guid}/verify", async (Guid id, DocumentVerify
 app.MapPost("/api/v1/documents/{id:guid}/reject", async (Guid id, DocumentRejectRequest request, QueryDispatcher queries, CommandDispatcher dispatcher, CancellationToken cancellationToken) => { var detail = await queries.DispatchAsync<GetDocumentQuery, DocumentDetail>(new(id), cancellationToken); return detail.OwnerType == DocumentOwnerType.Employee ? Results.Ok(await dispatcher.DispatchAsync<RejectEmployeeDocumentCommand, DocumentDetail>(new(id, request.Version, request.Reason), cancellationToken)) : Results.Ok(await dispatcher.DispatchAsync<RejectVehicleDocumentCommand, DocumentDetail>(new(id, request.Version, request.Reason), cancellationToken)); }).Produces<DocumentDetail>();
 app.MapPost("/api/v1/documents/{id:guid}/delete", async (Guid id, DocumentDeleteRequest request, CommandDispatcher dispatcher, CancellationToken cancellationToken) => Results.Ok(await dispatcher.DispatchAsync<DeleteDocumentCommand, DocumentDetail>(new(id, request.Version, request.Reason), cancellationToken))).Produces<DocumentDetail>();
 app.MapPost("/api/v1/documents/{id:guid}/sight-check", async (Guid id, DocumentSightCheckRequest request, CommandDispatcher dispatcher, CancellationToken cancellationToken) => Results.Ok(await dispatcher.DispatchAsync<SightCheckDocumentCommand, DocumentDetail>(new(id, request.Version, request.CheckedAt), cancellationToken))).Produces<DocumentDetail>();
+app.MapGet("/api/v1/timesheets/drivers", async (string? search, Guid? id, QueryDispatcher dispatcher, HttpContext context, CancellationToken cancellationToken) =>
+{
+    context.Response.Headers.CacheControl = "no-store";
+    return Results.Ok(await dispatcher.DispatchAsync<GetTimesheetDriversQuery, TimesheetDrivers>(new(search, id), cancellationToken));
+}).Produces<TimesheetDrivers>();
 app.MapGet("/api/v1/people/lookup", async (string? search, Guid? id, QueryDispatcher dispatcher, HttpContext context, CancellationToken cancellationToken) => { context.Response.Headers.CacheControl = "no-store"; return Results.Ok(await dispatcher.DispatchAsync<LookupPeopleQuery, PeopleLookupResult>(new(search, id), cancellationToken)); }).Produces<PeopleLookupResult>();
 app.MapGet("/api/v1/readiness/summary", async (QueryDispatcher dispatcher, CancellationToken cancellationToken) => Results.Ok(await dispatcher.DispatchAsync<GetReadinessSummaryQuery, ReadinessSummary>(new(), cancellationToken))).Produces<ReadinessSummary>();
 app.MapGet("/api/v1/readiness/drivers", async (string? cursor, int? limit, bool? blockedOnly, QueryDispatcher dispatcher, CancellationToken cancellationToken) => Results.Ok(await dispatcher.DispatchAsync<ListDriverReadinessQuery, DriverReadinessList>(new(cursor, limit is null ? 50 : Math.Clamp(limit.Value, 1, 100), blockedOnly == true), cancellationToken))).Produces<DriverReadinessList>();

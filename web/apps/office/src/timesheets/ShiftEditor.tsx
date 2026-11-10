@@ -16,7 +16,7 @@ export function ShiftEditor({
   employeeId: string;
   date: string;
   zone: string;
-  onSaved: () => void;
+  onSaved: () => void | Promise<void>;
 }) {
   const fieldId = useId();
   const shift = detail?.shift;
@@ -57,7 +57,7 @@ export function ShiftEditor({
     queryKey: ["timesheet-people", search, employeeId],
     queryFn: () =>
       apiClient
-        .GET("/api/v1/people/lookup", {
+        .GET("/api/v1/timesheets/drivers", {
           params: { query: { search, ...(employeeId ? { id: employeeId } : {}) } },
         })
         .then(checked),
@@ -118,7 +118,7 @@ export function ShiftEditor({
       if (shift)
         await timesheetsApi.edit(shift.id, { version: shift.version, reason: reason.trim(), input: body });
       else await timesheetsApi.add({ employeeId: employee, reason: reason.trim(), input: body });
-      onSaved();
+      await onSaved();
     } catch {
       setError(
         "Shift could not be saved. Check date, times, activities, vehicles and nights. The shift may have changed; close and reopen it before trying again.",
