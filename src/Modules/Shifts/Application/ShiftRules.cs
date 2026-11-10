@@ -118,11 +118,12 @@ public static class ShiftRules
         shift.Version++;
     }
 
-    public static void Submit(Shift shift)
+    public static void Submit(Shift shift, DateTimeOffset? submittedAt = null)
     {
         if (shift.Status is not (ShiftStatus.Draft or ShiftStatus.Rejected)) throw new ShiftRuleException("shift_not_ready_to_submit");
         if (shift.EndAt is null || shift.Activities.Any(activity => activity.EndAt is null)) throw new ShiftRuleException("shift_not_ended");
         shift.Status = ShiftStatus.Submitted;
+        shift.SubmittedAt = submittedAt ?? DateTimeOffset.UtcNow;
         shift.RejectReason = null;
         shift.Version++;
     }

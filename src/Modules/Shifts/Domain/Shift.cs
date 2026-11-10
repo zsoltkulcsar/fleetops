@@ -21,6 +21,10 @@ public sealed class Shift
     [AuditField(AuditFieldClasses.Plain)] public ShiftSource Source { get; set; } = ShiftSource.App;
     [AuditField(AuditFieldClasses.Plain)] public ShiftStatus Status { get; set; } = ShiftStatus.Running;
     [AuditField(AuditFieldClasses.Personal)] public string? RejectReason { get; set; }
+    [AuditField(AuditFieldClasses.Plain)] public DateTimeOffset? SubmittedAt { get; set; }
+    [AuditField(AuditFieldClasses.Personal)] public string? ApprovalNote { get; set; }
+    [AuditField(AuditFieldClasses.Plain)] public Guid? ApprovedBy { get; set; }
+    [AuditField(AuditFieldClasses.Plain)] public DateTimeOffset? ApprovedAt { get; set; }
     [AuditField(AuditFieldClasses.Plain)] public DateTimeOffset DeviceTime { get; set; }
     [AuditField(AuditFieldClasses.Plain)] public DateTimeOffset ServerReceivedAt { get; set; }
     [AuditField(AuditFieldClasses.Plain)] public bool DeviceTimeGap { get; set; }

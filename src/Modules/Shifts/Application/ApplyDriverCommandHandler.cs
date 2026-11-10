@@ -91,7 +91,7 @@ public sealed class ApplyDriverCommandHandler(IShiftCommandStore store, IShiftSt
         return result;
     }
 
-    private static void ApplyChange(Shift shift, DriverCommand command)
+    private void ApplyChange(Shift shift, DriverCommand command)
     {
         switch (command.Type)
         {
@@ -119,7 +119,7 @@ public sealed class ApplyDriverCommandHandler(IShiftCommandStore store, IShiftSt
                 if (edit.StartAt > command.DeviceTime || edit.EndAt > command.DeviceTime) throw new ShiftRuleException("activity_after_device_time");
                 ShiftRules.EditActivity(shift, edit.ActivityId, edit.Type, edit.StartAt, edit.EndAt);
                 break;
-            case "shift.submit": ShiftRules.Submit(shift); break;
+            case "shift.submit": ShiftRules.Submit(shift, clock.GetUtcNow()); break;
             case "sync.test": break;
             default: throw new ShiftRuleException("unsupported_command_type");
         }

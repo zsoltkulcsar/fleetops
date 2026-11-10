@@ -15,8 +15,15 @@ public sealed record ApplyDriverCommand(Guid? SubjectId, DriverCommand Command) 
 [VisibleTo(RoleCode.Driver)]
 public sealed record ShiftView(Guid Id, DateOnly Date, DateTimeOffset StartAt, DateTimeOffset? EndAt, Guid? TruckId, Guid? TrailerId,
     ShiftStatus Status, int Version, string? RejectReason, string? BlockedAtStart, bool DeviceTimeGap,
-    IReadOnlyList<ActivityView> Activities, IReadOnlyList<OvernightView> Overnights);
+    IReadOnlyList<ActivityView> Activities, IReadOnlyList<OvernightView> Overnights)
+{
+    public IReadOnlyList<ShiftHistory> OfficeChanges { get; init; } = [];
+    public DateTimeOffset? SubmittedAt { get; init; }
+    public ShiftSource Source { get; init; }
+}
+[VisibleTo(RoleCode.Driver, RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner)]
 public sealed record ActivityView(Guid Id, ActivityType Type, DateTimeOffset StartAt, DateTimeOffset? EndAt);
+[VisibleTo(RoleCode.Driver, RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner)]
 public sealed record OvernightView(Guid Id, DateOnly Night, string CountryCode, OvernightKind Kind);
 
 [VisibleTo(RoleCode.Driver)]
@@ -33,7 +40,8 @@ public static class ShiftViews
     public static ShiftView From(Shift shift) => new(shift.Id, shift.Date, shift.StartAt, shift.EndAt, shift.TruckId, shift.TrailerId,
         shift.Status, shift.Version, shift.RejectReason, shift.BlockedAtStart, shift.DeviceTimeGap,
         shift.Activities.OrderBy(activity => activity.StartAt).ThenBy(activity => activity.RecordedAt).Select(activity => new ActivityView(activity.Id, activity.Type, activity.StartAt, activity.EndAt)).ToArray(),
-        shift.Overnights.OrderBy(overnight => overnight.Night).Select(overnight => new OvernightView(overnight.Id, overnight.Night, overnight.CountryCode, overnight.Kind)).ToArray());
+        shift.Overnights.OrderBy(overnight => overnight.Night).Select(overnight => new OvernightView(overnight.Id, overnight.Night, overnight.CountryCode, overnight.Kind)).ToArray())
+        { SubmittedAt = shift.SubmittedAt, Source = shift.Source };
 }
 
 public interface IShiftCommandStore

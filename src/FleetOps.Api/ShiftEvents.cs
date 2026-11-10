@@ -13,6 +13,7 @@ public sealed class ShiftEvents(IChangedSubjects changed, INotifications notific
     public async Task ChangedAsync(Guid employeeId, Guid shiftId, string? eventCode, CommandContext context, CancellationToken cancellationToken)
     {
         changed.Add("employee", employeeId);
+        changed.Add("shift", shiftId);
         if (eventCode is not ("sync_conflict" or "cycle_finished")) return;
         var options = new DbContextOptionsBuilder<FleetOpsDbContext>();
         MigrationDbContextOptions.ConfigureRuntime(options, context.DbConnection);

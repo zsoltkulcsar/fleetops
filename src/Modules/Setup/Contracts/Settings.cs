@@ -20,6 +20,8 @@ public static class SettingCatalog
         ["driver.max_offline_days"] = 45,
         ["driver.session_days"] = 180,
         ["company.device_time_gap_minutes"] = 5,
+        ["company.payroll_cutoff_day"] = 5,
+        ["company.max_shift_hours"] = 0,
         ["timesheets.submit_reminder_hour"] = 7,
         ["alerts.a03.queue_days"] = 2,
         ["alerts.a03.blocked_hours"] = 1,

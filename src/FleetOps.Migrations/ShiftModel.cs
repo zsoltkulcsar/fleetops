@@ -39,6 +39,10 @@ public sealed partial class FleetOpsDbContext
             entity.Property(shift => shift.Source).HasColumnName("source").HasConversion<string>();
             entity.Property(shift => shift.Status).HasColumnName("status").HasConversion<string>();
             entity.Property(shift => shift.RejectReason).HasColumnName("reject_reason");
+            entity.Property(shift => shift.SubmittedAt).HasColumnName("submitted_at");
+            entity.Property(shift => shift.ApprovalNote).HasColumnName("approval_note").HasMaxLength(500);
+            entity.Property(shift => shift.ApprovedBy).HasColumnName("approved_by");
+            entity.Property(shift => shift.ApprovedAt).HasColumnName("approved_at");
             entity.Property(shift => shift.DeviceTime).HasColumnName("device_time");
             entity.Property(shift => shift.ServerReceivedAt).HasColumnName("server_received_at");
             entity.Property(shift => shift.DeviceTimeGap).HasColumnName("device_time_gap");

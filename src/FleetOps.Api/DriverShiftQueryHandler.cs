@@ -50,7 +50,13 @@ public sealed class DriverShiftQueryHandler(FleetOpsDbContext db, ICompanyTimeSe
         var assignments = await db.Assignments.AsNoTracking().Where(assignment => assignment.EmployeeId == actor.EmployeeId && assignment.From <= today.AddDays(84) &&
             (assignment.To == null || assignment.To >= from)).OrderByDescending(assignment => assignment.From).ThenByDescending(assignment => assignment.Id)
             .Select(assignment => new DriverTruckAssignment(assignment.VehicleId, assignment.From, assignment.To)).ToListAsync(cancellationToken);
-        return new(now, configuration["Company:Timezone"] ?? "Europe/Berlin", shifts.Select(ShiftViews.From).ToArray(), applied, choices,
+        var shiftViews = new List<ShiftView>();
+        foreach (var shift in shifts)
+        {
+            var history = await EfTimesheetReadStore.HistoryAsync(db, shift, companyTime, cancellationToken, officeOnly: true);
+            shiftViews.Add(ShiftViews.From(shift) with { OfficeChanges = history });
+        }
+        return new(now, configuration["Company:Timezone"] ?? "Europe/Berlin", shiftViews, applied, choices,
             await EfShiftStartFacts.ResolveTruckForShift(db, actor.EmployeeId, today, cancellationToken), conflictViews, assignments);
     }
 }

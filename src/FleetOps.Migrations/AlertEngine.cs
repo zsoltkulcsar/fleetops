@@ -50,7 +50,7 @@ public sealed class AlertEngine(IEnumerable<IAlertEvaluator> evaluators, ISettin
         command.Parameters.AddWithValue(subjectId);
         command.Parameters.AddWithValue(scopes);
         await command.ExecuteNonQueryAsync(cancellationToken);
-        var assignedRole = evaluator.RuleId is "A-05" or "A-09" or "A-15" or "A-20" or "A-21" ? "dispatcher" : "hr";
+        var assignedRole = evaluator.RuleId is "A-05" or "A-09" or "A-10" or "A-15" or "A-16" or "A-20" or "A-21" ? "dispatcher" : "hr";
         if (evaluator.RuleId == "A-03" && evaluator.SubjectType == "document")
         {
             await using var ownerTypeCommand = new NpgsqlCommand("select owner_type from fleetops.documents where id = $1", (NpgsqlConnection)context.DbConnection, (NpgsqlTransaction)context.DbTransaction);
