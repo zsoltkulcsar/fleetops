@@ -59,6 +59,7 @@ test("keyboard shortcuts move, open, approve and can be turned off", async ({ pa
   });
   await timesheetRoutes(page, grid);
   await page.goto("/timesheets");
+  await expect(page.getByRole("table", { name: "Driver week grid" })).toBeVisible();
   await page.keyboard.press("/");
   await expect(page.getByLabel("Search driver")).toBeFocused();
   await page.getByRole("table").focus();

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@fleetops/api-client";
 import { useOnline } from "../shell/Shell";
@@ -18,6 +18,7 @@ export function ShiftEditor({
   zone: string;
   onSaved: () => void;
 }) {
+  const fieldId = useId();
   const shift = detail?.shift;
   const running = shift?.status === "running";
   const online = useOnline();
@@ -137,13 +138,23 @@ export function ShiftEditor({
       </p>
       {!detail && (
         <>
-          <label>
-            Find driver
-            <input value={search} maxLength={200} onChange={(event) => setSearch(event.target.value)} />
-          </label>
-          <label>
-            Driver
-            <select required value={employee} onChange={(event) => setEmployee(event.target.value)}>
+          <div className="ts-field">
+            <label htmlFor={`${fieldId}-driver-search`}>Find driver</label>
+            <input
+              id={`${fieldId}-driver-search`}
+              value={search}
+              maxLength={200}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </div>
+          <div className="ts-field">
+            <label htmlFor={`${fieldId}-driver`}>Driver</label>
+            <select
+              id={`${fieldId}-driver`}
+              required
+              value={employee}
+              onChange={(event) => setEmployee(event.target.value)}
+            >
               <option value="">Choose driver</option>
               {people.data?.items.map((person) => (
                 <option value={person.id} key={person.id}>
@@ -151,7 +162,7 @@ export function ShiftEditor({
                 </option>
               ))}
             </select>
-          </label>
+          </div>
           {people.isError && (
             <button type="button" className="ui-button" onClick={() => void people.refetch()}>
               Try again loading drivers
@@ -159,18 +170,22 @@ export function ShiftEditor({
           )}
         </>
       )}
-      <label>
-        Date
+      <div className="ts-field">
+        <label htmlFor={`${fieldId}-date`}>Date</label>
         <input
+          id={`${fieldId}-date`}
           type="date"
           required
           value={input.date}
           onChange={(event) => setInput({ ...input, date: event.target.value })}
         />
-      </label>
-      <label>
-        Start {"\u00B7"} {zone}
+      </div>
+      <div className="ts-field">
+        <label htmlFor={`${fieldId}-start`}>
+          Start {"\u00B7"} {zone}
+        </label>
         <input
+          id={`${fieldId}-start`}
           type="datetime-local"
           required
           defaultValue={input.startAt ? wallTime(input.startAt, zone) : ""}
@@ -178,11 +193,14 @@ export function ShiftEditor({
             setTime(event.currentTarget, (value) => setInput({ ...input, startAt: value }))
           }
         />
-      </label>
+      </div>
       {!running && (
-        <label>
-          End {"\u00B7"} {zone}
+        <div className="ts-field">
+          <label htmlFor={`${fieldId}-end`}>
+            End {"\u00B7"} {zone}
+          </label>
           <input
+            id={`${fieldId}-end`}
             type="datetime-local"
             required
             defaultValue={input.endAt ? wallTime(input.endAt, zone) : ""}
@@ -190,20 +208,22 @@ export function ShiftEditor({
               setTime(event.currentTarget, (value) => setInput({ ...input, endAt: value }))
             }
           />
-        </label>
+        </div>
       )}
-      <label>
-        Find vehicle by plate
+      <div className="ts-field">
+        <label htmlFor={`${fieldId}-vehicle-search`}>Find vehicle by plate</label>
         <input
+          id={`${fieldId}-vehicle-search`}
           value={vehicleSearch}
           maxLength={200}
           onChange={(event) => setVehicleSearch(event.target.value)}
         />
-      </label>
+      </div>
       {(["truckId", "trailerId"] as const).map((field) => (
-        <label key={field}>
-          {field === "truckId" ? "Truck" : "Trailer"}
+        <div className="ts-field" key={field}>
+          <label htmlFor={`${fieldId}-vehicle-${field}`}>{field === "truckId" ? "Truck" : "Trailer"}</label>
           <select
+            id={`${fieldId}-vehicle-${field}`}
             value={input[field] ?? ""}
             onChange={(event) => setInput({ ...input, [field]: event.target.value || null })}
           >
@@ -221,7 +241,7 @@ export function ShiftEditor({
                 </option>
               ))}
           </select>
-        </label>
+        </div>
       ))}
       {vehicles.isError && (
         <button type="button" className="ui-button" onClick={() => void vehicles.refetch()}>
@@ -229,9 +249,12 @@ export function ShiftEditor({
         </button>
       )}
       {(["odometerStartKm", "odometerEndKm"] as const).map((field) => (
-        <label key={field}>
-          {field === "odometerStartKm" ? "Start odometer (km)" : "End odometer (km)"}
+        <div className="ts-field" key={field}>
+          <label htmlFor={`${fieldId}-odometer-${field}`}>
+            {field === "odometerStartKm" ? "Start odometer (km)" : "End odometer (km)"}
+          </label>
           <input
+            id={`${fieldId}-odometer-${field}`}
             type="number"
             min={0}
             step={1}
@@ -240,16 +263,17 @@ export function ShiftEditor({
               setInput({ ...input, [field]: event.target.value === "" ? null : Number(event.target.value) })
             }
           />
-        </label>
+        </div>
       ))}
       <h3>Activities</h3>
       {!input.activities?.length && <p>A single Other work block covering the shift will be created.</p>}
       {input.activities?.map((activity, index) => (
         <fieldset key={activity.id}>
           <legend>Activity {index + 1}</legend>
-          <label>
-            Type
+          <div className="ts-field">
+            <label htmlFor={`${fieldId}-activity-type-${activity.id}`}>Type</label>
             <select
+              id={`${fieldId}-activity-type-${activity.id}`}
               value={activity.type}
               onChange={(event) =>
                 setInput({
@@ -268,11 +292,14 @@ export function ShiftEditor({
                 </option>
               ))}
             </select>
-          </label>
+          </div>
           {(["startAt", "endAt"] as const).map((field) => (
-            <label key={field}>
-              {field === "startAt" ? "Start" : "End"} {"\u00B7"} {zone}
+            <div className="ts-field" key={field}>
+              <label htmlFor={`${fieldId}-activity-time-${activity.id}-${field}`}>
+                {field === "startAt" ? "Start" : "End"} {"\u00B7"} {zone}
+              </label>
               <input
+                id={`${fieldId}-activity-time-${activity.id}-${field}`}
                 type="datetime-local"
                 required={!(running && field === "endAt" && index === input.activities!.length - 1)}
                 defaultValue={activity[field] ? wallTime(activity[field]!, zone) : ""}
@@ -297,7 +324,7 @@ export function ShiftEditor({
                   );
                 }}
               />
-            </label>
+            </div>
           ))}
           <button
             type="button"
@@ -335,9 +362,10 @@ export function ShiftEditor({
       {input.overnights?.map((night) => (
         <fieldset key={night.id}>
           <legend>Night away</legend>
-          <label>
-            Night
+          <div className="ts-field">
+            <label htmlFor={`${fieldId}-night-date-${night.id}`}>Night</label>
             <input
+              id={`${fieldId}-night-date-${night.id}`}
               type="date"
               required
               value={night.night}
@@ -350,10 +378,11 @@ export function ShiftEditor({
                 })
               }
             />
-          </label>
-          <label>
-            Country code
+          </div>
+          <div className="ts-field">
+            <label htmlFor={`${fieldId}-night-country-${night.id}`}>Country code</label>
             <input
+              id={`${fieldId}-night-country-${night.id}`}
               required
               pattern="[A-Z]{2}"
               maxLength={2}
@@ -367,10 +396,11 @@ export function ShiftEditor({
                 })
               }
             />
-          </label>
-          <label>
-            Kind
+          </div>
+          <div className="ts-field">
+            <label htmlFor={`${fieldId}-night-kind-${night.id}`}>Kind</label>
             <select
+              id={`${fieldId}-night-kind-${night.id}`}
               value={night.kind}
               onChange={(event) =>
                 setInput({
@@ -386,7 +416,7 @@ export function ShiftEditor({
               <option value="cab">Cab</option>
               <option value="hotel">Hotel</option>
             </select>
-          </label>
+          </div>
           <button
             className="ui-button"
             type="button"
@@ -413,15 +443,16 @@ export function ShiftEditor({
       >
         Add night
       </button>
-      <label>
-        Reason
+      <div className="ts-field">
+        <label htmlFor={`${fieldId}-reason`}>Reason</label>
         <textarea
+          id={`${fieldId}-reason`}
           required
           maxLength={500}
           value={reason}
           onChange={(event) => setReason(event.target.value)}
         />
-      </label>
+      </div>
       {error && <p role="alert">{error}</p>}
       <button className="ui-button primary" disabled={busy || !online || !reason.trim()}>
         {busy ? "Saving\u2026" : "Save shift"}

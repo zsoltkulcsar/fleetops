@@ -1,10 +1,17 @@
-import { useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
 import { Drawer, StatusPill } from "@fleetops/ui";
 import type { DriverShiftState } from "./useShifts";
 import { companyDate, shiftHours, type ShiftView, type ActivityType } from "./storage/shiftProjection";
 import { companyInstant, displayTime, wallTime } from "./shiftTime";
 import { driverDate } from "./DriverSchedule";
 import { OfficeChanges } from "./OfficeChanges";
+
+const activityLabels: Record<ActivityType, string> = {
+  driving: "Driving",
+  other_work: "Other work",
+  availability: "Availability",
+  break: "Break",
+};
 
 function weekStart(date: string): string {
   const value = new Date(`${date}T12:00:00Z`);
@@ -18,6 +25,7 @@ function addDays(date: string, days: number): string {
 }
 
 export function DriverWeek({ state }: { state: DriverShiftState }) {
+  const fieldId = useId();
   const zone = state.snapshot?.companyTimeZone ?? "Europe/Berlin";
   const [from, setFrom] = useState(() => weekStart(companyDate(new Date().toISOString(), zone)));
   const [opened, setOpened] = useState<string>();
@@ -211,7 +219,7 @@ export function DriverWeek({ state }: { state: DriverShiftState }) {
             <OfficeChanges changes={detail.officeChanges ?? []} zone={zone} />
             {detail.activities.map((activity) => (
               <div className="driver-card" key={activity.id}>
-                <strong>{activity.type.replaceAll("_", " ")}</strong>
+                <strong>{activityLabels[activity.type]}</strong>
                 <p>
                   {displayTime(activity.startAt, zone)} –{" "}
                   {activity.endAt ? displayTime(activity.endAt, zone) : "Running"}
@@ -237,35 +245,37 @@ export function DriverWeek({ state }: { state: DriverShiftState }) {
             {editing && (
               <form onSubmit={saveEdit} className="driver-sheet">
                 <h3>Edit activity</h3>
-                <label>
-                  Activity
-                  <select name="type" defaultValue={editing.type}>
+                <div className="driver-edit-field">
+                  <label htmlFor={`${fieldId}-activity`}>Activity</label>
+                  <select id={`${fieldId}-activity`} name="type" defaultValue={editing.type}>
                     {(["driving", "other_work", "availability", "break"] as const).map((type) => (
                       <option key={type} value={type} disabled={type === "driving" && !detail.truckId}>
-                        {type.replaceAll("_", " ")}
+                        {activityLabels[type]}
                       </option>
                     ))}
                   </select>
-                </label>
-                <label>
-                  Start · {zone}
+                </div>
+                <div className="driver-edit-field">
+                  <label htmlFor={`${fieldId}-start`}>Start · {zone}</label>
                   <input
+                    id={`${fieldId}-start`}
                     type="datetime-local"
                     name="startAt"
                     defaultValue={wallTime(editing.startAt, zone)}
                     required
                   />
-                </label>
+                </div>
                 {editing.endAt && (
-                  <label>
-                    End · {zone}
+                  <div className="driver-edit-field">
+                    <label htmlFor={`${fieldId}-end`}>End · {zone}</label>
                     <input
+                      id={`${fieldId}-end`}
                       type="datetime-local"
                       name="endAt"
                       defaultValue={wallTime(editing.endAt, zone)}
                       required
                     />
-                  </label>
+                  </div>
                 )}
                 {error && (
                   <p className="driver-error" role="alert">

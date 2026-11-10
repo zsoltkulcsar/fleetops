@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Banner, Drawer, StatusPill } from "@fleetops/ui";
 import { useOnline } from "../shell/Shell";
@@ -19,6 +19,7 @@ export function ShiftDrawer({
   onSaved: () => void;
   onApprove: (shift: Schema["GridShift"]) => void;
 }) {
+  const fieldId = useId();
   const online = useOnline();
   const session = useSession();
   const query = useQuery({ queryKey: ["timesheets", "shift", id], queryFn: () => timesheetsApi.detail(id) });
@@ -142,20 +143,28 @@ export function ShiftDrawer({
                 <h3>{mode === "reject" ? "Reject shift" : "End running shift"}</h3>
                 {mode === "end" && (
                   <>
-                    <label>
-                      End {"\u00B7"} {zone}
-                      <input type="datetime-local" name="endAt" required />
-                    </label>
-                    <label>
-                      End odometer (km)
-                      <input type="number" name="odometer" min={shift.odometerStartKm ?? 0} step={1} />
-                    </label>
+                    <div className="ts-field">
+                      <label htmlFor={`${fieldId}-end`}>
+                        End {"\u00B7"} {zone}
+                      </label>
+                      <input id={`${fieldId}-end`} type="datetime-local" name="endAt" required />
+                    </div>
+                    <div className="ts-field">
+                      <label htmlFor={`${fieldId}-odometer`}>End odometer (km)</label>
+                      <input
+                        id={`${fieldId}-odometer`}
+                        type="number"
+                        name="odometer"
+                        min={shift.odometerStartKm ?? 0}
+                        step={1}
+                      />
+                    </div>
                   </>
                 )}
-                <label>
-                  Reason
-                  <textarea name="reason" required maxLength={500} />
-                </label>
+                <div className="ts-field">
+                  <label htmlFor={`${fieldId}-reason`}>Reason</label>
+                  <textarea id={`${fieldId}-reason`} name="reason" required maxLength={500} />
+                </div>
                 {error && <p role="alert">{error}</p>}
                 <button className="ui-button primary" disabled={busy || !online}>
                   {busy

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useId, useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Banner, Drawer, Panel, Skeleton, StatusPill } from "@fleetops/ui";
 import { ChevronLeft, ChevronRight, Plus, TriangleAlert } from "lucide-react";
@@ -13,6 +13,7 @@ import { ShiftEditor } from "./ShiftEditor";
 import "./timesheets.css";
 
 export function Timesheets() {
+  const fieldId = useId();
   const [params, setParams] = useSearchParams();
   const session = useSession();
   const online = useOnline();
@@ -306,9 +307,10 @@ export function Timesheets() {
               </button>
             ))}
           </div>
-          <label>
-            Search driver
+          <div className="ts-field">
+            <label htmlFor={`${fieldId}-search`}>Search driver</label>
             <input
+              id={`${fieldId}-search`}
               ref={searchInput}
               maxLength={200}
               value={search}
@@ -318,9 +320,10 @@ export function Timesheets() {
                 reset();
               }}
             />
-          </label>
-          <label>
+          </div>
+          <div className="ts-field">
             <input
+              id={`${fieldId}-shortcuts`}
               type="checkbox"
               checked={shortcuts}
               onChange={(event) => {
@@ -331,9 +334,9 @@ export function Timesheets() {
                   /* Browser storage unavailable. */
                 }
               }}
-            />{" "}
-            Keyboard shortcuts
-          </label>
+            />
+            <label htmlFor={`${fieldId}-shortcuts`}> Keyboard shortcuts</label>
+          </div>
         </div>
         <p className="ui-muted ts-help">
           {zone
@@ -367,9 +370,12 @@ export function Timesheets() {
               <thead>
                 <tr>
                   <th>
+                    <label className="ts-visually-hidden" htmlFor={`${fieldId}-select-page`}>
+                      Select this page
+                    </label>
                     <input
+                      id={`${fieldId}-select-page`}
                       type="checkbox"
-                      aria-label="Select this page"
                       checked={rows.length > 0 && rows.every((row) => selected.includes(row.employeeId))}
                       onChange={(event) =>
                         setSelected(event.target.checked ? rows.map((row) => row.employeeId) : [])
@@ -392,9 +398,13 @@ export function Timesheets() {
                 {rows.map((row, index) => (
                   <tr key={row.employeeId} data-focused={index === focus}>
                     <td>
+                      <label
+                        className="ts-visually-hidden"
+                        htmlFor={`${fieldId}-select-${row.employeeId}`}
+                      >{`Select ${row.driver}`}</label>
                       <input
+                        id={`${fieldId}-select-${row.employeeId}`}
                         type="checkbox"
-                        aria-label={`Select ${row.driver}`}
                         checked={selected.includes(row.employeeId)}
                         onChange={(event) =>
                           setSelected(
@@ -625,15 +635,18 @@ export function Timesheets() {
             {approval
               .filter((shift) => shift.flagged)
               .map((shift) => (
-                <label key={shift.id}>
-                  Warning acknowledgement for shift {shift.id}
+                <div className="ts-field" key={shift.id}>
+                  <label htmlFor={`${fieldId}-warning-${shift.id}`}>
+                    Warning acknowledgement for shift {shift.id}
+                  </label>
                   <textarea
+                    id={`${fieldId}-warning-${shift.id}`}
                     required
                     maxLength={500}
                     value={notes[shift.id] ?? ""}
                     onChange={(event) => setNotes({ ...notes, [shift.id]: event.target.value })}
                   />
-                </label>
+                </div>
               ))}
             {error && <p role="alert">{error}</p>}
             <button

@@ -79,7 +79,7 @@ test("a rejected shift shows the reason with fix and resubmit", async ({ page, c
   await drawer.getByRole("button", { name: "Edit activity", exact: true }).click();
   await drawer.getByLabel("Activity", { exact: true }).selectOption("availability");
   await drawer.getByRole("button", { name: "Save activity", exact: true }).click();
-  await expect(drawer.getByText("availability", { exact: true })).toBeVisible();
+  await expect(drawer.getByText("Availability", { exact: true })).toBeVisible();
   await drawer.getByRole("button", { name: "Resubmit shift", exact: true }).click();
   await expect(drawer).toContainText("Awaiting approval");
   await expect(drawer.getByRole("button", { name: "Resubmit shift", exact: true })).toHaveCount(0);
