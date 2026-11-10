@@ -19,7 +19,7 @@ test("pin works with no signal", async ({ page, context }) => {
   await context.setOffline(true);
   await enterPin(page);
   await expect(page.getByRole("heading", { name: "Shift", exact: true })).toBeVisible();
-  await expect(page.getByRole("status")).toHaveText("Offline");
+  await expect(page.getByRole("status").filter({ hasText: /^Offline$/ })).toBeVisible();
 });
 
 test("wrong pin shows tries left", async ({ page }) => {
