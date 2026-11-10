@@ -6,7 +6,8 @@ namespace FleetOps.Api;
 
 public sealed record BulkApprovalItem(Guid ShiftId, int Version, string? Note);
 public sealed record BulkApprovalRequest(IReadOnlyList<BulkApprovalItem> Items);
-public sealed record BulkApprovalResult(Guid ShiftId, string Status, string? Code);
+public sealed record BulkApprovalItemResult(Guid ShiftId, string Status, string? Code);
+public sealed record BulkApprovalResult(IReadOnlyList<BulkApprovalItemResult> Results, int Approved, int Failed);
 public sealed record RejectShiftRequest(int Version, string Reason);
 public sealed record EditShiftRequest(int Version, string Reason, OfficeShiftInput Input);
 public sealed record AddShiftRequest(Guid EmployeeId, string Reason, OfficeShiftInput Input);
@@ -21,12 +22,12 @@ public static class TimesheetEndpoints
         {
             http.Response.Headers.CacheControl = "no-store";
             return Run(async () => Results.Ok(await queries.DispatchAsync<GetWeekGridQuery, WeekGrid>(new(week, filter ?? "all", search, page ?? 1, pageSize ?? 50), cancellationToken)));
-        });
+        }).Produces<WeekGrid>().Produces(400).Produces(401).Produces(403).Produces(404).Produces(409);
         routes.MapGet("/shifts/{shiftId:guid}", (Guid shiftId, QueryDispatcher queries, HttpContext http, CancellationToken cancellationToken) =>
         {
             http.Response.Headers.CacheControl = "no-store";
             return Run(async () => Results.Ok(await queries.DispatchAsync<GetShiftDetailQuery, ShiftDetail>(new(shiftId), cancellationToken)));
-        });
+        }).Produces<ShiftDetail>().Produces(400).Produces(401).Produces(403).Produces(404).Produces(409);
         routes.MapPost("/approve", async (BulkApprovalRequest request, QueryDispatcher queries, CommandDispatcher commands, IAccessContextAccessor access, CancellationToken cancellationToken) =>
         {
             if (access.Current is null) throw new AuthorizationException(RefusalCodes.NotSignedIn, "shifts.approve_reject", []);
@@ -34,7 +35,7 @@ public static class TimesheetEndpoints
                 throw new AuthorizationException(RefusalCodes.PermissionDenied, "shifts.approve_reject", [RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner]);
             if (request.Items is null || request.Items.Count is < 1 or > 1000 || request.Items.Any(item => item is null || item.ShiftId == Guid.Empty || item.Version < 1))
                 return Results.BadRequest(new { code = "validation_error", fields = new[] { "items" } });
-            var results = new List<BulkApprovalResult>();
+            var results = new List<BulkApprovalItemResult>();
             foreach (var item in request.Items)
             {
                 try
@@ -53,25 +54,25 @@ public static class TimesheetEndpoints
                 catch (System.Data.Common.DbException) { results.Add(new(item.ShiftId, "failed", "save_failed")); }
                 catch (Microsoft.EntityFrameworkCore.DbUpdateException) { results.Add(new(item.ShiftId, "failed", "save_failed")); }
             }
-            return Results.Ok(new { results, approved = results.Count(result => result.Status == "approved"), failed = results.Count(result => result.Status == "failed") });
-        });
+            return Results.Ok(new BulkApprovalResult(results, results.Count(result => result.Status == "approved"), results.Count(result => result.Status == "failed")));
+        }).Produces<BulkApprovalResult>().Produces(400).Produces(401).Produces(403);
         routes.MapPost("/shifts/{shiftId:guid}/reject", (Guid shiftId, RejectShiftRequest request, QueryDispatcher queries, CommandDispatcher commands, CancellationToken cancellationToken) => Run(async () =>
         {
             var detail = await queries.DispatchAsync<GetShiftDetailQuery, ShiftDetail>(new(shiftId), cancellationToken);
             return Results.Ok(await commands.DispatchAsync<RejectShiftCommand, OfficeShiftResult>(new(shiftId, detail.EmployeeId, request.Version, request.Reason), cancellationToken));
-        }));
+        })).Produces<OfficeShiftResult>().Produces(400).Produces(401).Produces(403).Produces(404).Produces(409);
         routes.MapPut("/shifts/{shiftId:guid}", (Guid shiftId, EditShiftRequest request, QueryDispatcher queries, CommandDispatcher commands, CancellationToken cancellationToken) => Run(async () =>
         {
             var detail = await queries.DispatchAsync<GetShiftDetailQuery, ShiftDetail>(new(shiftId), cancellationToken);
             return Results.Ok(await commands.DispatchAsync<EditOfficeShiftCommand, OfficeShiftResult>(new(shiftId, detail.EmployeeId, request.Version, request.Reason, request.Input), cancellationToken));
-        }));
+        })).Produces<OfficeShiftResult>().Produces(400).Produces(401).Produces(403).Produces(404).Produces(409);
         routes.MapPost("/shifts", (AddShiftRequest request, CommandDispatcher commands, CancellationToken cancellationToken) => Run(async () =>
-            Results.Ok(await commands.DispatchAsync<AddOfficeShiftCommand, OfficeShiftResult>(new(request.EmployeeId, request.Reason, request.Input), cancellationToken))));
+            Results.Ok(await commands.DispatchAsync<AddOfficeShiftCommand, OfficeShiftResult>(new(request.EmployeeId, request.Reason, request.Input), cancellationToken)))).Produces<OfficeShiftResult>().Produces(400).Produces(401).Produces(403).Produces(404).Produces(409);
         routes.MapPost("/shifts/{shiftId:guid}/end", (Guid shiftId, EndShiftRequest request, QueryDispatcher queries, CommandDispatcher commands, CancellationToken cancellationToken) => Run(async () =>
         {
             var detail = await queries.DispatchAsync<GetShiftDetailQuery, ShiftDetail>(new(shiftId), cancellationToken);
             return Results.Ok(await commands.DispatchAsync<EndOfficeShiftCommand, OfficeShiftResult>(new(shiftId, detail.EmployeeId, request.Version, request.Reason, request.EndAt, request.OdometerEndKm), cancellationToken));
-        }));
+        })).Produces<OfficeShiftResult>().Produces(400).Produces(401).Produces(403).Produces(404).Produces(409);
     }
 
     private static async Task<IResult> Run(Func<Task<IResult>> action)

@@ -2147,6 +2147,43 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
+                    content: {
+                        "application/json": components["schemas"]["WeekGrid"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content?: never;
                 };
             };
@@ -2182,6 +2219,43 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
+                    content: {
+                        "application/json": components["schemas"]["ShiftDetail"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content?: never;
                 };
             };
@@ -2203,6 +2277,43 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["OfficeShiftResult"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Conflict */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2241,6 +2352,29 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BulkApprovalResult"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Forbidden */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2283,6 +2417,43 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
+                    content: {
+                        "application/json": components["schemas"]["OfficeShiftResult"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content?: never;
                 };
             };
@@ -2317,6 +2488,43 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["OfficeShiftResult"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Conflict */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2356,6 +2564,43 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["OfficeShiftResult"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Conflict */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2440,8 +2685,21 @@ export interface components {
             version: number;
             note: null | string;
         };
+        BulkApprovalItemResult: {
+            /** Format: uuid */
+            shiftId: string;
+            status: string;
+            code: null | string;
+        };
         BulkApprovalRequest: {
             items: components["schemas"]["BulkApprovalItem"][];
+        };
+        BulkApprovalResult: {
+            results: components["schemas"]["BulkApprovalItemResult"][];
+            /** Format: int32 */
+            approved: number;
+            /** Format: int32 */
+            failed: number;
         };
         ConfirmFileInput: {
             /** Format: uuid */
@@ -2474,6 +2732,12 @@ export interface components {
             /** Format: date */
             lastTachoDownloadAt: null | string;
             reason: null | string;
+        };
+        CutoffBanner: {
+            /** Format: date */
+            date: string;
+            /** Format: int32 */
+            awaitingShifts: number;
         };
         CycleDetail: {
             /** Format: uuid */
@@ -2926,6 +3190,24 @@ export interface components {
         ForgotRequest: {
             email: string;
         };
+        GridCounts: {
+            /** Format: int32 */
+            all: number;
+            /** Format: int32 */
+            awaiting: number;
+            /** Format: int32 */
+            missing: number;
+            /** Format: int32 */
+            warnings: number;
+        };
+        GridShift: {
+            /** Format: uuid */
+            id: string;
+            /** Format: int32 */
+            version: number;
+            status: components["schemas"]["ShiftStatus"];
+            flagged: boolean;
+        };
         JobListItem: {
             name: string;
             /** Format: date-time */
@@ -2956,6 +3238,11 @@ export interface components {
             /** Format: date */
             to: string;
             reason: string;
+        };
+        NightCount: {
+            countryCode: string;
+            /** Format: int32 */
+            count: number;
         };
         NotificationItem: {
             /** Format: uuid */
@@ -2996,6 +3283,54 @@ export interface components {
             odometerEndKm: null | number;
             activities: null | components["schemas"]["ActivityView"][];
             overnights: null | components["schemas"]["OvernightView"][];
+        };
+        OfficeShiftResult: {
+            /** Format: uuid */
+            shiftId: string;
+            /** Format: int32 */
+            version: number;
+            status: components["schemas"]["ShiftStatus"];
+        };
+        OfficeShiftView: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date */
+            date: string;
+            /** Format: date-time */
+            startAt: string;
+            /** Format: date-time */
+            endAt: null | string;
+            /** Format: uuid */
+            truckId: null | string;
+            /** Format: uuid */
+            trailerId: null | string;
+            status: components["schemas"]["ShiftStatus"];
+            source: components["schemas"]["ShiftSource"];
+            /** Format: int32 */
+            version: number;
+            departureCheckOk: null | boolean;
+            /** Format: int32 */
+            odometerStartKm: null | number;
+            /** Format: int32 */
+            odometerEndKm: null | number;
+            /** Format: date-time */
+            submittedAt: null | string;
+            /** Format: uuid */
+            approvedBy: null | string;
+            /** Format: date-time */
+            approvedAt: null | string;
+            approvalNote: null | string;
+            rejectReason: null | string;
+            activities: components["schemas"]["ActivityView"][];
+            overnights: components["schemas"]["OvernightView"][];
+            /** Format: double */
+            drivingHours: number;
+            /** Format: double */
+            otherWorkHours: number;
+            /** Format: double */
+            breakHours: number;
+            /** Format: double */
+            availabilityHours: number;
         };
         /** @enum {unknown} */
         OvernightKind: "cab" | "hotel";
@@ -3094,6 +3429,29 @@ export interface components {
             version: number;
             manualOffRoad: boolean;
             reason: null | string;
+        };
+        ShiftConflictView: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            commandId: string;
+            /** Format: int32 */
+            baseVersion: number;
+            /** Format: int32 */
+            officeVersion: number;
+            driverPayload: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ShiftDetail: {
+            /** Format: uuid */
+            employeeId: string;
+            driver: string;
+            truckPlate: null | string;
+            shift: components["schemas"]["OfficeShiftView"];
+            flags: string[];
+            conflicts: components["schemas"]["ShiftConflictView"][];
+            history: components["schemas"]["ShiftHistory"][];
         };
         ShiftHistory: {
             /** Format: uuid */
@@ -3270,6 +3628,44 @@ export interface components {
         };
         /** @enum {unknown} */
         VehicleStatus: "active" | "retired";
+        WeekCell: {
+            /** Format: date */
+            date: string;
+            /** Format: int32 */
+            workMinutes: number;
+            status: string;
+            label: string;
+            missing: boolean;
+            warnings: boolean;
+            shifts: components["schemas"]["GridShift"][];
+            absences: string[];
+        };
+        WeekGrid: {
+            /** Format: date */
+            week: string;
+            companyTimeZone: string;
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            pageSize: number;
+            /** Format: int32 */
+            total: number;
+            counts: components["schemas"]["GridCounts"];
+            rows: components["schemas"]["WeekRow"][];
+            cutoff: null | components["schemas"]["CutoffBanner"];
+        };
+        WeekRow: {
+            /** Format: uuid */
+            employeeId: string;
+            driver: string;
+            personnelNumber: null | string;
+            days: components["schemas"]["WeekCell"][];
+            /** Format: int32 */
+            workMinutes: number;
+            nights: components["schemas"]["NightCount"][];
+            status: string;
+            warnings: boolean;
+        };
     };
     responses: never;
     parameters: never;
