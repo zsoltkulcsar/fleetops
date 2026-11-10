@@ -7,8 +7,8 @@ test("week grid shows shifts, absences, missing days and warnings with icon and 
   await timesheetRoutes(page);
   await page.goto("/timesheets");
   const grid = page.getByRole("table", { name: "Driver week grid" });
-  await expect(grid.getByRole("columnheader", { name: /Mon/ })).toContainText("09.11.2026");
-  await expect(grid.getByRole("columnheader", { name: /Sun/ })).toContainText("15.11.2026");
+  await expect(grid.getByRole("columnheader", { name: /Mon/ })).toContainText("09.11.");
+  await expect(grid.getByRole("columnheader", { name: /Sun/ })).toContainText("15.11.");
   for (const [index, text] of [
     [0, "8:00"],
     [1, "Vacation"],
@@ -171,16 +171,16 @@ test("shift drawer shows activities, nights, flags and history", async ({ page }
   await timesheetRoutes(page, week(), current);
   await openShift(page);
   const drawer = page.getByRole("dialog");
-  await expect(drawer.locator(".ts-timeline")).toContainText("other work");
+  await expect(drawer.locator(".ts-timeline")).toContainText("Other work");
   await expect(drawer.locator(".ts-timeline")).toContainText("09.11.2026 09:00");
   await expect(drawer.locator(".ts-timeline")).toContainText("8:00");
-  await expect(drawer.getByText("09.11.2026 - DE - cab", { exact: true })).toBeVisible();
+  await expect(drawer.getByText("09.11.2026 \u00B7 DE \u00B7 Cab", { exact: true })).toBeVisible();
   await expect(
     drawer.getByText("Phone clock differed from server time by more than 5 min", { exact: false }),
   ).toBeVisible();
   await expect(drawer).toContainText("Helen Office");
   await expect(drawer).toContainText("Reason: Corrected end from work record");
-  await expect(drawer).toContainText("Shift - endAt: 09.11.2026 16:00 ? 09.11.2026 17:00");
+  await expect(drawer).toContainText("Shift end: 09.11.2026 16:00 \u2192 09.11.2026 17:00");
 });
 
 test("reject needs a reason", async ({ page }) => {
@@ -260,8 +260,8 @@ test("add shift on a missing day", async ({ page }) => {
   await expect(page.getByRole("dialog", { name: "Add shift", exact: true })).toBeVisible();
   await expect(page.getByLabel("Date", { exact: true })).toHaveValue("2026-11-11");
   await expect(page.getByLabel("Driver", { exact: true })).toHaveValue(detail().employeeId);
-  await page.getByLabel("Start - Europe/Berlin", { exact: true }).fill("2026-11-11T09:00");
-  await page.getByLabel("End - Europe/Berlin", { exact: true }).fill("2026-11-11T17:00");
+  await page.getByLabel("Start \u00B7 Europe/Berlin", { exact: true }).fill("2026-11-11T09:00");
+  await page.getByLabel("End \u00B7 Europe/Berlin", { exact: true }).fill("2026-11-11T17:00");
   await page.getByLabel("Reason", { exact: true }).fill("Driver could not record shift");
   await page.getByRole("button", { name: "Save shift", exact: true }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -298,7 +298,7 @@ test("office ends a running shift", async ({ page }) => {
   });
   await openShift(page);
   await page.getByRole("button", { name: "End shift -", exact: true }).click();
-  await page.getByLabel("End - Europe/Berlin", { exact: true }).fill("2026-11-09T17:00");
+  await page.getByLabel("End \u00B7 Europe/Berlin", { exact: true }).fill("2026-11-09T17:00");
   await page.getByLabel("Reason", { exact: true }).fill("Driver phone unavailable");
   await page.getByRole("button", { name: "End shift and notify driver" }).click();
   await expect(page.getByRole("heading", { name: "End running shift" })).toHaveCount(0);

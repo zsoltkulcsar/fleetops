@@ -68,7 +68,12 @@ export function Header({ pageName }: { pageName: string }) {
         target instanceof HTMLTextAreaElement ||
         target instanceof HTMLSelectElement ||
         (target instanceof HTMLElement && target.isContentEditable);
-      if ((event.key === "/" || event.code === "Slash") && !isTextEntry) {
+      if (
+        (event.key === "/" || event.code === "Slash") &&
+        !isTextEntry &&
+        !event.defaultPrevented &&
+        !document.querySelector(".timesheets-page")
+      ) {
         event.preventDefault();
         document.getElementById("office-search")?.focus();
       }

@@ -66,7 +66,7 @@ export function ShiftDrawer({
       open
       title={
         detail
-          ? `Shift  -  ${new Intl.DateTimeFormat("en-GB", { weekday: "short", timeZone: "UTC" }).format(new Date(`${detail.shift.date}T12:00:00Z`))} ${dateLabel(detail.shift.date)}  -  ${detail.driver}  -  ${detail.truckPlate ?? "No truck"}`
+          ? `Shift \u00B7 ${new Intl.DateTimeFormat("en-GB", { weekday: "short", timeZone: "UTC" }).format(new Date(`${detail.shift.date}T12:00:00Z`))} ${dateLabel(detail.shift.date)} \u00B7 ${detail.driver} \u00B7 ${detail.truckPlate ?? "No truck"}`
           : "Shift"
       }
       closeLabel="Close shift"
@@ -143,7 +143,7 @@ export function ShiftDrawer({
                 {mode === "end" && (
                   <>
                     <label>
-                      End - {zone}
+                      End {"\u00B7"} {zone}
                       <input type="datetime-local" name="endAt" required />
                     </label>
                     <label>
@@ -172,9 +172,9 @@ export function ShiftDrawer({
             <h3>Activity timeline</h3>
             {shift.activities.map((activity) => (
               <div className="ts-timeline" key={activity.id}>
-                <strong>{activity.type.replaceAll("_", " ")}</strong>
+                <strong>{wordLabel(activity.type)}</strong>
                 <span>
-                  {timeLabel(activity.startAt, zone)} ?{" "}
+                  {timeLabel(activity.startAt, zone)} {"\u2013"}{" "}
                   {activity.endAt ? timeLabel(activity.endAt, zone) : "Running"}
                 </span>
                 <span>
@@ -202,7 +202,7 @@ export function ShiftDrawer({
             {shift.overnights.length ? (
               shift.overnights.map((night) => (
                 <p key={night.id}>
-                  {dateLabel(night.night)} - {night.countryCode} - {night.kind}
+                  {dateLabel(night.night)} {"\u00B7"} {night.countryCode} {"\u00B7"} {wordLabel(night.kind)}
                 </p>
               ))
             ) : (
@@ -244,8 +244,8 @@ export function ShiftDrawer({
               detail.conflicts.map((conflict) => (
                 <section key={conflict.id}>
                   <p>
-                    {timeLabel(conflict.createdAt, zone)} - Driver version {conflict.baseVersion} - Office
-                    version {conflict.officeVersion}
+                    {timeLabel(conflict.createdAt, zone)} {"\u00B7"} Driver version {conflict.baseVersion}{" "}
+                    {"\u00B7"} Office version {conflict.officeVersion}
                   </p>
                   <p>Driver's proposed changes</p>
                   <pre className="ts-conflict">{conflict.driverPayload}</pre>
@@ -259,11 +259,11 @@ export function ShiftDrawer({
               detail.history.map((entry, index) => (
                 <section key={`${entry.auditId}-${index}`}>
                   <strong>
-                    {entry.editor} - {timeLabel(entry.at, zone)}
+                    {entry.editor} {"\u00B7"} {timeLabel(entry.at, zone)}
                   </strong>
                   <p>
-                    {entry.entityType} - {entry.field}: {formatHistory(entry.before, zone)} {"\u2192"}{" "}
-                    {formatHistory(entry.after, zone)}
+                    {historyLabel(entry.entityType, entry.field)}: {formatHistory(entry.before, zone)}{" "}
+                    {"\u2192"} {formatHistory(entry.after, zone)}
                   </p>
                   <p>Reason: {entry.reason}</p>
                 </section>
@@ -277,9 +277,56 @@ export function ShiftDrawer({
     </Drawer>
   );
 }
+function wordLabel(value: string) {
+  const labels: Record<string, string> = {
+    other_work: "Other work",
+    driving: "Driving",
+    availability: "Availability",
+    break: "Break",
+    cab: "Cab",
+    hotel: "Hotel",
+    other: "Other",
+    submitted: "Awaiting approval",
+    running: "Running",
+    draft: "Draft",
+    rejected: "Rejected",
+    approved: "Approved",
+    exported: "Exported",
+  };
+  return labels[value] ?? value;
+}
+function historyLabel(entity: string, field: string) {
+  const activity = entity.toLowerCase().includes("activity");
+  const labels: Record<string, string> = {
+    startAt: activity ? "Activity start" : "Shift start",
+    endAt: activity ? "Activity end" : "Shift end",
+    truckId: "Truck",
+    trailerId: "Trailer",
+    odometerStartKm: "Odometer start",
+    odometerEndKm: "Odometer end",
+    type: "Activity type",
+    night: "Night",
+    countryCode: "Night country",
+    kind: "Night kind",
+    status: "Status",
+  };
+  return labels[field] ?? "Shift";
+}
 function formatHistory(value: string | null, zone: string) {
   if (!value) return "None";
-  return /^\d{4}-\d{2}-\d{2}T/.test(value) && Number.isFinite(Date.parse(value))
-    ? timeLabel(value, zone)
-    : value;
+  if (/^\d{4}-\d{2}-\d{2}T/.test(value) && Number.isFinite(Date.parse(value))) {
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: zone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(new Date(value));
+    const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)!.value;
+    return `${part("day")}.${part("month")}.${part("year")} ${part("hour")}:${part("minute")}`;
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value.split("-").reverse().join(".");
+  return wordLabel(value);
 }

@@ -47,7 +47,7 @@ test("driver sees what the office changed on a shift", async ({ page }) => {
   await expect(changes.getByRole("heading", { name: "Changed by the office", exact: true })).toBeVisible();
   await expect(changes).toContainText("Helen Office");
   await expect(changes).toContainText("Corrected end from work record");
-  await expect(changes).toContainText("09.11.2026 16:00 (Europe/Berlin) → 09.11.2026 17:00 (Europe/Berlin)");
+  await expect(changes).toContainText("Shift end: 09.11.2026 16:00 \u2192 09.11.2026 17:00");
 });
 
 test("a rejected shift shows the reason with fix and resubmit", async ({ page, context }) => {
@@ -114,7 +114,7 @@ test("a complete offline day stays encrypted and survives reload before sync", a
   await expect(page.locator(".driver-shift-list")).toContainText("8.00 h");
   await expect(page.getByText("DE: 1 night", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Submit week (1 shift)", exact: true }).click();
-  await expect(page.locator(".driver-shift-list")).toContainText("Submitted");
+  await expect(page.locator(".driver-shift-list")).toContainText("Awaiting approval");
   await expect(page.locator(".driver-shift-list")).toContainText("Waiting to sync");
 
   const stored = await page.evaluate(async () => {
@@ -146,7 +146,7 @@ test("a complete offline day stays encrypted and survives reload before sync", a
   await page.reload();
   await enterPin(page);
   await expect(page.getByRole("heading", { name: "Week", exact: true })).toBeVisible();
-  await expect(page.locator(".driver-shift-list")).toContainText("Submitted");
+  await expect(page.locator(".driver-shift-list")).toContainText("Awaiting approval");
   await expect(page.locator(".driver-shift-list")).toContainText("8.00 h");
   await expect(page.getByText("DE: 1 night", { exact: true })).toBeVisible();
   await page.screenshot({ path: test.info().outputPath("week-offline.png"), fullPage: true });

@@ -122,7 +122,7 @@ export function Timesheets() {
     return () => document.removeEventListener("keydown", guard, true);
   }, [opened, driver, adding, approval, shortcuts]);
   useEffect(() => {
-    document.title = "Timesheets · FleetOps Office";
+    document.title = "Timesheets \u00B7 FleetOps Office";
   }, []);
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
@@ -164,8 +164,8 @@ export function Timesheets() {
         requestApproval([rows[focus]]);
       }
     };
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
+    document.addEventListener("keydown", handleKey, true);
+    return () => document.removeEventListener("keydown", handleKey, true);
   });
   const openRow = (row: Schema["WeekRow"]) => {
     if (window.matchMedia("(max-width: 767px)").matches) setDriver(row);
@@ -223,8 +223,8 @@ export function Timesheets() {
       )}
       {query.data?.cutoff && (
         <Banner kind="info" label="Payroll cutoff">
-          Payroll cutoff {dateLabel(query.data.cutoff.date)} — {query.data.cutoff.awaitingShifts} shifts still
-          awaiting approval.
+          Payroll cutoff {dateLabel(query.data.cutoff.date)} {"\u2014"} {query.data.cutoff.awaitingShifts}{" "}
+          shifts still awaiting approval.
         </Banner>
       )}
       {result && (
@@ -275,7 +275,7 @@ export function Timesheets() {
               <ChevronLeft size={18} />
             </button>
             <strong>
-              {dateLabel(week)} - {dateLabel(addDays(week, 6))}
+              {dateLabel(week)} {"\u2013"} {dateLabel(addDays(week, 6))}
             </strong>
             <button
               className="ui-button"
@@ -339,7 +339,7 @@ export function Timesheets() {
           {zone
             ? `Times shown in ${zone}${Intl.DateTimeFormat().resolvedOptions().timeZone !== zone ? " (company time)" : ""}.`
             : "Loading company time zone..."}{" "}
-          {shortcuts && "/ Search  -  j/k Move  -  Enter Open  -  Esc Clear  -  a Approve"}
+          {shortcuts && "/ Search \u00B7 j/k Move \u00B7 Enter Open \u00B7 Esc Clear \u00B7 a Approve"}
         </p>
         {query.isLoading && (
           <div role="status" aria-label="Loading timesheets">
@@ -378,9 +378,9 @@ export function Timesheets() {
                   </th>
                   <th>Driver</th>
                   {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day, index) => (
-                    <th className="ts-desktop" key={day}>
+                    <th scope="col" className="ts-desktop" key={day}>
                       {day}
-                      <small>{dateLabel(addDays(week, index))}</small>
+                      <small>{dateLabel(addDays(week, index)).slice(0, 6)}</small>
                     </th>
                   ))}
                   <th>Hours</th>
@@ -428,7 +428,11 @@ export function Timesheets() {
                         >
                           <span>
                             {day.absences.join(", ") ||
-                              (day.missing ? "Missing" : day.shifts.length ? hours(day.workMinutes) : " - ")}
+                              (day.missing
+                                ? "Missing"
+                                : day.shifts.length
+                                  ? hours(day.workMinutes)
+                                  : "\u2013")}
                           </span>
                           <ShiftStatus status={day.status} />
                           {day.shifts.length > 1 && <small>{day.shifts.length} shifts</small>}
@@ -457,7 +461,7 @@ export function Timesheets() {
         {query.data && (
           <div className="ts-toolbar">
             <span>
-              {query.data.total} drivers - Page {page} of{" "}
+              {query.data.total} drivers {"\u00B7"} Page {page} of{" "}
               {Math.max(1, Math.ceil(query.data.total / query.data.pageSize))}
             </span>
             <button
@@ -504,7 +508,7 @@ export function Timesheets() {
       {driver && (
         <Drawer
           open
-          title={`${driver.driver}  -  ${dateLabel(week)}`}
+          title={`${driver.driver} \u00B7 ${dateLabel(week)}`}
           closeLabel="Close driver week"
           onClose={() => setDriver(undefined)}
         >
@@ -512,7 +516,7 @@ export function Timesheets() {
             {driver.days.map((day) => (
               <section key={day.date}>
                 <h3>
-                  {dateLabel(day.date)} - {hours(day.workMinutes)}
+                  {dateLabel(day.date)} {"\u00B7"} {hours(day.workMinutes)}
                 </h3>
                 <ShiftStatus status={day.status} />
                 {day.absences.map((absence) => (
@@ -527,7 +531,7 @@ export function Timesheets() {
                       setDriver(undefined);
                     }}
                   >
-                    Open shift - <ShiftStatus status={shift.status} />
+                    Open shift {"\u00B7"} <ShiftStatus status={shift.status} />
                   </button>
                 ))}
                 {day.missing && (

@@ -169,7 +169,7 @@ export function ShiftEditor({
         />
       </label>
       <label>
-        Start - {zone}
+        Start {"\u00B7"} {zone}
         <input
           type="datetime-local"
           required
@@ -181,7 +181,7 @@ export function ShiftEditor({
       </label>
       {!running && (
         <label>
-          End - {zone}
+          End {"\u00B7"} {zone}
           <input
             type="datetime-local"
             required
@@ -271,7 +271,7 @@ export function ShiftEditor({
           </label>
           {(["startAt", "endAt"] as const).map((field) => (
             <label key={field}>
-              {field === "startAt" ? "Start" : "End"} - {zone}
+              {field === "startAt" ? "Start" : "End"} {"\u00B7"} {zone}
               <input
                 type="datetime-local"
                 required={!(running && field === "endAt" && index === input.activities!.length - 1)}
@@ -424,7 +424,7 @@ export function ShiftEditor({
       </label>
       {error && <p role="alert">{error}</p>}
       <button className="ui-button primary" disabled={busy || !online || !reason.trim()}>
-        {busy ? "Saving - " : "Save shift"}
+        {busy ? "Saving\u2026" : "Save shift"}
       </button>
     </form>
   );
