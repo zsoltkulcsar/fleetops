@@ -2120,6 +2120,255 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/timesheets/week": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query: {
+                    week: string;
+                    filter?: string;
+                    search?: string;
+                    page?: number;
+                    pageSize?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/timesheets/shifts/{shiftId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    shiftId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    shiftId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["EditShiftRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/timesheets/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["BulkApprovalRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/timesheets/shifts/{shiftId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    shiftId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RejectShiftRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/timesheets/shifts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AddShiftRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/timesheets/shifts/{shiftId}/end": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    shiftId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["EndShiftRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2134,6 +2383,12 @@ export interface components {
             startAt: string;
             /** Format: date-time */
             endAt: null | string;
+        };
+        AddShiftRequest: {
+            /** Format: uuid */
+            employeeId: string;
+            reason: string;
+            input: components["schemas"]["OfficeShiftInput"];
         };
         AlertActionResult: {
             /** Format: uuid */
@@ -2177,6 +2432,16 @@ export interface components {
             open: number;
             /** Format: int32 */
             critical: number;
+        };
+        BulkApprovalItem: {
+            /** Format: uuid */
+            shiftId: string;
+            /** Format: int32 */
+            version: number;
+            note: null | string;
+        };
+        BulkApprovalRequest: {
+            items: components["schemas"]["BulkApprovalItem"][];
         };
         ConfirmFileInput: {
             /** Format: uuid */
@@ -2606,6 +2871,12 @@ export interface components {
             to: string;
             reason: string;
         };
+        EditShiftRequest: {
+            /** Format: int32 */
+            version: number;
+            reason: string;
+            input: components["schemas"]["OfficeShiftInput"];
+        };
         EditVehicleRequest: {
             /** Format: int32 */
             version: number;
@@ -2634,6 +2905,15 @@ export interface components {
             /** Format: date */
             lastTachoDownloadAt: null | string;
             reason: null | string;
+        };
+        EndShiftRequest: {
+            /** Format: int32 */
+            version: number;
+            reason: string;
+            /** Format: date-time */
+            endAt: string;
+            /** Format: int32 */
+            odometerEndKm: null | number;
         };
         EnrolDriverCommand: {
             personnelNumber: null | string;
@@ -2699,6 +2979,24 @@ export interface components {
             /** Format: date-time */
             expiresAt: string;
         };
+        OfficeShiftInput: {
+            /** Format: date */
+            date: string;
+            /** Format: date-time */
+            startAt: string;
+            /** Format: date-time */
+            endAt: null | string;
+            /** Format: uuid */
+            truckId: null | string;
+            /** Format: uuid */
+            trailerId: null | string;
+            /** Format: int32 */
+            odometerStartKm: null | number;
+            /** Format: int32 */
+            odometerEndKm: null | number;
+            activities: null | components["schemas"]["ActivityView"][];
+            overnights: null | components["schemas"]["OvernightView"][];
+        };
         /** @enum {unknown} */
         OvernightKind: "cab" | "hotel";
         OvernightView: {
@@ -2751,6 +3049,11 @@ export interface components {
             /** Format: int32 */
             driversTotal: number;
         };
+        RejectShiftRequest: {
+            /** Format: int32 */
+            version: number;
+            reason: string;
+        };
         RequiredDocument: {
             type: string;
             needsConfirmation: boolean;
@@ -2792,6 +3095,20 @@ export interface components {
             manualOffRoad: boolean;
             reason: null | string;
         };
+        ShiftHistory: {
+            /** Format: uuid */
+            auditId: string;
+            entityType: string;
+            /** Format: uuid */
+            entityId: string;
+            field: string;
+            before: null | string;
+            after: null | string;
+            editor: string;
+            reason: string;
+            /** Format: date-time */
+            at: string;
+        };
         ShiftSnapshot: {
             /** Format: date-time */
             generatedAt: string;
@@ -2804,6 +3121,8 @@ export interface components {
             conflicts: components["schemas"]["DriverShiftConflict"][];
             assignments: components["schemas"]["DriverTruckAssignment"][];
         };
+        /** @enum {unknown} */
+        ShiftSource: "app" | "office";
         /** @enum {unknown} */
         ShiftStatus: "running" | "draft" | "submitted" | "approved" | "rejected" | "exported";
         ShiftTruckChoice: {
@@ -2836,6 +3155,10 @@ export interface components {
             deviceTimeGap: boolean;
             activities: components["schemas"]["ActivityView"][];
             overnights: components["schemas"]["OvernightView"][];
+            officeChanges?: components["schemas"]["ShiftHistory"][];
+            /** Format: date-time */
+            submittedAt?: null | string;
+            source?: components["schemas"]["ShiftSource"];
         };
         SignInRequest: {
             email: string;
