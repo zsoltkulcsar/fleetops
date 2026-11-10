@@ -108,7 +108,7 @@ export function ShiftDrawer({
                     Approve
                   </button>
                   <button className="ui-button" disabled={!online} onClick={() => setMode("reject")}>
-                    Reject -
+                    Reject…
                   </button>
                 </>
               )}
@@ -119,7 +119,7 @@ export function ShiftDrawer({
               )}
               {shift.status === "running" && (
                 <button className="ui-button" disabled={!online} onClick={() => setMode("end")}>
-                  End shift -
+                  End shift…
                 </button>
               )}
             </div>

@@ -197,7 +197,7 @@ test("reject needs a reason", async ({ page }) => {
     });
   });
   await openShift(page);
-  await page.getByRole("button", { name: "Reject -", exact: true }).click();
+  await page.getByRole("button", { name: "Reject…", exact: true }).click();
   await page.getByRole("button", { name: "Reject and notify driver" }).click();
   expect(
     await page
@@ -298,7 +298,7 @@ test("office ends a running shift", async ({ page }) => {
     });
   });
   await openShift(page);
-  await page.getByRole("button", { name: "End shift -", exact: true }).click();
+  await page.getByRole("button", { name: "End shift…", exact: true }).click();
   await page.getByLabel("End \u00B7 Europe/Berlin", { exact: true }).fill("2026-11-09T17:00");
   await page.getByLabel("Reason", { exact: true }).fill("Driver phone unavailable");
   await page.getByRole("button", { name: "End shift and notify driver" }).click();
