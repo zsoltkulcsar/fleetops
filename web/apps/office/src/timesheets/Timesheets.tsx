@@ -122,7 +122,7 @@ export function Timesheets() {
     return () => document.removeEventListener("keydown", guard, true);
   }, [opened, driver, adding, approval, shortcuts]);
   useEffect(() => {
-    document.title = "Timesheets  -  FleetOps Office";
+    document.title = "Timesheets · FleetOps Office";
   }, []);
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
@@ -223,7 +223,7 @@ export function Timesheets() {
       )}
       {query.data?.cutoff && (
         <Banner kind="info" label="Payroll cutoff">
-          Payroll cutoff {dateLabel(query.data.cutoff.date)} - {query.data.cutoff.awaitingShifts} shifts still
+          Payroll cutoff {dateLabel(query.data.cutoff.date)} — {query.data.cutoff.awaitingShifts} shifts still
           awaiting approval.
         </Banner>
       )}

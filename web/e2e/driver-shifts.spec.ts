@@ -1,5 +1,92 @@
 import { test, expect } from "@playwright/test";
+import type { components } from "@fleetops/api-client";
+import type { Page } from "@playwright/test";
+import { shift, history } from "./timesheets-helpers";
 import { driverRoutes, enrolDriver, enterPin } from "./driver-helpers";
+
+async function driverWeek(page: Page, current: components["schemas"]["ShiftView"]) {
+  await page.clock.setFixedTime(new Date("2026-11-10T10:00:00Z"));
+  await driverRoutes(page);
+  const snapshot: components["schemas"]["ShiftSnapshot"] = {
+    generatedAt: "2026-11-10T10:00:00Z",
+    companyTimeZone: "Europe/Berlin",
+    shifts: [current],
+    appliedCommandIds: [],
+    trucks: [],
+    suggestedTruckId: null,
+    conflicts: [],
+    assignments: [],
+  };
+  await page.route("**/api/v1/driver/shifts", (route) => route.fulfill({ json: snapshot }));
+  await enrolDriver(page);
+  await page.getByRole("link", { name: "Week", exact: true }).click();
+  await expect(page.locator(".driver-shift-list li")).toHaveCount(1);
+}
+
+test("driver sees what the office changed on a shift", async ({ page }) => {
+  const current: components["schemas"]["ShiftView"] = {
+    id: shift.id,
+    date: shift.date,
+    startAt: shift.startAt,
+    endAt: shift.endAt,
+    truckId: null,
+    trailerId: null,
+    status: "submitted",
+    version: 3,
+    rejectReason: null,
+    blockedAtStart: null,
+    deviceTimeGap: false,
+    activities: shift.activities,
+    overnights: shift.overnights,
+    officeChanges: [history],
+  };
+  await driverWeek(page, current);
+  await expect(page.getByText("Changed by the office. Open for differences.", { exact: true })).toBeVisible();
+  await page.locator(".driver-shift-list button").click();
+  const changes = page.getByRole("region", { name: "Office changes" });
+  await expect(changes.getByRole("heading", { name: "Changed by the office", exact: true })).toBeVisible();
+  await expect(changes).toContainText("Helen Office");
+  await expect(changes).toContainText("Corrected end from work record");
+  await expect(changes).toContainText("09.11.2026 16:00 (Europe/Berlin) → 09.11.2026 17:00 (Europe/Berlin)");
+});
+
+test("a rejected shift shows the reason with fix and resubmit", async ({ page, context }) => {
+  const current: components["schemas"]["ShiftView"] = {
+    id: shift.id,
+    date: shift.date,
+    startAt: shift.startAt,
+    endAt: shift.endAt,
+    truckId: null,
+    trailerId: null,
+    status: "rejected",
+    version: 3,
+    rejectReason: "Correct the activity type",
+    blockedAtStart: null,
+    deviceTimeGap: false,
+    activities: shift.activities,
+    overnights: shift.overnights,
+  };
+  await driverWeek(page, current);
+  await context.setOffline(true);
+  await expect(
+    page.getByText("Rejected: Correct the activity type · Fix and resubmit", { exact: true }),
+  ).toBeVisible();
+  await page.locator(".driver-shift-list button").click();
+  const drawer = page.getByRole("dialog");
+  await expect(
+    drawer.getByText("Correct the activity type. Fix and resubmit.", { exact: true }),
+  ).toBeVisible();
+  await drawer.getByRole("button", { name: "Edit activity", exact: true }).click();
+  await drawer.getByLabel("Activity", { exact: true }).selectOption("availability");
+  await drawer.getByRole("button", { name: "Save activity", exact: true }).click();
+  await expect(drawer.getByText("availability", { exact: true })).toBeVisible();
+  await drawer.getByRole("button", { name: "Resubmit shift", exact: true }).click();
+  await expect(drawer).toContainText("Awaiting approval");
+  await expect(drawer.getByRole("button", { name: "Resubmit shift", exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Close shift", exact: true }).click();
+  await expect(page.locator(".driver-shift-list")).toContainText("Awaiting approval");
+  await expect(page.locator(".driver-shift-list")).toContainText("Waiting to sync");
+});
 
 test("a complete offline day stays encrypted and survives reload before sync", async ({ page, context }) => {
   await page.clock.setFixedTime(new Date("2026-11-10T08:00:00Z"));
@@ -23,11 +110,11 @@ test("a complete offline day stays encrypted and survives reload before sync", a
   await page.getByRole("button", { name: "Confirm end", exact: true }).click();
   await expect(page.getByText("No shift is running.", { exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Week", exact: true }).click();
-  await expect(page.locator(".driver-shift-list")).toContainText("draft");
+  await expect(page.locator(".driver-shift-list")).toContainText("Draft");
   await expect(page.locator(".driver-shift-list")).toContainText("8.00 h");
   await expect(page.getByText("DE: 1 night", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Submit week (1 shift)", exact: true }).click();
-  await expect(page.locator(".driver-shift-list")).toContainText("submitted");
+  await expect(page.locator(".driver-shift-list")).toContainText("Submitted");
   await expect(page.locator(".driver-shift-list")).toContainText("Waiting to sync");
 
   const stored = await page.evaluate(async () => {
@@ -59,7 +146,7 @@ test("a complete offline day stays encrypted and survives reload before sync", a
   await page.reload();
   await enterPin(page);
   await expect(page.getByRole("heading", { name: "Week", exact: true })).toBeVisible();
-  await expect(page.locator(".driver-shift-list")).toContainText("submitted");
+  await expect(page.locator(".driver-shift-list")).toContainText("Submitted");
   await expect(page.locator(".driver-shift-list")).toContainText("8.00 h");
   await expect(page.getByText("DE: 1 night", { exact: true })).toBeVisible();
   await page.screenshot({ path: test.info().outputPath("week-offline.png"), fullPage: true });

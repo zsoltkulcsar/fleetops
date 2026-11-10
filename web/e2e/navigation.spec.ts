@@ -3,7 +3,6 @@ import type { components } from "@fleetops/api-client";
 
 const routes = [
   ["/", "Attention"],
-  ["/timesheets", "Timesheets"],
   ["/people", "People"],
   ["/payroll", "Payroll export"],
   ["/settings", "Settings"],

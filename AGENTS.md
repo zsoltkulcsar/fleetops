@@ -53,6 +53,9 @@ A test is real only if breaking the behaviour it names makes it fail. People wil
 - Web code passes `npm run format:check`.
 - No debug output left behind.
 - Never `.GetAwaiter().GetResult()`, never `.Result` on a task.
+- Never type non-ASCII characters into source files: your file writes on this machine turn them into ` - `, `?` or
+  U+FFFD. In TypeScript and C# strings use escapes: `·` (·), `→` (→), `–` (–), `—` (—),
+  `…` (…). Do not swap a design character for an ASCII look-alike: the UI copy follows the design text.
 
 ## Build limits
 
