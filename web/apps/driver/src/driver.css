@@ -398,9 +398,30 @@ main:has(.driver-nav) .driver-screen {
   align-items: center;
   gap: 6px;
 }
+/* D-03 "Take photo" is a large button: the label is the tap target, the native input is visually hidden. */
+.driver-photo-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.driver-photo-button {
+  cursor: pointer;
+}
+.driver-photo-button:has(+ .driver-photo-input:focus-visible) {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+.driver-photo-button:has(+ .driver-photo-input:disabled) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 .driver-defect-choices button[aria-pressed="true"] {
   background: var(--accent-soft);
   border-color: var(--accent);
+  color: var(--ink);
 }
 .driver-defect-photos {
   display: flex;

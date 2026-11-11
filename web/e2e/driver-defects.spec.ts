@@ -10,7 +10,6 @@ const photoPath = "e2e/fixtures/defect.png";
 
 async function setup(page: Page) {
   await page.clock.install({ time: new Date("2026-11-10T10:00:00Z") });
-  await page.clock.pauseAt(new Date("2026-11-10T10:00:01Z"));
   await driverRoutes(page);
   const snapshot: Schema["ShiftSnapshot"] = {
     generatedAt: "2026-11-10T10:00:00Z",

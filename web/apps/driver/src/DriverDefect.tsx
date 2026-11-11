@@ -282,9 +282,12 @@ export function DriverDefect({
               ))}
             </div>
           </fieldset>
-          <label htmlFor={`${id}-photos`}>Take photo (up to 5)</label>
+          <label htmlFor={`${id}-photos`} className="driver-button driver-photo-button">
+            Take photo (up to 5)
+          </label>
           <input
             id={`${id}-photos`}
+            className="driver-photo-input"
             type="file"
             accept="image/jpeg,image/png"
             capture="environment"
