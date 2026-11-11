@@ -119,7 +119,7 @@ public sealed class AuthorizationTests
     [Fact]
     public void Matrix_contains_all_permission_rows()
     {
-        Assert.Equal(41, PermissionMatrix.Entries.Count);
+        Assert.Equal(52, PermissionMatrix.Entries.Count);
         Assert.Contains(PermissionMatrix.Entries, x => x.ActionKey == "shifts.approve_reject" && x.AllowedRoles.SetEquals([RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner]));
         Assert.Contains(PermissionMatrix.Entries, x => x.ActionKey == "documents.medical.view" && x.OwnRoles.SetEquals([RoleCode.Driver]));
     }
@@ -129,6 +129,17 @@ public sealed class AuthorizationTests
     {
         var expected = new Dictionary<string, RoleCode[]>
         {
+            ["settings.view"] = [RoleCode.Hr, RoleCode.Owner],
+            ["settings.edit"] = [RoleCode.Hr, RoleCode.Owner],
+            ["settings.holidays"] = [RoleCode.Hr, RoleCode.Owner],
+            ["sessions.view"] = [RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner],
+            ["sessions.revoke"] = [RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner],
+            ["sessions.pin_reset"] = [RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner],
+            ["driver.pin_reset.complete"] = [RoleCode.Driver],
+            ["people.roles"] = [RoleCode.Hr, RoleCode.Owner],
+            ["people.invite"] = [RoleCode.Hr, RoleCode.Owner],
+            ["vehicles.release"] = [RoleCode.Dispatcher, RoleCode.Owner],
+            ["alerts.release.acknowledge"] = [RoleCode.Hr, RoleCode.Owner],
             ["documents.view"] = [RoleCode.Hr, RoleCode.Owner],
             ["documents.people.lookup"] = [RoleCode.Hr, RoleCode.Owner],
             ["readiness.summary"] = [RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner],
@@ -182,6 +193,17 @@ public sealed class AuthorizationTests
     {
         var expected = new Dictionary<string, (PermissionMatrix.Cell driver, PermissionMatrix.Cell dispatcher, PermissionMatrix.Cell hr, PermissionMatrix.Cell owner)>
         {
+            ["settings.view"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full),
+            ["settings.edit"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full),
+            ["settings.holidays"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full),
+            ["sessions.view"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full),
+            ["sessions.revoke"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full),
+            ["sessions.pin_reset"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full),
+            ["driver.pin_reset.complete"] = (PermissionMatrix.Cell.Own, PermissionMatrix.Cell.None, PermissionMatrix.Cell.None, PermissionMatrix.Cell.None),
+            ["people.roles"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full),
+            ["people.invite"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full),
+            ["vehicles.release"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full),
+            ["alerts.release.acknowledge"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full),
             ["documents.view"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.View, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full),
             ["documents.people.lookup"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full),
             ["readiness.summary"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full),
@@ -273,6 +295,10 @@ public sealed class AuthorizationTests
 
     private static bool HandWrittenAllowed(string actionKey, RoleCode role) => actionKey switch
     {
+        "settings.view" or "settings.edit" or "settings.holidays" or "people.roles" or "people.invite" or "alerts.release.acknowledge" => role is RoleCode.Hr or RoleCode.Owner,
+        "sessions.view" or "sessions.revoke" or "sessions.pin_reset" => role is RoleCode.Dispatcher or RoleCode.Hr or RoleCode.Owner,
+        "driver.pin_reset.complete" => role == RoleCode.Driver,
+        "vehicles.release" => role is RoleCode.Dispatcher or RoleCode.Owner,
         "shifts.enter_edit" => role is RoleCode.Driver or RoleCode.Dispatcher or RoleCode.Hr or RoleCode.Owner,
         "shifts.approve_reject" or "sessions.manage" or "notifications.mine" => role is RoleCode.Dispatcher or RoleCode.Hr or RoleCode.Owner || (actionKey == "notifications.mine" && role == RoleCode.Driver),
         "jobs.trigger" => role == RoleCode.Owner,

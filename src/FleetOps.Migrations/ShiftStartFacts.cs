@@ -23,7 +23,7 @@ public sealed class EfShiftStartFacts(ICompanyTimeService companyTime) : IShiftS
         var readiness = new EfReadinessStore(db);
         var driver = await readiness.ForDriverAtAsync(employeeId, date, startAt, cancellationToken);
         var ids = new[] { chosen, trailerId }.Where(id => id.HasValue).Select(id => id!.Value).ToArray();
-        var vehicles = await readiness.ForVehiclesAsync(ids, date, cancellationToken);
+        var vehicles = await readiness.ForVehiclesAtAsync(ids, date, startAt, cancellationToken);
         var truck = chosen is Guid chosenId ? await db.Vehicles.AsNoTracking().SingleOrDefaultAsync(vehicle => vehicle.Id == chosenId, cancellationToken) : null;
         var trailer = trailerId is Guid attachedId ? await db.Vehicles.AsNoTracking().SingleOrDefaultAsync(vehicle => vehicle.Id == attachedId, cancellationToken) : null;
         if ((chosen is not null && truck?.Kind != VehicleKind.Truck) || (trailerId is not null && trailer?.Kind != VehicleKind.Trailer))
@@ -33,6 +33,7 @@ public sealed class EfShiftStartFacts(ICompanyTimeService companyTime) : IShiftS
             chosen is null || (truck?.Kind == VehicleKind.Truck && vehicles.GetValueOrDefault(chosen.Value)?.Usable == true),
             trailerId is null || (trailer?.Kind == VehicleKind.Trailer && vehicles.GetValueOrDefault(trailerId.Value)?.Usable == true))
         {
+            OverrideId = chosen is null ? null : await db.VehicleOverrides.Where(release => release.VehicleId == chosen && release.At <= startAt && release.ValidUntil >= startAt).OrderByDescending(release => release.At).Select(release => (Guid?)release.Id).FirstOrDefaultAsync(cancellationToken),
             EmployeeStatus = employee?.Status.ToString().ToLowerInvariant() ?? "missing"
         };
     }

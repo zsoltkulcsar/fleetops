@@ -35,6 +35,7 @@ public sealed record VehicleDetail(
     bool Usable,
     IReadOnlyList<ReadinessCause> Causes) : IReadModel
 {
+    public ReleaseBanner? Release { get; init; }
     public DefectListResult? Defects { get; init; }
 }
 

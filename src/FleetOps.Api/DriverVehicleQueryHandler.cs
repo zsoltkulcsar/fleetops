@@ -37,6 +37,7 @@ public sealed class DriverVehicleQueryHandler(FleetOpsDbContext db, ICompanyTime
         var photos = await db.DefectPhotos.AsNoTracking().Where(photo => defectIds.Contains(photo.DefectId)).OrderBy(photo => photo.SortOrder).Select(photo => new { photo.Id, photo.DefectId }).ToListAsync(cancellationToken);
         return new(query.VehicleId, plate, items, resultDocuments)
         {
+            Release = await ReleaseBanners.ReadAsync(db, query.VehicleId, time.GetUtcNow(), cancellationToken),
             Defects = defects.Select(defect => new DriverVehicleDefect(defect.Id,
                 System.Text.Json.JsonNamingPolicy.SnakeCaseLower.ConvertName(defect.Category.ToString()), defect.Severity.ToString().ToLowerInvariant(), companyTime.ToCompanyDate(defect.ReportedAt),
                 photos.Where(photo => photo.DefectId == defect.Id).Select(photo => new DriverDefectPhoto(photo.Id, $"/api/v1/driver/defects/{defect.Id}/photos/{photo.Id}/link")).ToArray())).ToArray()

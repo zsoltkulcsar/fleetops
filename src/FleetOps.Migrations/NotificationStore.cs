@@ -11,7 +11,7 @@ public sealed class EfNotifications(TimeProvider time, INotificationIds ids) : I
 {
     public async Task<Guid> AddAsync(Guid employeeId, string templateCode, object parameters, Guid? alertId, CommandContext context, CancellationToken cancellationToken)
     {
-        if (templateCode is not ("doc_expiring" or "expiry_warning" or "assignment_changed" or "vehicle_unusable" or "defect_cancelled" or "document_rejected" or "critical_alert" or "schedule_changed" or "sync_conflict" or "week_reminder" or "shift_rejected" or "shift_edited_by_office")) throw new ArgumentException("Unknown notification template.", nameof(templateCode));
+        if (templateCode is not ("vehicle_release_review" or "doc_expiring" or "expiry_warning" or "assignment_changed" or "vehicle_unusable" or "defect_cancelled" or "document_rejected" or "critical_alert" or "schedule_changed" or "sync_conflict" or "week_reminder" or "shift_rejected" or "shift_edited_by_office")) throw new ArgumentException("Unknown notification template.", nameof(templateCode));
         var id = Guid.CreateVersion7();
         await using var command = new NpgsqlCommand("insert into fleetops.notifications (id, employee_id, alert_id, template_code, parameters, channel, created_at, attempts) values ($1,$2,$3,$4,$5::jsonb,'in_app',$6,0)", (NpgsqlConnection)context.DbConnection, (NpgsqlTransaction)context.DbTransaction);
         command.Parameters.AddWithValue(id);

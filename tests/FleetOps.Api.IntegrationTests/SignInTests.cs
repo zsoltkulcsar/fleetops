@@ -614,7 +614,7 @@ public sealed partial class SignInTests : IClassFixture<AuthApiFactory>
 
         using var response = await factory.Send(client, HttpMethod.Get, SessionPath);
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        Assert.Equal("session_expired", CodeOf(await BodyOf(response)));
+        Assert.Equal("session_revoked", CodeOf(await BodyOf(response)));
     }
 
     [Fact]
@@ -639,7 +639,7 @@ public sealed partial class SignInTests : IClassFixture<AuthApiFactory>
             client, HttpMethod.Post, ResetPath, new AuthEndpoints.ResetRequest(new string('a', 43), "A Long Enough Passphrase"), sessionToken: liveToken);
 
         Assert.Equal(HttpStatusCode.Unauthorized, revoked.StatusCode);
-        Assert.Equal("session_expired", CodeOf(await BodyOf(revoked)));
+        Assert.Equal("session_revoked", CodeOf(await BodyOf(revoked)));
         Assert.True(ClearsSessionCookie(revoked), "A revoked cookie must be cleared.");
         Assert.Equal(HttpStatusCode.Unauthorized, neverIssued.StatusCode);
         Assert.True(ClearsSessionCookie(neverIssued), "An unknown cookie must be cleared.");

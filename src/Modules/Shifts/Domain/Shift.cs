@@ -29,6 +29,7 @@ public sealed class Shift
     [AuditField(AuditFieldClasses.Plain)] public DateTimeOffset ServerReceivedAt { get; set; }
     [AuditField(AuditFieldClasses.Plain)] public bool DeviceTimeGap { get; set; }
     [AuditField(AuditFieldClasses.Plain)] public string? BlockedAtStart { get; set; }
+    [AuditField(AuditFieldClasses.Plain)] public Guid? OverrideId { get; set; }
     [NotAudited] public int Version { get; set; } = 1;
     [NotAudited] public int LastOfficeVersion { get; set; }
     [NotAudited] public List<ShiftActivity> Activities { get; set; } = [];

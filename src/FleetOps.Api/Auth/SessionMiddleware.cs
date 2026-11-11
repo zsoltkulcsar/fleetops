@@ -16,7 +16,7 @@ public sealed class SessionMiddleware(RequestDelegate next)
             || normalizedPath.Equals("/api/v1/auth/forgot-password", StringComparison.OrdinalIgnoreCase)
             || normalizedPath.Equals("/api/v1/auth/reset-password", StringComparison.OrdinalIgnoreCase)
             || normalizedPath.Equals("/api/v1/auth/sign-out", StringComparison.OrdinalIgnoreCase);
-        if (context.Items.TryGetValue("ProblemCode", out var problemCode) && problemCode is "session_expired" or "account_suspended"
+        if (context.Items.TryGetValue("ProblemCode", out var problemCode) && problemCode is "session_expired" or "account_suspended" or "session_revoked"
             && !allowedDeadCookiePath)
         {
             await Results.Problem(statusCode: StatusCodes.Status401Unauthorized,

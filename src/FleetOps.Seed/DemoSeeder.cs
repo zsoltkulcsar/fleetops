@@ -42,6 +42,7 @@ public sealed class DemoSeeder
         AddEmployees(db);
         AddVehicles(db);
         AddDocuments(db);
+        AddHolidays(db);
         await db.SaveChangesAsync(cancellationToken);
         ThrowIfRequested(2);
         await transaction.CommitAsync(cancellationToken);
@@ -58,13 +59,28 @@ public sealed class DemoSeeder
 
     private async Task ResetAsync(FleetOpsDbContext db, CancellationToken cancellationToken)
     {
-        var tables = new[] { "shift_conflicts", "command_receipts", "activities", "overnights", "shifts", "assignments", "absences", "cycles", "notifications", "alerts", "audit_entries", "document_files", "documents", "pending_files", "vehicle_plate_history", "vehicles", "depots", "user_tokens", "user_logins", "user_claims", "user_roles", "role_claims", "sessions", "enrolment_codes", "privacy_acknowledgements", "password_reset_tokens", "users", "roles", "employees" };
+        var tables = new[] { "company_holidays", "setting_lists", "settings", "shift_conflicts", "command_receipts", "activities", "overnights", "shifts", "vehicle_overrides", "assignments", "absences", "cycles", "notifications", "alerts", "audit_entries", "document_files", "documents", "pending_files", "vehicle_plate_history", "vehicles", "depots", "user_tokens", "user_logins", "user_claims", "user_roles", "role_claims", "sessions", "enrolment_codes", "privacy_acknowledgements", "password_reset_tokens", "users", "roles", "employees" };
         foreach (var table in tables)
         {
             await db.Database.ExecuteSqlRawAsync($"DELETE FROM fleetops.\"{table}\"", cancellationToken);
         }
 
         db.Depots.Add(new Depot { Id = DepotId, Name = "Default depot", Address = "Default address" });
+    }
+
+    private static void AddHolidays(FleetOpsDbContext db)
+    {
+        (string Date, string Name)[] holidays =
+        [
+            ("2026-01-01", "New Year's Day"), ("2026-04-03", "Good Friday"), ("2026-04-06", "Easter Monday"),
+            ("2026-05-01", "Labour Day"), ("2026-05-14", "Ascension Day"), ("2026-05-25", "Whit Monday"),
+            ("2026-10-03", "German Unity Day"), ("2026-12-25", "Christmas Day"), ("2026-12-26", "Second Christmas Day"),
+            ("2027-01-01", "New Year's Day"), ("2027-03-26", "Good Friday"), ("2027-03-29", "Easter Monday"),
+            ("2027-05-01", "Labour Day"), ("2027-05-06", "Ascension Day"), ("2027-05-17", "Whit Monday"),
+            ("2027-10-03", "German Unity Day"), ("2027-12-25", "Christmas Day"), ("2027-12-26", "Second Christmas Day")
+        ];
+        foreach (var holiday in holidays)
+            db.CompanyHolidays.Add(new CompanyHoliday { Date = DateOnly.ParseExact(holiday.Date, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), Name = holiday.Name + " - Check against your Bundesland (unverified)" });
     }
 
     private void AddEmployees(FleetOpsDbContext db)

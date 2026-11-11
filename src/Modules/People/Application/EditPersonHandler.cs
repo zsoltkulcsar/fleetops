@@ -9,6 +9,8 @@ public sealed class EditPersonHandler(IPeopleStore store) : ICommandHandler<Edit
     {
         var employee = await store.LockAsync(command.SubjectId ?? Guid.Empty, context, cancellationToken) ?? throw new PersonConflictException("not_found");
         PersonRules.Validate(command.Fields, JsonSerializer.Deserialize<string[]>(employee.Roles));
+        if (JsonSerializer.Deserialize<string[]>(employee.Roles)?.Contains("driver") == true && employee.Phone != command.Fields.Phone)
+            throw new PersonValidationException(["phone"]);
         await PersonEditing.ApplyAsync(store, employee, command.Fields, actor, context, false, cancellationToken);
         return new(employee.Id, PersonRules.Status(employee));
     }

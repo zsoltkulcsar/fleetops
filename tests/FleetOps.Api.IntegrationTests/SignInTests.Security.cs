@@ -159,7 +159,9 @@ public sealed partial class SignInTests
         using var asDriver = await factory.Send(client, HttpMethod.Get, vehiclePath);
         var roles = JsonDocument.Parse(await BodyOf(session)).RootElement.GetProperty("roles")
             .EnumerateArray().Select(role => role.GetString()).ToArray();
-        Assert.Equal(["driver"], roles);
+        // Story 7.7: an office session carries office roles only, so a demotion to driver leaves none.
+        Assert.DoesNotContain("owner", roles);
+        Assert.Empty(roles);
         Assert.Equal(HttpStatusCode.Forbidden, asDriver.StatusCode);
         Assert.Equal("permission_denied", CodeOf(await BodyOf(asDriver)));
     }
@@ -474,9 +476,9 @@ public sealed partial class SignInTests
         var after = await LatestSession(employee);
 
         Assert.Equal(HttpStatusCode.Unauthorized, stepUp.StatusCode);
-        Assert.Equal("session_expired", CodeOf(await BodyOf(stepUp)));
+        Assert.Equal("session_revoked", CodeOf(await BodyOf(stepUp)));
         Assert.Equal(HttpStatusCode.Unauthorized, privacyVariant.StatusCode);
-        Assert.Equal("session_expired", CodeOf(await BodyOf(privacyVariant)));
+        Assert.Equal("session_revoked", CodeOf(await BodyOf(privacyVariant)));
         Assert.Equal(before.RevokedAt, after.RevokedAt);
         Assert.Equal(before.FailedSecondFactorAttempts, after.FailedSecondFactorAttempts);
     }

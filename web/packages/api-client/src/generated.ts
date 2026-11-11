@@ -448,6 +448,492 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/fleet/vehicles/{id}/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ReleaseRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["VehicleReleaseResult"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/alerts/{id}/acknowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ReviewRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReleaseReviewResult"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/people/{id}/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PersonSessions"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/people/{id}/sessions/{sessionId}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                    sessionId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ReasonRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AccessActionResult"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/people/{id}/pin-reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AccessActionResult"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/people/{id}/phone": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PhoneRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PhoneChangeResult"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/driver/pin-reset/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AccessActionResult"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/people/{id}/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RolesRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AccessActionResult"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/people/{id}/invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AccessActionResult"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SettingsView"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SettingsView"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/settings/holidays": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AddHolidayCommand"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SettingsView"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/settings/holidays/{date}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    date: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SettingsView"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/people/{id}/cycle-pattern": {
         parameters: {
             query?: never;
@@ -3784,6 +4270,9 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AccessActionResult: {
+            code: string;
+        };
         ActivatePersonRequest: {
             /** @default false */
             acceptWarning: boolean;
@@ -3798,6 +4287,11 @@ export interface components {
             startAt: string;
             /** Format: date-time */
             endAt: null | string;
+        };
+        AddHolidayCommand: {
+            /** Format: date */
+            date: string;
+            name: null | string;
         };
         AddShiftRequest: {
             /** Format: uuid */
@@ -4293,6 +4787,7 @@ export interface components {
             maxOfflineDays: number;
             officePhone: string;
             name: string;
+            pinResetRequired?: boolean;
             employeeStatus?: string;
         };
         DriverCycle: {
@@ -4466,6 +4961,7 @@ export interface components {
             plate: string;
             items: components["schemas"]["DriverVehicleItem"][];
             documents: components["schemas"]["DriverVehicleDocument"][];
+            release?: null | components["schemas"]["ReleaseBanner"];
             defects?: components["schemas"]["DriverVehicleDefect"][];
         };
         DriverVehicleDocument: {
@@ -4596,6 +5092,11 @@ export interface components {
             version: number;
             status: components["schemas"]["ShiftStatus"];
             flagged: boolean;
+        };
+        HolidayView: {
+            /** Format: date */
+            date: string;
+            name: string;
         };
         JobListItem: {
             name: string;
@@ -4846,6 +5347,34 @@ export interface components {
             /** @default false */
             enrolmentSent: boolean;
         };
+        PersonSession: {
+            /** Format: uuid */
+            id: string;
+            device: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            lastSeenAt: string;
+            status: string;
+            revokeReason: null | string;
+            /** Format: date-time */
+            pinResetRequestedAt: null | string;
+        };
+        PersonSessions: {
+            items: components["schemas"]["PersonSession"][];
+        };
+        PhoneChangeResult: {
+            code: string;
+            testInbox?: null | components["schemas"]["PhoneChangeTestInbox"];
+        };
+        PhoneChangeTestInbox: {
+            phone: string;
+            message: string;
+        };
+        PhoneRequest: {
+            phone: null | string;
+            reason: null | string;
+        };
         PrivacyRequest: {
             version: string;
         };
@@ -4875,10 +5404,33 @@ export interface components {
             /** Format: int32 */
             driversTotal: number;
         };
+        ReasonRequest: {
+            reason: null | string;
+        };
         RejectShiftRequest: {
             /** Format: int32 */
             version: number;
             reason: string;
+        };
+        ReleaseBanner: {
+            /** Format: uuid */
+            overrideId: string;
+            releasedBy: string;
+            /** Format: date-time */
+            validUntil: string;
+            text: string;
+        };
+        ReleaseRequest: {
+            reason: null | string;
+            /** Format: date-time */
+            validUntil?: null | string;
+        };
+        ReleaseReviewResult: {
+            /** Format: uuid */
+            alertId: string;
+            status: string;
+            /** Format: int32 */
+            version: number;
         };
         RepairDetail: {
             /** Format: uuid */
@@ -4917,6 +5469,14 @@ export interface components {
             /** Format: int32 */
             version: number;
             retiredReason: components["schemas"]["RetiredReason"];
+        };
+        ReviewRequest: {
+            /** Format: int32 */
+            version: number;
+        };
+        RolesRequest: {
+            roles: null | string[];
+            reason: null | string;
         };
         SaveCyclePatternRequest: {
             /** Format: int32 */
@@ -4957,6 +5517,13 @@ export interface components {
         };
         /** @enum {unknown} */
         SessionStage: "pending_second_factor" | "pending_enrolment" | "pending_privacy" | "full";
+        SettingsView: {
+            values: {
+                [key: string]: number;
+            };
+            releasableDocTypes: string[];
+            holidays: components["schemas"]["HolidayView"][];
+        };
         SetVehicleOffRoadRequest: {
             /** Format: int32 */
             version: number;
@@ -5024,6 +5591,7 @@ export interface components {
             usable: boolean;
             reason: null | string;
             licenceClassWarning: boolean;
+            release?: null | components["schemas"]["ReleaseBanner"];
         };
         ShiftView: {
             /** Format: uuid */
@@ -5143,6 +5711,7 @@ export interface components {
             shownStatus: components["schemas"]["ReadinessShownStatus"];
             usable: boolean;
             causes: components["schemas"]["ReadinessCause"][];
+            release?: null | components["schemas"]["ReleaseBanner"];
             defects?: null | components["schemas"]["DefectListResult"];
         };
         /** @enum {unknown} */
@@ -5171,6 +5740,21 @@ export interface components {
         };
         /** @enum {unknown} */
         VehicleOwnership: "owned" | "leased" | "rented_in";
+        VehicleReleaseResult: {
+            /** Format: uuid */
+            overrideId: string;
+            /** Format: uuid */
+            vehicleId: string;
+            /** Format: uuid */
+            by: string;
+            releasedBy: string;
+            /** Format: date-time */
+            at: string;
+            /** Format: date-time */
+            validUntil: string;
+            reason: string;
+            docTypes: string[];
+        };
         VehicleRetirementImpact: {
             items: components["schemas"]["CycleDetail"][];
         };

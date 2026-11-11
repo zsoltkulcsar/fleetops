@@ -21,7 +21,7 @@ public sealed class DriverShiftQueryHandler(FleetOpsDbContext db, ICompanyTimeSe
         var applied = await db.CommandReceipts.AsNoTracking().Where(receipt => receipt.EmployeeId == actor.EmployeeId && receipt.Outcome == "applied" && receipt.ServerReceivedAt >= now.AddDays(-120))
             .Select(receipt => receipt.CommandId).ToListAsync(cancellationToken);
         var vehicles = await db.Vehicles.AsNoTracking().Where(vehicle => vehicle.Status != FleetOps.Modules.Fleet.VehicleStatus.Retired).OrderBy(vehicle => vehicle.Plate).ToListAsync(cancellationToken);
-        var readiness = await new EfReadinessStore(db).ForVehiclesAsync(vehicles.Select(vehicle => vehicle.Id).ToArray(), today, cancellationToken);
+        var readiness = await new EfReadinessStore(db, clock).ForVehiclesAsync(vehicles.Select(vehicle => vehicle.Id).ToArray(), today, cancellationToken);
         var licences = await db.Documents.AsNoTracking().Where(document => document.OwnerId == actor.EmployeeId && document.OwnerType == FleetOps.Modules.Documents.DocumentOwnerType.Employee &&
             document.Type == FleetOps.Modules.Documents.DocumentType.LicenceC_CE && document.Status == FleetOps.Modules.Documents.DocumentStatus.Verified && document.ExpiresAt >= today)
             .Select(document => document.Categories).ToListAsync(cancellationToken);
@@ -32,6 +32,8 @@ public sealed class DriverShiftQueryHandler(FleetOpsDbContext db, ICompanyTimeSe
             return new ShiftTruckChoice(vehicle.Id, vehicle.Plate, vehicle.Kind.ToString().ToLowerInvariant(), ready?.Usable == true,
                 ready?.Usable == true ? null : "Unavailable — ask dispatch", vehicle.RequiredLicenceClass is not null && !classes.Contains(vehicle.RequiredLicenceClass));
         }).ToArray();
+        for (var index = 0; index < choices.Length; index++)
+            choices[index] = choices[index] with { Release = await ReleaseBanners.ReadAsync(db, choices[index].Id, now, cancellationToken) };
         var conflicts = await db.ShiftConflicts.AsNoTracking().Where(conflict => conflict.EmployeeId == actor.EmployeeId).OrderByDescending(conflict => conflict.CreatedAt).Take(100).ToListAsync(cancellationToken);
         var conflictViews = new List<DriverShiftConflict>();
         foreach (var conflict in conflicts)

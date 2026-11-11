@@ -21,6 +21,7 @@ public sealed record DriverVehicleDocument(Guid Id, DocumentType Type, DocumentS
 [VisibleTo(RoleCode.Driver)]
 public sealed record DriverVehicleDetail(Guid Id, string Plate, IReadOnlyList<DriverVehicleItem> Items, IReadOnlyList<DriverVehicleDocument> Documents) : IReadModel
 {
+    public FleetOps.Modules.Fleet.ReleaseBanner? Release { get; init; }
     public IReadOnlyList<DriverVehicleDefect> Defects { get; init; } = [];
 }
 [VisibleTo(RoleCode.Driver)]

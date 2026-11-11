@@ -72,6 +72,7 @@ public static class NotificationTemplates
             var label = DocumentTypeLabel(type, german);
             return german ? $"Dokument {label} l\u00e4uft bald ab" : $"Your {label} document expires soon";
         }
+        if (templateCode == "vehicle_release_review") return german ? "Eine Fahrzeugfreigabe muss gepr\u00fcft werden" : "A vehicle release needs review";
         if (templateCode == "expiry_warning") return german ? "Ein Ablaufhinweis erfordert Ihre Aufmerksamkeit" : "An expiry warning needs your attention";
         if (templateCode == "vehicle_unusable") return german ? "Ihr Fahrzeug ist nicht einsatzbereit. Bitte kontaktieren Sie die Disposition." : "Your vehicle is off road. Please contact dispatch.";
         if (templateCode == "defect_cancelled") return german ? "Die kritische Mangelmeldung wurde vom Fahrer storniert." : "The critical defect report was cancelled by the driver.";

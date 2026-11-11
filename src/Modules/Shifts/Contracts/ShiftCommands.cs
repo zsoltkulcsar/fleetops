@@ -28,7 +28,10 @@ public sealed record OvernightView(Guid Id, DateOnly Night, string CountryCode, 
 
 [VisibleTo(RoleCode.Driver)]
 public sealed record ShiftSnapshot(DateTimeOffset GeneratedAt, string CompanyTimeZone, IReadOnlyList<ShiftView> Shifts, IReadOnlyList<Guid> AppliedCommandIds, IReadOnlyList<ShiftTruckChoice> Trucks, Guid? SuggestedTruckId, IReadOnlyList<DriverShiftConflict> Conflicts, IReadOnlyList<DriverTruckAssignment> Assignments) : IReadModel;
-public sealed record ShiftTruckChoice(Guid Id, string Plate, string Kind, bool Usable, string? Reason, bool LicenceClassWarning);
+public sealed record ShiftTruckChoice(Guid Id, string Plate, string Kind, bool Usable, string? Reason, bool LicenceClassWarning)
+{
+    public FleetOps.Modules.Fleet.ReleaseBanner? Release { get; init; }
+}
 public sealed record DriverShiftConflict(Guid CommandId, Guid ShiftId, string Action, string ChangedBy, IReadOnlyList<string> ChangedFields, DateTimeOffset? ProposedStartAt, DateTimeOffset? ProposedEndAt, int OfficeVersion);
 public sealed record DriverTruckAssignment(Guid VehicleId, DateOnly From, DateOnly? To);
 
@@ -56,6 +59,7 @@ public interface IShiftCommandStore
 
 public sealed record ShiftStartFacts(bool Active, bool DriverCanDrive, Guid? SuggestedTruckId, bool TruckUsable, bool TrailerUsable)
 {
+    public Guid? OverrideId { get; init; }
     public string EmployeeStatus { get; init; } = Active ? "active" : "inactive";
 }
 public interface IShiftStartFacts

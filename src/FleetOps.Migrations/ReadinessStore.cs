@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FleetOps.Migrations;
 
-public sealed class EfReadinessStore(FleetOpsDbContext db) : IReadiness
+public sealed class EfReadinessStore(FleetOpsDbContext db, TimeProvider? time = null) : IReadiness
 {
     public async Task<DriverReadiness?> ForDriverAtAsync(Guid employeeId, DateOnly date, DateTimeOffset instant, CancellationToken cancellationToken)
     {
@@ -23,7 +23,13 @@ public sealed class EfReadinessStore(FleetOpsDbContext db) : IReadiness
         foreach (var document in validAtStart) document.Status = DocumentStatus.Verified;
         return Driver(employee, validAtStart, date);
     }
-    public async Task<IReadOnlyDictionary<Guid, VehicleReadiness>> ForVehiclesAsync(IReadOnlyCollection<Guid> ids, DateOnly date, CancellationToken cancellationToken)
+    public Task<IReadOnlyDictionary<Guid, VehicleReadiness>> ForVehiclesAsync(IReadOnlyCollection<Guid> ids, DateOnly date, CancellationToken cancellationToken) =>
+        ForVehiclesAtAsync(ids, date, (time ?? TimeProvider.System).GetUtcNow(), cancellationToken);
+    public Task<IReadOnlyDictionary<Guid, VehicleReadiness>> ForVehiclesWithoutOverridesAsync(IReadOnlyCollection<Guid> ids, DateOnly date, CancellationToken cancellationToken) =>
+        ReadVehiclesAsync(ids, date, null, cancellationToken);
+    public Task<IReadOnlyDictionary<Guid, VehicleReadiness>> ForVehiclesAtAsync(IReadOnlyCollection<Guid> ids, DateOnly date, DateTimeOffset instant, CancellationToken cancellationToken) =>
+        ReadVehiclesAsync(ids, date, instant, cancellationToken);
+    private async Task<IReadOnlyDictionary<Guid, VehicleReadiness>> ReadVehiclesAsync(IReadOnlyCollection<Guid> ids, DateOnly date, DateTimeOffset? instant, CancellationToken cancellationToken)
     {
         if (ids.Count == 0) return new Dictionary<Guid, VehicleReadiness>();
         var vehicles = await db.Vehicles.AsNoTracking().Where(x => ids.Contains(x.Id)).ToListAsync(cancellationToken);
@@ -32,7 +38,13 @@ public sealed class EfReadinessStore(FleetOpsDbContext db) : IReadiness
             (defect.Status == DefectStatus.Open || defect.Status == DefectStatus.Acknowledged || defect.Status == DefectStatus.InRepair)).Select(defect => defect.VehicleId).Distinct().ToListAsync(cancellationToken);
         var inWorkshop = await db.Maintenance.AsNoTracking().Where(repair => ids.Contains(repair.VehicleId) && repair.Status == MaintenanceStatus.InProgress)
             .Select(repair => repair.VehicleId).Distinct().ToListAsync(cancellationToken);
-        return vehicles.ToDictionary(x => x.Id, x => Vehicle(x, documents.Where(d => d.OwnerId == x.Id), date, blockedVehicles.Contains(x.Id), inWorkshop.Contains(x.Id)));
+        var overrides = instant is null ? [] : await db.VehicleOverrides.AsNoTracking().Where(release => ids.Contains(release.VehicleId) && release.At <= instant && release.ValidUntil >= instant).ToArrayAsync(cancellationToken);
+        return vehicles.ToDictionary(vehicle => vehicle.Id, vehicle =>
+        {
+            var result = Vehicle(vehicle, documents.Where(document => document.OwnerId == vehicle.Id), date, blockedVehicles.Contains(vehicle.Id), inWorkshop.Contains(vehicle.Id));
+            var release = overrides.Where(release => release.VehicleId == vehicle.Id).OrderByDescending(release => release.At).FirstOrDefault();
+            return VehicleReleaseReadiness.Apply(result, release);
+        });
     }
 
     public async Task<IReadOnlyDictionary<Guid, DriverReadiness>> ForDriversAsync(IReadOnlyCollection<Guid> ids, DateOnly date, CancellationToken cancellationToken)

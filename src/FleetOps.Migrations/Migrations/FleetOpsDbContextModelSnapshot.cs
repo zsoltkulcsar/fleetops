@@ -96,6 +96,14 @@ namespace FleetOps.Migrations.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_seen_at");
 
+                    b.Property<DateTimeOffset?>("PinResetRequestedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("pin_reset_requested_at");
+
+                    b.Property<string>("RevokeReason")
+                        .HasColumnType("text")
+                        .HasColumnName("revoke_reason");
+
                     b.Property<DateTimeOffset?>("RevokedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("revoked_at");
@@ -400,6 +408,22 @@ namespace FleetOps.Migrations.Migrations
                     b.HasKey("Key");
 
                     b.ToTable("settings", "fleetops");
+                });
+
+            modelBuilder.Entity("FleetOps.Migrations.SettingList", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasColumnType("text")
+                        .HasColumnName("key");
+
+                    b.PrimitiveCollection<string[]>("Values")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("values");
+
+                    b.HasKey("Key");
+
+                    b.ToTable("setting_lists", "fleetops");
                 });
 
             modelBuilder.Entity("FleetOps.Modules.Absences.Absence", b =>
@@ -1106,6 +1130,49 @@ namespace FleetOps.Migrations.Migrations
                     b.ToTable("vehicles", "fleetops");
                 });
 
+            modelBuilder.Entity("FleetOps.Modules.Fleet.VehicleOverride", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("at");
+
+                    b.Property<Guid>("By")
+                        .HasColumnType("uuid")
+                        .HasColumnName("by");
+
+                    b.PrimitiveCollection<string[]>("DocTypes")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("doc_types");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("reason");
+
+                    b.Property<DateTimeOffset>("ValidUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("valid_until");
+
+                    b.Property<Guid>("VehicleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("vehicle_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("By");
+
+                    b.HasIndex("VehicleId", "ValidUntil");
+
+                    b.ToTable("vehicle_overrides", "fleetops");
+                });
+
             modelBuilder.Entity("FleetOps.Modules.Maintenance.Maintenance", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1292,6 +1359,23 @@ namespace FleetOps.Migrations.Migrations
 
                             t.HasCheckConstraint("ck_cycles_version", "version > 0");
                         });
+                });
+
+            modelBuilder.Entity("FleetOps.Modules.Setup.CompanyHoliday", b =>
+                {
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date")
+                        .HasColumnName("date");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.HasKey("Date");
+
+                    b.ToTable("company_holidays", "fleetops");
                 });
 
             modelBuilder.Entity("FleetOps.Modules.Setup.Depot", b =>
@@ -1526,6 +1610,10 @@ namespace FleetOps.Migrations.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("odometer_start_km");
 
+                    b.Property<Guid?>("OverrideId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("override_id");
+
                     b.Property<string>("RejectReason")
                         .HasColumnType("text")
                         .HasColumnName("reject_reason");
@@ -1571,6 +1659,8 @@ namespace FleetOps.Migrations.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_shifts_one_running_per_employee")
                         .HasFilter("status = 'Running'");
+
+                    b.HasIndex("OverrideId");
 
                     b.HasIndex("TrailerId");
 
@@ -2016,6 +2106,21 @@ namespace FleetOps.Migrations.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("FleetOps.Modules.Fleet.VehicleOverride", b =>
+                {
+                    b.HasOne("FleetOps.People.Employee", null)
+                        .WithMany()
+                        .HasForeignKey("By")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FleetOps.Modules.Fleet.Vehicle", null)
+                        .WithMany()
+                        .HasForeignKey("VehicleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("FleetOps.Modules.Maintenance.Maintenance", b =>
                 {
                     b.HasOne("FleetOps.Modules.Fleet.Vehicle", null)
@@ -2074,6 +2179,11 @@ namespace FleetOps.Migrations.Migrations
                         .HasForeignKey("EmployeeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("FleetOps.Modules.Fleet.VehicleOverride", null)
+                        .WithMany()
+                        .HasForeignKey("OverrideId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("FleetOps.Modules.Fleet.Vehicle", null)
                         .WithMany()

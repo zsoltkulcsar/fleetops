@@ -83,6 +83,7 @@ public sealed class ApplyDriverCommandHandler(IShiftCommandStore store, IShiftSt
                     if (blocked && !payload.StartedOffline) throw new ShiftRuleException(startFacts.DriverCanDrive ? "truck_unusable" : "driver_blocked");
                     shift = ShiftRules.Start(command.AggregateId, actor.EmployeeId, companyTime.ToCompanyDate(command.DeviceTime), command.DeviceTime,
                         truckId, payload.TrailerId, payload.OdometerKm, payload.DepartureCheckOk);
+                    shift.OverrideId = truckId is null ? null : startFacts.OverrideId;
                     shift.Activities[0].Id = command.AggregateId;
                     if (blocked) shift.BlockedAtStart = startFacts.DriverCanDrive ? "truck_unusable" : "driver_blocked";
                 }

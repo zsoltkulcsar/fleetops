@@ -67,6 +67,7 @@ public sealed class OfficeShiftHandler(IOfficeShiftStore store, IShiftCommandSto
         shift.SubmittedAt = clock.GetUtcNow();
         shift.ServerReceivedAt = clock.GetUtcNow();
         var facts = await startFacts.ReadAsync(employeeId, shift.TruckId, shift.TrailerId, shift.StartAt, context, cancellationToken);
+        shift.OverrideId = shift.TruckId is null ? null : facts.OverrideId;
         if (!facts.Active || !facts.DriverCanDrive) shift.BlockedAtStart = "driver_blocked";
         else if (shift.TruckId is not null && !facts.TruckUsable) shift.BlockedAtStart = "truck_unusable";
         await store.ValidateReferencesAsync(shift, context, cancellationToken);

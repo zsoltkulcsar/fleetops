@@ -137,7 +137,7 @@ public sealed class A05VehicleEvaluator : IAlertEvaluator
         await using var db = AlertEvaluatorDb.CreateDb(context.Command);
         var vehicle = await db.Vehicles.AsNoTracking().SingleOrDefaultAsync(x => x.Id == subjectId, cancellationToken);
         if (vehicle is null || vehicle.Status != VehicleStatus.Active) return [];
-        var readiness = await new EfReadinessStore(db).ForVehiclesAsync([subjectId], today, cancellationToken);
+        var readiness = await new EfReadinessStore(db).ForVehiclesWithoutOverridesAsync([subjectId], today, cancellationToken);
         if (!readiness.TryGetValue(subjectId, out var result)) return [];
         return result.Causes.Where(x => x.Code == ReadinessCauseCode.DocumentExpired && x.DocumentType is not null).Select(x => new AlertCondition(x.DocumentType!, AlertSeverity.Critical, today)).ToArray();
     }

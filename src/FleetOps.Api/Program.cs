@@ -30,6 +30,9 @@ using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddPeople();
+builder.Services.AddVehicleRelease();
+builder.Services.AddPersonAccess();
+builder.Services.AddCompanySettings();
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 builder.Logging.SetMinimumLevel(LogLevel.None);
@@ -234,7 +237,7 @@ app.UseExceptionHandler(new ExceptionHandlerOptions
         if (exception is AuthorizationException refusal)
         {
             context.Items["ProblemCode"] = refusal.Code;
-            var status = refusal.Code == "not_signed_in" ? 401 : refusal.Code == "state_conflict" ? 409 : 403;
+            var status = refusal.Code is "not_signed_in" or "session_revoked" ? 401 : refusal.Code == "state_conflict" ? 409 : 403;
             await Results.Problem(statusCode: status, extensions: new Dictionary<string, object?> { ["code"] = refusal.Code, ["allowedRoles"] = refusal.AllowedRoles.Select(x => x.Code()).ToArray() }).ExecuteAsync(context); return;
         }
         if (exception is SmsUnavailableException)
@@ -252,11 +255,16 @@ app.UseExceptionHandler(new ExceptionHandlerOptions
         if (exception is ScheduleConflictException scheduleConflict) { await Results.Problem(statusCode: 409, extensions: new Dictionary<string, object?> { ["code"] = scheduleConflict.Code }).ExecuteAsync(context); return; }
         if (exception is FleetOps.People.PersonValidationException personValidation) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = personValidation.Fields.Contains("reason") ? "reason" : "validation_error", ["fields"] = personValidation.Fields }).ExecuteAsync(context); return; }
         if (exception is FleetOps.People.PersonConflictException personConflict) { await Results.Problem(statusCode: personConflict.Code == "not_found" ? 404 : 409, extensions: new Dictionary<string, object?> { ["code"] = personConflict.Code, ["types"] = personConflict.Types }).ExecuteAsync(context); return; }
+        if (exception is VehicleReleaseConflictException releaseConflict) { await Results.Problem(statusCode: releaseConflict.Code == "not_found" ? 404 : 409, extensions: new Dictionary<string, object?> { ["code"] = releaseConflict.Code, ["types"] = releaseConflict.Types }).ExecuteAsync(context); return; }
+        if (exception is ReleaseReviewConflictException reviewConflict) { await Results.Problem(statusCode: reviewConflict.Code == "not_found" ? 404 : 409, extensions: new Dictionary<string, object?> { ["code"] = reviewConflict.Code }).ExecuteAsync(context); return; }
+        if (exception is AccessValidationException accessValidation) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "validation_error", ["fields"] = accessValidation.Fields }).ExecuteAsync(context); return; }
+        if (exception is AccessConflictException accessConflict) { await Results.Problem(statusCode: accessConflict.Code == "not_found" ? 404 : 409, extensions: new Dictionary<string, object?> { ["code"] = accessConflict.Code }).ExecuteAsync(context); return; }
+        if (exception is SettingsValidationException settingsValidation) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "validation_error", ["fields"] = settingsValidation.Fields }).ExecuteAsync(context); return; }
         if (exception is VehicleValidationException validation) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "validation_error", ["fields"] = validation.Fields }).ExecuteAsync(context); return; }
         if (exception is StorageUnavailableException) { await Results.Problem(statusCode: 503, extensions: new Dictionary<string, object?> { ["code"] = "storage_unavailable" }).ExecuteAsync(context); return; }
         if (exception is DocumentValidationException documentValidation) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = documentValidation.Code, ["fields"] = documentValidation.Fields }).ExecuteAsync(context); return; }
         var jsonException = VehicleJsonException.Find(exception);
-        if (context.Request.Method is "POST" or "PUT" && (context.Request.Path.StartsWithSegments("/api/v1/fleet/vehicles") || context.Request.Path.StartsWithSegments("/api/v1/documents") || context.Request.Path.StartsWithSegments("/api/v1/people") || context.Request.Path.StartsWithSegments("/api/v1/driver") || context.Request.Path.StartsWithSegments("/api/v1/schedule")) && jsonException is not null)
+        if (context.Request.Method is "POST" or "PUT" && (context.Request.Path.StartsWithSegments("/api/v1/fleet/vehicles") || context.Request.Path.StartsWithSegments("/api/v1/documents") || context.Request.Path.StartsWithSegments("/api/v1/people") || context.Request.Path.StartsWithSegments("/api/v1/driver") || context.Request.Path.StartsWithSegments("/api/v1/schedule") || context.Request.Path.StartsWithSegments("/api/v1/settings")) && jsonException is not null)
         {
             var field = VehicleJsonException.FieldName(jsonException.Path);
             await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "validation_error", ["fields"] = field is null ? Array.Empty<string>() : new[] { field } }).ExecuteAsync(context); return;
@@ -296,6 +304,9 @@ app.MapGet("/jobs/nightly", async (HttpContext context, JobRunner runner, Cancel
 app.MapPost("/api/v1/admin/jobs/{name}/run", async (string name, CommandDispatcher dispatcher, JobRunner runner, IConfiguration configuration, CancellationToken cancellationToken) => !configuration.GetValue("Jobs:AdminTrigger", false) || !runner.Contains(name) ? Results.NotFound() : Results.Ok(await dispatcher.DispatchAsync<RunJobCommand, JobRunResult>(new(name), cancellationToken))).Produces<JobRunResult>();
 app.MapGet("/api/v1/admin/jobs", async (QueryDispatcher dispatcher, IConfiguration configuration, CancellationToken cancellationToken) => !configuration.GetValue("Jobs:AdminTrigger", false) ? Results.NotFound() : Results.Ok(await dispatcher.DispatchAsync<ListJobsQuery, JobListResult>(new(), cancellationToken))).Produces<JobListResult>();
 app.MapPeople();
+app.MapVehicleRelease();
+app.MapPersonAccess();
+app.MapCompanySettings();
 app.MapPut("/api/v1/people/{id:guid}/cycle-pattern", async (Guid id, SaveCyclePatternRequest request, CommandDispatcher dispatcher, CancellationToken cancellationToken) => Results.Ok(await dispatcher.DispatchAsync<SaveCyclePatternCommand, CyclePatternResult>(new(id, request.Version, request.Pattern), cancellationToken))).Produces<CyclePatternResult>();
 app.MapGet("/healthz", async (IDatabaseHealth database, CancellationToken cancellationToken) => await database.IsHealthyAsync(cancellationToken) ? Results.Ok(new { api = "ok", database = "ok" }) : Results.Problem(statusCode: 503, title: "Service unavailable", detail: "Database unavailable", extensions: new Dictionary<string, object?> { ["code"] = "database_unavailable", ["database"] = "unavailable" }));
 AuthEndpoints.Map(app);
@@ -379,14 +390,14 @@ public sealed record DocumentDeleteRequest(int Version, string Reason);
 public sealed record DocumentSightCheckRequest(int Version, DateOnly CheckedAt);
 public sealed record SnoozeAlertRequest(int Version, DateTimeOffset Until, string Reason);
 public sealed record UnsnoozeAlertRequest(int Version);
-public sealed class VehicleQueryHandler(IConfiguration configuration, IReadiness readiness, ICompanyTimeService companyTime, TimeProvider time, QueryDispatcher queries) : IQueryHandler<GetVehicleQuery, VehicleDetail>
+public sealed class VehicleQueryHandler(IConfiguration configuration, IReadiness readiness, ICompanyTimeService companyTime, TimeProvider time, QueryDispatcher queries, FleetOpsDbContext db) : IQueryHandler<GetVehicleQuery, VehicleDetail>
 {
     public async Task<VehicleDetail> HandleAsync(GetVehicleQuery query, AccessContext actor, CancellationToken cancellationToken)
     {
         var result = await (await EfVehicleStore.ReadByConnectionAsync(DatabaseConnectionString.Resolve(configuration) ?? throw new InvalidOperationException("Database is not configured."), query.SubjectId ?? throw new VehicleValidationException(["id"]), cancellationToken)).ComposeAsync(readiness, companyTime, time, cancellationToken);
         if (actor.Roles.Contains(RoleCode.Dispatcher) || actor.Roles.Contains(RoleCode.Owner))
             result = result with { Defects = await queries.DispatchAsync<ListDefectsQuery, DefectListResult>(new(VehicleId: result.Id), cancellationToken) };
-        return result;
+        return result with { Release = await ReleaseBanners.ReadAsync(db, result.Id, time.GetUtcNow(), cancellationToken) };
     }
 }
 

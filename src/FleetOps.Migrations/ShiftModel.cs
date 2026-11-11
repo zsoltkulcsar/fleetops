@@ -31,6 +31,8 @@ public sealed partial class FleetOpsDbContext
             entity.Property(shift => shift.Date).HasColumnName("date");
             entity.Property(shift => shift.StartAt).HasColumnName("start_at");
             entity.Property(shift => shift.EndAt).HasColumnName("end_at");
+            entity.Property(shift => shift.OverrideId).HasColumnName("override_id");
+            entity.HasOne<VehicleOverride>().WithMany().HasForeignKey(shift => shift.OverrideId).OnDelete(DeleteBehavior.Restrict);
             entity.Property(shift => shift.TruckId).HasColumnName("truck_id");
             entity.Property(shift => shift.TrailerId).HasColumnName("trailer_id");
             entity.Property(shift => shift.OdometerStartKm).HasColumnName("odometer_start_km");

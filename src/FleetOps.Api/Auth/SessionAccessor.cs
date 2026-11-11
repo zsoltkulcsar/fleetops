@@ -8,10 +8,11 @@ using Microsoft.Extensions.Options;
 
 namespace FleetOps.Api.Auth;
 
-public sealed class SessionAccessor(FleetOpsDbContext db, ICompanyTimeService clock, TimeProvider time, IOptions<AuthOptions> options, IHostEnvironment environment, ILogger<SessionAccessor> logger, FleetOps.Modules.Setup.ISettings settings) : IAccessContextAccessor, IStepUpContextAccessor
+public sealed class SessionAccessor(FleetOpsDbContext db, ICompanyTimeService clock, TimeProvider time, IOptions<AuthOptions> options, IHostEnvironment environment, ILogger<SessionAccessor> logger, FleetOps.Modules.Setup.ISettings settings) : IAccessContextAccessor, IStepUpContextAccessor, ICurrentSession
 {
     private readonly AuthOptions _options = options.Value;
     public AccessContext? Current { get; private set; }
+    public Guid? SessionId { get; private set; }
     public bool HasFreshStepUp { get; private set; }
 
     public async Task LoadAsync(HttpContext httpContext)
@@ -26,7 +27,7 @@ public sealed class SessionAccessor(FleetOpsDbContext db, ICompanyTimeService cl
         var now = time.GetUtcNow();
         if (session is null || session.RevokedAt is not null)
         {
-            httpContext.Items["ProblemCode"] = "session_expired";
+            httpContext.Items["ProblemCode"] = session?.RevokedAt is not null ? "session_revoked" : "session_expired";
             httpContext.Response.Cookies.Delete(AuthEndpoints.CookieName, new CookieOptions { Path = "/", Secure = true, HttpOnly = true, SameSite = SameSiteMode.Strict });
             return;
         }
@@ -71,7 +72,8 @@ public sealed class SessionAccessor(FleetOpsDbContext db, ICompanyTimeService cl
             return;
         }
 
-        Current = new AccessContext(employee.Id, roles);
+        SessionId = session.Id;
+        Current = new AccessContext(employee.Id, session.Device == "driver" ? roles.Where(role => role == RoleCode.Driver).ToHashSet() : roles.Where(role => role != RoleCode.Driver).ToHashSet());
         HasFreshStepUp = session.StepUpAt is DateTimeOffset stepUp && now - stepUp <= _options.StepUpLifetime;
     }
 }

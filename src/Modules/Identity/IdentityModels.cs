@@ -23,6 +23,8 @@ public sealed class OfficeSession
     public DateTimeOffset StageChangedAt { get; set; }
     public DateTimeOffset LastSeenAt { get; set; }
     public DateTimeOffset? RevokedAt { get; set; }
+    public string? RevokeReason { get; set; }
+    public DateTimeOffset? PinResetRequestedAt { get; set; }
     public DateTimeOffset? StepUpAt { get; set; }
     public int FailedSecondFactorAttempts { get; set; }
 }
