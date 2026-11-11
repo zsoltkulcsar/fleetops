@@ -6,6 +6,8 @@ import { useSession } from "../auth/AuthGate";
 import { timesheetsApi, type Schema } from "./api";
 import { dateLabel, hours, instant, ShiftStatus, timeLabel } from "./presentation";
 import { ShiftEditor } from "./ShiftEditor";
+import { Corrections } from "./Corrections";
+
 export function ShiftDrawer({
   id,
   zone,
@@ -178,6 +180,12 @@ export function ShiftDrawer({
                 </button>
               </form>
             )}
+            {(detail.ruleWarnings ?? []).map((warning) => (
+              <p className={warning.severity === "warning" ? "ts-warning" : "ui-muted"} key={warning.ruleId}>
+                {warning.ruleId}: {warning.message}
+              </p>
+            ))}
+            <Corrections shiftId={id} />
             <h3>Activity timeline</h3>
             {shift.activities.map((activity) => (
               <div className="ts-timeline" key={activity.id}>

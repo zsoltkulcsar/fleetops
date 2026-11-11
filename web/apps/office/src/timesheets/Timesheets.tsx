@@ -27,7 +27,9 @@ export function Timesheets() {
     return addDays(day, -((new Date(`${day}T12:00:00Z`).getUTCDay() + 6) % 7));
   });
   const [filter, setFilter] = useState(() =>
-    ["all", "awaiting", "missing", "warnings"].includes(params.get("filter") ?? "") ? params.get("filter")! : "all",
+    ["all", "awaiting", "missing", "warnings"].includes(params.get("filter") ?? "")
+      ? params.get("filter")!
+      : "all",
   );
   const [search, setSearch] = useState(() => (params.get("search") ?? "").slice(0, 200));
   const [page, setPage] = useState(1);
@@ -35,7 +37,11 @@ export function Timesheets() {
   const [focus, setFocus] = useState(-1);
   const [opened, setOpened] = useState<string | undefined>(() => params.get("shiftId") ?? undefined);
   const [driver, setDriver] = useState<Schema["WeekRow"]>();
-  const [adding, setAdding] = useState<{ employeeId: string; date: string }>();
+  const [adding, setAdding] = useState<{ employeeId: string; date: string } | undefined>(() => {
+    const employeeId = params.get("addEmployeeId");
+    const date = params.get("addDate");
+    return employeeId && date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? { employeeId, date } : undefined;
+  });
   const [approval, setApproval] = useState<Schema["GridShift"][]>();
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [result, setResult] = useState<Schema["BulkApprovalResult"]>();

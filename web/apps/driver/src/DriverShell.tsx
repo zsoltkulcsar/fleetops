@@ -57,7 +57,7 @@ export function DriverShell({
           path="week"
           element={
             <>
-              <DriverWeek state={shifts} />
+              <DriverWeek state={shifts} driver={state.snapshot} />
               <DriverSchedule {...state} embedded onRefresh={state.refresh} onTruck={setTruck} />
             </>
           }

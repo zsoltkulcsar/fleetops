@@ -6,6 +6,9 @@ import { companyInstant, displayTime, wallTime } from "./shiftTime";
 import { driverDate } from "./DriverSchedule";
 import { OfficeChanges } from "./OfficeChanges";
 
+import type { DriverSnapshot } from "./storage/snapshot";
+import { CorrectionRequest, CorrectionStatus } from "./CorrectionRequest";
+
 const activityLabels: Record<ActivityType, string> = {
   driving: "Driving",
   other_work: "Other work",
@@ -24,8 +27,23 @@ function addDays(date: string, days: number): string {
   return value.toISOString().slice(0, 10);
 }
 
-export function DriverWeek({ state }: { state: DriverShiftState }) {
+export function DriverWeek({ state, driver }: { state: DriverShiftState; driver?: DriverSnapshot }) {
   const fieldId = useId();
+  const [requesting, setRequesting] = useState<{ date: string; shiftId?: string }>();
+  const corrections = state.snapshot?.corrections ?? [];
+  const queued = state.commands.filter(
+    (command) =>
+      command.type === "correction.request" && !state.snapshot?.appliedCommandIds.includes(command.commandId),
+  );
+  const hasRequest = (date: string, shiftId?: string) =>
+    corrections.some(
+      (request) =>
+        request.date === date && request.shiftId === (shiftId ?? null) && request.status === "open",
+    ) ||
+    queued.some((command) => {
+      const payload = command.payload as { date: string; shiftId: string | null };
+      return payload.date === date && payload.shiftId === (shiftId ?? null);
+    });
   const zone = state.snapshot?.companyTimeZone ?? "Europe/Berlin";
   const [from, setFrom] = useState(() => weekStart(companyDate(new Date().toISOString(), zone)));
   const [opened, setOpened] = useState<string>();
@@ -132,6 +150,47 @@ export function DriverWeek({ state }: { state: DriverShiftState }) {
               .map(([country, count]) => `${country}: ${count} night${count === 1 ? "" : "s"}`)
               .join(" · ") || "No nights away recorded"}
           </p>
+          {Array.from({ length: 7 }, (_, index) => addDays(from, index))
+            .filter(
+              (date) =>
+                date < companyDate(new Date().toISOString(), zone) &&
+                !state.shifts.some((shift) => shift.date === date) &&
+                driver?.cycles.some(
+                  (cycle) => cycle.status !== "cancelled" && cycle.from <= date && cycle.to >= date,
+                ) &&
+                !driver?.absences?.some(
+                  (absence) => absence.status === "approved" && absence.from <= date && absence.to >= date,
+                ),
+            )
+            .map((date) => (
+              <div className="driver-card" key={date}>
+                <p>{driverDate(date)}</p>
+                <button disabled={state.saving || hasRequest(date)} onClick={() => setRequesting({ date })}>
+                  Add forgotten day
+                </button>
+              </div>
+            ))}
+          {corrections
+            .filter((request) => request.date >= from && request.date < to)
+            .map((request) => (
+              <CorrectionStatus key={request.id} request={request} />
+            ))}
+          {queued
+            .filter((command) => {
+              const payload = command.payload as { date: string };
+              return payload.date >= from && payload.date < to;
+            })
+            .map((command) => (
+              <p role="status" key={command.commandId}>
+                Correction {command.state === "waiting" ? "waiting to sync" : "needs review"}
+              </p>
+            ))}
+          {(state.snapshot?.weekGuidance ?? [])
+            .filter((week) => week.week === from)
+            .flatMap((week) => week.ruleWarnings)
+            .map((warning) => (
+              <p key={warning.ruleId}>{warning.message}</p>
+            ))}
           {shifts.length ? (
             <ul className="driver-shift-list">
               {shifts.map((shift) => (
@@ -175,7 +234,19 @@ export function DriverWeek({ state }: { state: DriverShiftState }) {
           </button>
         </>
       )}
-      {detail && (
+      {requesting && (
+        <Drawer
+          open
+          title={requesting.shiftId ? "Request correction" : "Add forgotten day"}
+          closeLabel="Close correction request"
+          onClose={() => {
+            if (!state.saving) setRequesting(undefined);
+          }}
+        >
+          <CorrectionRequest state={state} {...requesting} onClose={() => setRequesting(undefined)} />
+        </Drawer>
+      )}
+      {detail && !requesting && (
         <Drawer
           open
           title={driverDate(detail.date)}
@@ -215,6 +286,22 @@ export function DriverWeek({ state }: { state: DriverShiftState }) {
                     <p>Your proposed end: {displayTime(conflict.proposedEndAt, zone)}</p>
                   )}
                 </div>
+              ))}
+            {["submitted", "approved", "exported"].includes(detail.status) && (
+              <button
+                disabled={state.saving || hasRequest(detail.date, detail.id)}
+                onClick={() => setRequesting({ date: detail.date, shiftId: detail.id })}
+              >
+                Request correction
+              </button>
+            )}
+            {(detail.ruleWarnings ?? []).map((warning) => (
+              <p key={warning.ruleId}>{warning.message}</p>
+            ))}
+            {corrections
+              .filter((request) => request.shiftId === detail.id)
+              .map((request) => (
+                <CorrectionStatus key={request.id} request={request} />
               ))}
             <OfficeChanges changes={detail.officeChanges ?? []} zone={zone} />
             {detail.activities.map((activity) => (

@@ -1,3 +1,5 @@
+import { RuleAcknowledgement } from "./RuleAcknowledgement";
+import { Corrections } from "../timesheets/Corrections";
 import { TachoDownload } from "../fleet/TachoDownload";
 import { useEffect, useId, useMemo, useState } from "react";
 import { CalendarDays, Check, ChevronDown, CircleAlert, Clock3, Info, Truck, UserRound } from "lucide-react";
@@ -19,6 +21,8 @@ import "./attention.css";
 
 const severityRank = { critical: 2, warning: 1, info: 0 } as const;
 function itemTitle(item: AttentionItem) {
+  if (item.ruleId === "A-11") return "Driving guidance needs review";
+  if (item.ruleId === "A-14") return "Correction requested";
   if (item.ruleId === "A-06") return "Maintenance due";
   if (item.ruleId === "A-12") return "Tacho download overdue";
   if (item.ruleId === "A-01") return "Driver document expiring";
@@ -395,7 +399,16 @@ function AttentionCard({
                   </p>
                 </div>
                 <div className="attention-item-actions">
-                  {item.ruleId === "A-12" ? (
+                  {item.ruleId === "A-14" ? (
+                    <Corrections requestId={group.subjectId} />
+                  ) : item.ruleId === "A-11" ? (
+                    <>
+                      <Link className="ui-button" to={`/timesheets?shiftId=${group.subjectId}`}>
+                        Open shift
+                      </Link>
+                      <RuleAcknowledgement item={item} />
+                    </>
+                  ) : item.ruleId === "A-12" ? (
                     <TachoDownload
                       subjectId={group.subjectId}
                       subjectType={group.subjectType === "vehicle" ? "vehicle" : "employee"}

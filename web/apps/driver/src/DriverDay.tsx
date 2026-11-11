@@ -8,6 +8,8 @@ import { companyInstant, displayTime, wallTime } from "./shiftTime";
 import { DriverReleaseNotice } from "./DriverReleaseNotice";
 import { absenceLabels } from "./planningLabels";
 
+import { DrivingGuidance } from "./DrivingGuidance";
+
 const activities = [
   { type: "driving", label: "Driving", icon: Truck },
   { type: "other_work", label: "Other work", icon: BriefcaseBusiness },
@@ -145,6 +147,7 @@ export function DriverDay({
           This shift needs Office review. Your saved changes remain visible in sync status.
         </p>
       )}
+      <DrivingGuidance state={state} today={today} now={now} />
       {running ? (
         <>
           <p className="driver-badge">

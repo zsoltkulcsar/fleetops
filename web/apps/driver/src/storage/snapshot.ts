@@ -10,6 +10,16 @@ const snapshotKey = "driver-snapshot";
 export function snapshotFields(snapshot: DriverSnapshot): DriverSnapshot {
   return {
     employeeId: snapshot.employeeId,
+    complianceRules: snapshot.complianceRules?.map(
+      ({ id, name, guideValue, value, confirmed, valueSchema }) => ({
+        id,
+        name,
+        guideValue,
+        value,
+        confirmed,
+        valueSchema,
+      }),
+    ),
     generatedAt: snapshot.generatedAt,
     holidays: snapshot.holidays?.map(({ date, name }) => ({ date, name })),
     vacationBalance: snapshot.vacationBalance

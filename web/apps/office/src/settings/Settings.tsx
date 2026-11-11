@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Panel } from "@fleetops/ui";
+import { ComplianceRules } from "./ComplianceRules";
 import { CompanySettings } from "./CompanySettings";
 import { apiClient, type components } from "@fleetops/api-client";
 import { en } from "../i18n/en";
@@ -39,6 +40,7 @@ export function Settings() {
     <>
       <SettingsPage />
       <CompanySettings />
+      <ComplianceRules />
       {jobs.data && (
         <Panel title={en.settings.jobs.title}>
           <div className="jobs-panel">

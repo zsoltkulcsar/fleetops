@@ -19,7 +19,9 @@ export async function replayShifts(port: ShiftReplayPort): Promise<void> {
     const pending = (await port.list())
       .filter(
         (command) =>
-          command.type.startsWith("shift.") && command.state === "waiting" && !sent.has(command.commandId),
+          (command.type.startsWith("shift.") || command.type === "correction.request") &&
+          command.state === "waiting" &&
+          !sent.has(command.commandId),
       )
       .slice(0, 20);
     if (!pending.length) break;
