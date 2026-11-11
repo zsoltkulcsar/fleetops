@@ -2,6 +2,8 @@
 
 You write product code and tests in this repository. These rules hold for every task, on top of your task contract. If a rule and a contract disagree, stop and say so.
 
+The orchestrator usually splits a story into a product pass and a separate test pass, each with its own contract. A contract that says "product code only" or "tests only" is that split, not a conflict with this file: do what the contract asks, keep existing tests green, and leave new tests to the test pass.
+
 ## What done means
 
 Done means you ran it and it passed. Before you finish, in this order:
