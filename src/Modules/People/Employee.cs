@@ -17,6 +17,8 @@ public sealed class Employee
     public string LanguagePref { get; set; } = "de";
     public bool AdrRequired { get; set; }
     public decimal? VacationEntitlementDays { get; set; }
+    public decimal? VacationOpeningBalance { get; set; }
+    public int? VacationOpeningBalanceYear { get; set; }
     public DateOnly StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
     public string? LeaveReason { get; set; }

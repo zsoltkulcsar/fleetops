@@ -11,7 +11,7 @@ public sealed class EfNotifications(TimeProvider time, INotificationIds ids) : I
 {
     public async Task<Guid> AddAsync(Guid employeeId, string templateCode, object parameters, Guid? alertId, CommandContext context, CancellationToken cancellationToken)
     {
-        if (templateCode is not ("vehicle_release_review" or "doc_expiring" or "expiry_warning" or "assignment_changed" or "vehicle_unusable" or "defect_cancelled" or "document_rejected" or "critical_alert" or "schedule_changed" or "sync_conflict" or "week_reminder" or "shift_rejected" or "shift_edited_by_office")) throw new ArgumentException("Unknown notification template.", nameof(templateCode));
+        if (templateCode is not ("vacation_decided" or "absence_recorded" or "schedule_request_decided" or "vehicle_release_review" or "doc_expiring" or "expiry_warning" or "assignment_changed" or "vehicle_unusable" or "defect_cancelled" or "document_rejected" or "critical_alert" or "schedule_changed" or "sync_conflict" or "week_reminder" or "shift_rejected" or "shift_edited_by_office")) throw new ArgumentException("Unknown notification template.", nameof(templateCode));
         var id = Guid.CreateVersion7();
         await using var command = new NpgsqlCommand("insert into fleetops.notifications (id, employee_id, alert_id, template_code, parameters, channel, created_at, attempts) values ($1,$2,$3,$4,$5::jsonb,'in_app',$6,0)", (NpgsqlConnection)context.DbConnection, (NpgsqlTransaction)context.DbTransaction);
         command.Parameters.AddWithValue(id);
@@ -88,6 +88,7 @@ public sealed class NotificationQueryHandler(IConfiguration configuration) : IQu
         command.Parameters.AddWithValue(query.Cursor is null ? DBNull.Value : Guid.Parse(query.Cursor));
         command.Parameters.AddWithValue(Math.Clamp(query.Limit, 1, 100));
         var items = new List<NotificationItem>();
+        var decisionParameters = new Dictionary<Guid, Dictionary<string, JsonElement>>();
         await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
         {
             while (await reader.ReadAsync(cancellationToken))
@@ -95,10 +96,29 @@ public sealed class NotificationQueryHandler(IConfiguration configuration) : IQu
                 var id = reader.GetGuid(0);
                 var template = reader.GetString(1);
                 var parameters = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(reader.GetString(2)) ?? [];
+                if (template is "vacation_decided" or "schedule_request_decided") decisionParameters[id] = parameters;
                 var text = NotificationTemplates.Render(template, parameters, "en");
-                var link = template == "doc_expiring" ? "/driver/#/me" : template == "expiry_warning" ? "/attention" : template is "week_reminder" or "shift_rejected" or "shift_edited_by_office" ? "/driver/#/week" : template == "sync_conflict" ? (actor.Roles.Contains(RoleCode.Driver) ? "/driver/#/week" : "/attention") : template is "schedule_changed" or "assignment_changed" ? "/driver/#/schedule" : template == "document_rejected" && parameters.TryGetValue("documentId", out var documentId) ? (actor.Roles.Contains(RoleCode.Driver) ? $"/driver/#/me?open={documentId.GetString()}" : $"/documents?open={documentId.GetString()}") : "/";
+                var link = template == "vacation_decided" ? "/driver/#/me" : template == "schedule_request_decided" ? "/driver/#/schedule" : template == "absence_recorded" ? "/people" : template == "doc_expiring" ? "/driver/#/me" : template == "expiry_warning" ? "/attention" : template is "week_reminder" or "shift_rejected" or "shift_edited_by_office" ? "/driver/#/week" : template == "sync_conflict" ? (actor.Roles.Contains(RoleCode.Driver) ? "/driver/#/week" : "/attention") : template is "schedule_changed" or "assignment_changed" ? "/driver/#/schedule" : template == "document_rejected" && parameters.TryGetValue("documentId", out var documentId) ? (actor.Roles.Contains(RoleCode.Driver) ? $"/driver/#/me?open={documentId.GetString()}" : $"/documents?open={documentId.GetString()}") : "/";
                 items.Add(new(id, template, text, reader.GetFieldValue<DateTimeOffset>(3), reader.IsDBNull(4) ? null : reader.GetFieldValue<DateTimeOffset>(4), link));
             }
+        }
+        for (var index = 0; index < items.Count; index++)
+        {
+            var item = items[index];
+            if (!decisionParameters.TryGetValue(item.Id, out var parameters)) continue;
+            var vacation = item.TemplateCode == "vacation_decided";
+            if (!parameters.TryGetValue(vacation ? "absenceId" : "requestId", out var identifier) || !identifier.TryGetGuid(out var subjectId)) continue;
+            var status = parameters.TryGetValue("status", out var decision) ? decision.GetString() : null;
+            var sql = vacation
+                ? "select case when $3 = 'declined' then decline_reason when $3 = 'cancelled' then cancel_reason end from fleetops.absences where id = $1 and employee_id = $2"
+                : "select decline_reason from fleetops.schedule_change_requests where id = $1 and employee_id = $2 and $3 = 'declined'";
+            await using var reasonCommand = new NpgsqlCommand(sql, connection);
+            reasonCommand.Parameters.AddWithValue(subjectId);
+            reasonCommand.Parameters.AddWithValue(actor.EmployeeId);
+            reasonCommand.Parameters.AddWithValue(status ?? "decided");
+            if (await reasonCommand.ExecuteScalarAsync(cancellationToken) is string reason)
+                parameters["reason"] = JsonSerializer.SerializeToElement(reason);
+            items[index] = item with { Text = NotificationTemplates.Render(item.TemplateCode, parameters, "en") };
         }
         await using var unreadCommand = new NpgsqlCommand("select count(*) from fleetops.notifications where employee_id = $1 and read_at is null", connection);
         unreadCommand.Parameters.AddWithValue(actor.EmployeeId);

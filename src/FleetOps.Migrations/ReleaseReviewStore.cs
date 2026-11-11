@@ -38,7 +38,7 @@ public sealed class EfReleaseReviewStore : IReleaseReviewStore
     {
         await using var db = Open(context);
         db.Alerts.Update(alert);
-        db.AuditEntries.Add(new AuditEntry { Id = Guid.NewGuid(), EntityType = "alert", EntityId = alert.Id, FieldName = "status", OldValue = "open", NewValue = "resolved", ActorId = actor.EmployeeId.ToString(), Reason = "release_acknowledged", CreatedAt = alert.ResolvedAt!.Value });
+        db.AuditEntries.Add(new AuditEntry { Id = Guid.NewGuid(), EntityType = "alert", EntityId = alert.Id, FieldName = "status", OldValue = "open", NewValue = "resolved", ActorId = actor.EmployeeId.ToString(), Reason = alert.RuleId == "A-18" ? "absence_work_acknowledged" : "release_acknowledged", CreatedAt = alert.ResolvedAt!.Value });
         await db.SaveChangesAsync(cancellationToken);
     }
 }

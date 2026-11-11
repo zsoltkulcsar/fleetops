@@ -20,6 +20,7 @@ public static class PersonRules
         if (fields.StartDate == default) errors.Add("startDate");
         if (!EmploymentTypes.Contains(fields.EmploymentType)) errors.Add("employmentType");
         if (fields.LanguagePref is not ("de" or "en")) errors.Add("languagePref");
+        if (fields.VacationOpeningBalance is < -366 or > 366) errors.Add("vacationOpeningBalance");
         if (fields.VacationEntitlementDays is < 0 or > 366) errors.Add("vacationEntitlementDays");
         if (errors.Count > 0) throw new PersonValidationException(errors);
     }
@@ -55,7 +56,7 @@ public static class PersonRules
     public static string Status(Employee employee) => employee.Status.ToString().ToLowerInvariant();
     public static PersonFields Fields(Employee employee) => new(employee.FirstName, employee.LastName, employee.Phone,
         employee.PersonnelNumber, employee.Email, employee.StartDate, employee.EmploymentType, employee.LanguagePref,
-        employee.AdrRequired, employee.VacationEntitlementDays);
+        employee.AdrRequired, employee.VacationEntitlementDays, employee.VacationOpeningBalance);
 
     public static PersonRow Row(PersonFacts facts, DateOnly today, bool mask)
     {

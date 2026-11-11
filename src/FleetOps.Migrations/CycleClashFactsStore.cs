@@ -16,6 +16,7 @@ public sealed class EfCycleClashFacts : ICycleClashFacts
         var overlaps = open && await db.Cycles.AnyAsync(other => other.Id != cycleId && other.VehicleId == cycle.VehicleId &&
             (other.Status == CycleStatus.Planned || other.Status == CycleStatus.Active || other.Status == CycleStatus.Overrun) &&
             other.From < cycle.To && cycle.From < other.To, cancellationToken);
+        overlaps |= open && await db.Absences.AnyAsync(absence => absence.EmployeeId == cycle.EmployeeId && absence.Status == FleetOps.Modules.Absences.AbsenceStatus.Approved && absence.From <= cycle.To && absence.To >= cycle.From, cancellationToken);
         return new(cycle.VehicleId, cycle.From, cycle.To, open, overlaps);
     }
 

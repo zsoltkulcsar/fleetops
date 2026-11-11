@@ -33,6 +33,7 @@ public sealed class EfShiftStartFacts(ICompanyTimeService companyTime) : IShiftS
             chosen is null || (truck?.Kind == VehicleKind.Truck && vehicles.GetValueOrDefault(chosen.Value)?.Usable == true),
             trailerId is null || (trailer?.Kind == VehicleKind.Trailer && vehicles.GetValueOrDefault(trailerId.Value)?.Usable == true))
         {
+            AbsenceType = (await db.Absences.AsNoTracking().Where(absence => absence.EmployeeId == employeeId && absence.Status == FleetOps.Modules.Absences.AbsenceStatus.Approved && absence.From <= date && absence.To >= date).OrderBy(absence => absence.Id).Select(absence => (FleetOps.Modules.Absences.AbsenceType?)absence.Type).FirstOrDefaultAsync(cancellationToken)) is { } absenceType ? System.Text.Json.JsonNamingPolicy.SnakeCaseLower.ConvertName(absenceType.ToString()) : null,
             OverrideId = chosen is null ? null : await db.VehicleOverrides.Where(release => release.VehicleId == chosen && release.At <= startAt && release.ValidUntil >= startAt).OrderByDescending(release => release.At).Select(release => (Guid?)release.Id).FirstOrDefaultAsync(cancellationToken),
             EmployeeStatus = employee?.Status.ToString().ToLowerInvariant() ?? "missing"
         };

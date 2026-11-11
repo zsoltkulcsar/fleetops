@@ -65,6 +65,14 @@ public static class NotificationTemplates
     {
         if (templateCode == "assignment_changed") return string.Equals(language, "de", StringComparison.OrdinalIgnoreCase) ? "Ihre Fahrzeugzuordnung wurde ge\u00e4ndert. Bitte pr\u00fcfen Sie Ihren Dienstplan." : "Your truck assignment has changed. Please check your schedule.";
         var german = string.Equals(language, "de", StringComparison.OrdinalIgnoreCase);
+        if (templateCode is "vacation_decided" or "schedule_request_decided")
+        {
+            var status = parameters.TryGetValue("status", out var decision) ? decision.GetString() : "decided";
+            var reason = parameters.TryGetValue("reason", out var explanation) ? explanation.GetString() : null;
+            var label = templateCode == "vacation_decided" ? (german ? "Urlaub" : "Vacation") : (german ? "Dienstplananfrage" : "Schedule request");
+            return label + ": " + status + (string.IsNullOrWhiteSpace(reason) ? "" : ". " + reason);
+        }
+        if (templateCode == "absence_recorded") return german ? "Eine Abwesenheit wurde erfasst." : "An absence was recorded. Please review it.";
         if (templateCode == "doc_expiring")
         {
             var type = parameters.TryGetValue("documentType", out var documentType) ? documentType.GetString() : null;

@@ -30,6 +30,7 @@ using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddPeople();
+builder.Services.AddAbsences();
 builder.Services.AddVehicleRelease();
 builder.Services.AddPersonAccess();
 builder.Services.AddCompanySettings();
@@ -251,6 +252,8 @@ app.UseExceptionHandler(new ExceptionHandlerOptions
             return;
         }
         if (exception is InvalidOperationException { Message: "mailbox_unavailable" }) { await Results.Json(new { code = "mailbox_unavailable" }, statusCode: 503).ExecuteAsync(context); return; }
+        if (exception is FleetOps.Modules.Absences.AbsenceValidationException absenceValidation) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "validation_error", ["fields"] = absenceValidation.Fields }).ExecuteAsync(context); return; }
+        if (exception is FleetOps.Modules.Absences.AbsenceConflictException absenceConflict) { await Results.Problem(statusCode: absenceConflict.Code == "not_found" ? 404 : 409, extensions: new Dictionary<string, object?> { ["code"] = absenceConflict.Code, ["shifts"] = absenceConflict.Shifts }).ExecuteAsync(context); return; }
         if (exception is ScheduleValidationException scheduleValidation) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "validation_error", ["fields"] = scheduleValidation.Fields }).ExecuteAsync(context); return; }
         if (exception is ScheduleConflictException scheduleConflict) { await Results.Problem(statusCode: 409, extensions: new Dictionary<string, object?> { ["code"] = scheduleConflict.Code }).ExecuteAsync(context); return; }
         if (exception is FleetOps.People.PersonValidationException personValidation) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = personValidation.Fields.Contains("reason") ? "reason" : "validation_error", ["fields"] = personValidation.Fields }).ExecuteAsync(context); return; }
@@ -304,6 +307,7 @@ app.MapGet("/jobs/nightly", async (HttpContext context, JobRunner runner, Cancel
 app.MapPost("/api/v1/admin/jobs/{name}/run", async (string name, CommandDispatcher dispatcher, JobRunner runner, IConfiguration configuration, CancellationToken cancellationToken) => !configuration.GetValue("Jobs:AdminTrigger", false) || !runner.Contains(name) ? Results.NotFound() : Results.Ok(await dispatcher.DispatchAsync<RunJobCommand, JobRunResult>(new(name), cancellationToken))).Produces<JobRunResult>();
 app.MapGet("/api/v1/admin/jobs", async (QueryDispatcher dispatcher, IConfiguration configuration, CancellationToken cancellationToken) => !configuration.GetValue("Jobs:AdminTrigger", false) ? Results.NotFound() : Results.Ok(await dispatcher.DispatchAsync<ListJobsQuery, JobListResult>(new(), cancellationToken))).Produces<JobListResult>();
 app.MapPeople();
+app.MapAbsences();
 app.MapVehicleRelease();
 app.MapPersonAccess();
 app.MapCompanySettings();

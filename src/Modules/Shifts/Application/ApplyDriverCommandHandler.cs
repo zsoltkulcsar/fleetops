@@ -6,7 +6,7 @@ using FleetOps.Modules.Setup;
 
 namespace FleetOps.Modules.Shifts;
 
-public sealed class ApplyDriverCommandHandler(IShiftCommandStore store, IShiftStartFacts facts, IShiftEvents events, ICompanyTimeService companyTime, ISettings settings, TimeProvider clock, IDriverDefectCommands defects)
+public sealed class ApplyDriverCommandHandler(IShiftCommandStore store, IShiftStartFacts facts, IShiftEvents events, ICompanyTimeService companyTime, ISettings settings, TimeProvider clock, IDriverDefectCommands defects, IDriverPlanningCommands? planning = null)
     : ICommandHandler<ApplyDriverCommand, DriverCommandResult>
 {
     public static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
@@ -28,14 +28,16 @@ public sealed class ApplyDriverCommandHandler(IShiftCommandStore store, IShiftSt
             return prior.Type != command.Type ? new(command.CommandId, "failed", "command_id_reused", null)
                 : JsonSerializer.Deserialize<DriverCommandResult>(prior.Result, JsonOptions) ?? throw new InvalidOperationException("invalid_command_receipt");
         var receivedAt = clock.GetUtcNow();
-        if (command.Type is "defect.report" or "defect.cancel")
+        if (command.Type is "defect.report" or "defect.cancel" or "absence.request" or "absence.cancel" or "schedule.request_change" or "schedule.request")
         {
             DriverCommandResult defectResult;
             try
             {
                 defectResult = command.SchemaVersion != 1
                     ? new(command.CommandId, "failed", "unsupported_schema_version", null)
-                    : await defects.ApplyAsync(command, actor, context, receivedAt, cancellationToken);
+                    : command.Type is "defect.report" or "defect.cancel"
+                        ? await defects.ApplyAsync(command, actor, context, receivedAt, cancellationToken)
+                        : await (planning ?? throw new InvalidOperationException("Planning commands are not configured.")).ApplyAsync(command, actor, context, cancellationToken);
             }
             catch (JsonException) { defectResult = new(command.CommandId, "failed", "invalid_payload", null); }
             var defectReceipt = new CommandReceipt
@@ -51,6 +53,7 @@ public sealed class ApplyDriverCommandHandler(IShiftCommandStore store, IShiftSt
         var shift = await store.LoadAsync(actor.EmployeeId, command.AggregateId, context, cancellationToken);
         DriverCommandResult result;
         ConflictRecord? conflict = null;
+        string? confirmedAbsenceType = null;
         if (await store.HasFailedDependencyAsync(actor.EmployeeId, command.AggregateId, context, cancellationToken))
             result = new(command.CommandId, "failed", "dependency", null);
         else if (command.SchemaVersion != 1)
@@ -78,6 +81,9 @@ public sealed class ApplyDriverCommandHandler(IShiftCommandStore store, IShiftSt
                     var payload = command.Payload.Deserialize<StartShiftPayload>(JsonOptions) ?? throw new ShiftRuleException("invalid_payload");
                     var startFacts = await facts.ReadAsync(actor.EmployeeId, payload.WorkWithoutVehicle ? null : payload.TruckId, payload.TrailerId, command.DeviceTime, context, cancellationToken);
                     if (!startFacts.Active) throw new ShiftRuleException(startFacts.EmployeeStatus == "suspended" ? "account_suspended" : "account_not_active");
+                    if (startFacts.AbsenceType is not null && !payload.ConfirmAbsence)
+                        return new(command.CommandId, "confirmation_required", "absence_today", null) { AbsenceType = startFacts.AbsenceType };
+                    confirmedAbsenceType = startFacts.AbsenceType;
                     var truckId = payload.WorkWithoutVehicle ? null : payload.TruckId ?? startFacts.SuggestedTruckId;
                     var blocked = truckId is not null && (!startFacts.DriverCanDrive || !startFacts.TruckUsable);
                     if (blocked && !payload.StartedOffline) throw new ShiftRuleException(startFacts.DriverCanDrive ? "truck_unusable" : "driver_blocked");
@@ -97,7 +103,7 @@ public sealed class ApplyDriverCommandHandler(IShiftCommandStore store, IShiftSt
                 shift.ServerReceivedAt = receivedAt;
                 // The configured threshold is supplied by the composition layer.
                 shift.DeviceTimeGap |= Math.Abs((receivedAt - command.DeviceTime).TotalMinutes) > await settings.GetIntAsync(new("company.device_time_gap_minutes"), context, cancellationToken);
-                result = new(command.CommandId, "applied", null, ShiftViews.From(shift));
+                result = new(command.CommandId, "applied", null, ShiftViews.From(shift)) { AbsenceType = confirmedAbsenceType };
                 if (command.Type == "shift.end" && command.Payload.TryGetProperty("finishedCycle", out var finished) && finished.ValueKind == JsonValueKind.True)
                     await events.ChangedAsync(actor.EmployeeId, shift.Id, "cycle_finished", context, cancellationToken);
                 await events.ChangedAsync(actor.EmployeeId, shift.Id, shift.BlockedAtStart is null ? null : "blocked_shift", context, cancellationToken);
@@ -147,7 +153,7 @@ public sealed class ApplyDriverCommandHandler(IShiftCommandStore store, IShiftSt
     }
 }
 
-public sealed record StartShiftPayload(Guid? TruckId = null, Guid? TrailerId = null, int? OdometerKm = null, bool? DepartureCheckOk = null, bool WorkWithoutVehicle = false, bool StartedOffline = false);
+public sealed record StartShiftPayload(Guid? TruckId = null, Guid? TrailerId = null, int? OdometerKm = null, bool? DepartureCheckOk = null, bool WorkWithoutVehicle = false, bool StartedOffline = false, bool ConfirmAbsence = false);
 public sealed record SwitchActivityPayload(ActivityType Type);
 public sealed record BackdatePayload(int Minutes);
 public sealed record EndShiftPayload(DateTimeOffset? EndAt = null, int? OdometerKm = null, bool? FinishedCycle = null);

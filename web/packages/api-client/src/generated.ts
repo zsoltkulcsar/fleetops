@@ -485,6 +485,329 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/alerts/{id}/acknowledge-absence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AbsenceAcknowledgementRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReleaseReviewResult"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/absences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query: {
+                    from: string;
+                    to: string;
+                    employeeId?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AbsenceList"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RecordAbsenceCommand"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AbsenceView"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/absences/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AbsenceDetail"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AbsenceEditRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AbsenceView"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/absences/{id}/decide": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AbsenceDecisionRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AbsenceView"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/absences/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AbsenceCancellationRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AbsenceView"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/schedule/requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ScheduleRequestList"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/schedule/requests/{id}/decide": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ScheduleRequestDecisionRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ScheduleRequestView"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/fleet/vehicles/{id}/release": {
         parameters: {
             query?: never;
@@ -4309,6 +4632,67 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AbsenceAcknowledgementRequest: {
+            /** Format: int32 */
+            version: number;
+        };
+        AbsenceCancellationRequest: {
+            reason: null | string;
+        };
+        AbsenceDecisionRequest: {
+            approve: boolean;
+            reason?: null | string;
+            /** @default false */
+            confirmOverlap: boolean;
+        };
+        AbsenceDetail: {
+            absence: components["schemas"]["AbsenceView"];
+            employeeName: string;
+            /** Format: double */
+            workingDays: number;
+            balancesBefore: components["schemas"]["VacationBalance"][];
+            balancesAfter: components["schemas"]["VacationBalance"][];
+            /** Format: int32 */
+            othersAbsentCount: number;
+            othersAbsentNames: string[];
+            dayCounting: string;
+        };
+        AbsenceEditRequest: {
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            halfDay: null | components["schemas"]["HalfDay"];
+            type: components["schemas"]["AbsenceType"];
+            reason: null | string;
+            /** @default false */
+            confirmOverlap: boolean;
+        };
+        AbsenceList: {
+            items: components["schemas"]["AbsenceDetail"][];
+        };
+        /** @enum {unknown} */
+        AbsenceStatus: "requested" | "approved" | "declined" | "cancelled";
+        /** @enum {unknown} */
+        AbsenceType: "vacation" | "sick" | "training" | "unpaid" | "time_off_in_lieu" | "other";
+        AbsenceView: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            employeeId: string;
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            halfDay: null | components["schemas"]["HalfDay"];
+            type: components["schemas"]["AbsenceType"];
+            status: components["schemas"]["AbsenceStatus"];
+            note: null | string;
+            declineReason: null | string;
+            cancelReason: null | string;
+            /** Format: double */
+            workingDays?: number;
+        };
         AccessActionResult: {
             code: string;
         };
@@ -4475,6 +4859,8 @@ export interface components {
             adrRequired: boolean;
             /** Format: double */
             vacationEntitlementDays?: null | number;
+            /** Format: double */
+            vacationOpeningBalance?: null | number;
         };
         CreateRepairCommand: {
             /** Format: uuid */
@@ -4827,6 +5213,7 @@ export interface components {
             status: string;
             code: null | string;
             shift: null | components["schemas"]["ShiftView"];
+            absenceType?: null | string;
         };
         DriverConfig: {
             /** Format: int32 */
@@ -4967,6 +5354,9 @@ export interface components {
             documents: components["schemas"]["DriverDocument"][];
             canDrive: boolean;
             readinessCauses: components["schemas"]["ReadinessCause"][];
+            vacationBalance?: null | components["schemas"]["VacationBalance"];
+            absences?: components["schemas"]["AbsenceView"][];
+            scheduleRequests?: components["schemas"]["ScheduleRequestView"][];
             employeeStatus?: string;
             swaps?: components["schemas"]["DriverSwap"][];
             defects?: components["schemas"]["DriverOwnDefect"][];
@@ -5069,6 +5459,8 @@ export interface components {
             adrRequired: boolean;
             /** Format: double */
             vacationEntitlementDays?: null | number;
+            /** Format: double */
+            vacationOpeningBalance?: null | number;
         };
         EditShiftRequest: {
             /** Format: int32 */
@@ -5143,6 +5535,8 @@ export interface components {
             status: components["schemas"]["ShiftStatus"];
             flagged: boolean;
         };
+        /** @enum {unknown} */
+        HalfDay: "am" | "pm" | null;
         HolidayView: {
             /** Format: date */
             date: string;
@@ -5370,6 +5764,8 @@ export interface components {
             adrRequired: boolean;
             /** Format: double */
             vacationEntitlementDays?: null | number;
+            /** Format: double */
+            vacationOpeningBalance?: null | number;
         };
         PersonHistory: {
             items: components["schemas"]["PersonHistoryEntry"][];
@@ -5472,6 +5868,19 @@ export interface components {
         ReasonRequest: {
             reason: null | string;
         };
+        RecordAbsenceCommand: {
+            /** Format: uuid */
+            employeeId: string;
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            halfDay: null | components["schemas"]["HalfDay"];
+            type: components["schemas"]["AbsenceType"];
+            note?: null | string;
+            /** @default false */
+            confirmOverlap: boolean;
+        };
         RejectShiftRequest: {
             /** Format: int32 */
             version: number;
@@ -5547,6 +5956,34 @@ export interface components {
             /** Format: int32 */
             version: number;
             pattern: components["schemas"]["CyclePattern"];
+        };
+        ScheduleRequestDecisionRequest: {
+            accept: boolean;
+            reason?: null | string;
+        };
+        ScheduleRequestList: {
+            items: components["schemas"]["ScheduleRequestView"][];
+        };
+        /** @enum {unknown} */
+        ScheduleRequestStatus: "open" | "accepted" | "declined" | "superseded";
+        ScheduleRequestView: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            employeeId: string;
+            /** Format: uuid */
+            cycleId: string;
+            /** Format: date */
+            proposedFrom: string;
+            /** Format: date */
+            proposedTo: string;
+            note: string;
+            status: components["schemas"]["ScheduleRequestStatus"];
+            declineReason: null | string;
+            /** Format: uuid */
+            decidedBy: null | string;
+            /** Format: date-time */
+            decidedAt: null | string;
         };
         ScheduleResult: {
             /** Format: date-time */
@@ -5780,6 +6217,18 @@ export interface components {
         };
         UploadRequiredHeaders: {
             "Content-Type": string;
+        };
+        VacationBalance: {
+            /** Format: int32 */
+            year: number;
+            /** Format: double */
+            opening: number;
+            /** Format: double */
+            entitlement: number;
+            /** Format: double */
+            used: number;
+            /** Format: double */
+            remaining: number;
         };
         VehicleDetail: {
             /** Format: uuid */

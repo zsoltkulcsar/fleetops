@@ -24,6 +24,12 @@ public sealed partial class FleetOpsDbContext
             entity.Property(absence => absence.Type).HasColumnName("type").HasConversion<string>();
             entity.Property(absence => absence.Status).HasColumnName("status").HasConversion<string>();
             entity.Property(absence => absence.DecidedBy).HasColumnName("decided_by");
+            entity.Property(absence => absence.CommandId).HasColumnName("command_id");
+            entity.Property(absence => absence.DeviceTime).HasColumnName("device_time");
+            entity.Property(absence => absence.Note).HasColumnName("note").HasMaxLength(2000);
+            entity.Property(absence => absence.DeclineReason).HasColumnName("decline_reason").HasMaxLength(2000);
+            entity.Property(absence => absence.CancelReason).HasColumnName("cancel_reason").HasMaxLength(2000);
+            entity.HasIndex(absence => new { absence.EmployeeId, absence.CommandId }).IsUnique();
             entity.HasIndex(absence => new { absence.EmployeeId, absence.From, absence.To });
             entity.HasOne<Employee>().WithMany().HasForeignKey(absence => absence.EmployeeId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<Employee>().WithMany().HasForeignKey(absence => absence.DecidedBy).OnDelete(DeleteBehavior.Restrict);

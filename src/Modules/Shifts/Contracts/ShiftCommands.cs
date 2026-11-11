@@ -7,7 +7,10 @@ namespace FleetOps.Modules.Shifts;
 public sealed record DriverCommand(Guid CommandId, string Type, int SchemaVersion, Guid AggregateId, int BaseVersion, DateTimeOffset DeviceTime, JsonElement Payload);
 
 [VisibleTo(RoleCode.Driver)]
-public sealed record DriverCommandResult(Guid CommandId, string Status, string? Code, ShiftView? Shift) : IReadModel;
+public sealed record DriverCommandResult(Guid CommandId, string Status, string? Code, ShiftView? Shift) : IReadModel
+{
+    public string? AbsenceType { get; init; }
+}
 
 [CommandPolicy("shifts.enter_edit", HasStatePrecondition = true)]
 public sealed record ApplyDriverCommand(Guid? SubjectId, DriverCommand Command) : ICommand<DriverCommandResult>, IHasSubject;
@@ -59,6 +62,7 @@ public interface IShiftCommandStore
 
 public sealed record ShiftStartFacts(bool Active, bool DriverCanDrive, Guid? SuggestedTruckId, bool TruckUsable, bool TrailerUsable)
 {
+    public string? AbsenceType { get; init; }
     public Guid? OverrideId { get; init; }
     public string EmployeeStatus { get; init; } = Active ? "active" : "inactive";
 }

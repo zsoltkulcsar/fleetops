@@ -6,12 +6,14 @@ namespace FleetOps.People;
 internal static class PersonEditing
 {
     internal static async Task ApplyAsync(IPeopleStore store, Employee employee, PersonFields fields, AccessContext actor,
-        CommandContext context, bool create, CancellationToken cancellationToken)
+        CommandContext context, bool create, CancellationToken cancellationToken, int openingYear)
     {
         var number = string.IsNullOrWhiteSpace(fields.PersonnelNumber) ? null : fields.PersonnelNumber.Trim();
         if (number is not null && await store.PersonnelNumberExistsAsync(number, employee.Id, context, cancellationToken))
             throw new PersonValidationException(["personnelNumber"]);
         var previous = PersonRules.Fields(employee);
+        if ((employee.VacationEntitlementDays != fields.VacationEntitlementDays || employee.VacationOpeningBalance != fields.VacationOpeningBalance) && !actor.Roles.Contains(RoleCode.Hr))
+            throw new AuthorizationException("permission_denied", "absences.manage", [RoleCode.Hr]);
         employee.FirstName = fields.FirstName!.Trim();
         employee.LastName = fields.LastName!.Trim();
         employee.Phone = fields.Phone;
@@ -22,6 +24,9 @@ internal static class PersonEditing
         employee.LanguagePref = fields.LanguagePref!;
         employee.AdrRequired = fields.AdrRequired;
         employee.VacationEntitlementDays = fields.VacationEntitlementDays;
+        employee.VacationOpeningBalance = fields.VacationOpeningBalance;
+        if (employee.VacationOpeningBalance is not null && employee.VacationOpeningBalanceYear is null)
+            employee.VacationOpeningBalanceYear = openingYear;
         var updated = PersonRules.Fields(employee);
         var audit = new List<PersonAudit>();
         if (create) audit.Add(new("created", null, "onboarding"));

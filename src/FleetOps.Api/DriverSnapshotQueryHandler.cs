@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FleetOps.Api;
 
-public sealed class DriverSnapshotQueryHandler(FleetOpsDbContext db, ICompanyTimeService companyTime, TimeProvider time) : IQueryHandler<GetDriverSnapshotQuery, DriverSnapshot>
+public sealed class DriverSnapshotQueryHandler(FleetOpsDbContext db, ICompanyTimeService companyTime, TimeProvider time, FleetOps.Modules.Absences.IAbsenceStore absences, IScheduleRequestStore scheduleRequests) : IQueryHandler<GetDriverSnapshotQuery, DriverSnapshot>
 {
     public async Task<DriverSnapshot> HandleAsync(GetDriverSnapshotQuery query, AccessContext actor, CancellationToken cancellationToken)
     {
@@ -24,8 +24,12 @@ public sealed class DriverSnapshotQueryHandler(FleetOpsDbContext db, ICompanyTim
         var readiness = await new EfReadinessStore(db).ForDriversAsync([actor.EmployeeId], today, cancellationToken);
         var own = readiness.GetValueOrDefault(actor.EmployeeId) ?? new DriverReadiness(false, []);
         var defects = await db.DefectReports.AsNoTracking().Where(defect => defect.ReportedBy == actor.EmployeeId).OrderByDescending(defect => defect.ReportedAt).ToListAsync(cancellationToken);
+        var absenceFacts = await absences.FactsAsync(actor.EmployeeId, null, cancellationToken);
         return new(actor.EmployeeId, generatedAt, cycles, documents, own.CanDrive, own.Causes)
         {
+            VacationBalance = absenceFacts is null ? null : FleetOps.Modules.Absences.AbsenceRules.Balance(absenceFacts, today.Year),
+            Absences = absenceFacts?.Absences.Select(absence => FleetOps.Modules.Absences.AbsenceRules.View(absence) with { WorkingDays = Enumerable.Range(absence.From.Year, absence.To.Year - absence.From.Year + 1).Sum(year => FleetOps.Modules.Absences.AbsenceRules.Days(absence, year, absenceFacts.Holidays)) }).ToArray() ?? [],
+            ScheduleRequests = await scheduleRequests.ListAsync(actor.EmployeeId, cancellationToken),
             EmployeeStatus = (await db.Employees.Where(employee => employee.Id == actor.EmployeeId).Select(employee => employee.Status).SingleAsync(cancellationToken)).ToString().ToLowerInvariant(),
             Swaps = await db.Assignments.AsNoTracking().Where(assignment => assignment.EmployeeId == actor.EmployeeId &&
                 assignment.From < horizon && (assignment.To == null || assignment.To >= today.AddDays(-28)))

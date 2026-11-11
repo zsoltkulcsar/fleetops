@@ -433,9 +433,27 @@ namespace FleetOps.Migrations.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("CancelReason")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("cancel_reason");
+
+                    b.Property<Guid?>("CommandId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("command_id");
+
                     b.Property<Guid?>("DecidedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("decided_by");
+
+                    b.Property<string>("DeclineReason")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("decline_reason");
+
+                    b.Property<DateTimeOffset?>("DeviceTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("device_time");
 
                     b.Property<Guid>("EmployeeId")
                         .HasColumnType("uuid")
@@ -448,6 +466,11 @@ namespace FleetOps.Migrations.Migrations
                     b.Property<string>("HalfDay")
                         .HasColumnType("text")
                         .HasColumnName("half_day");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("note");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -466,6 +489,9 @@ namespace FleetOps.Migrations.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("DecidedBy");
+
+                    b.HasIndex("EmployeeId", "CommandId")
+                        .IsUnique();
 
                     b.HasIndex("EmployeeId", "From", "To");
 
@@ -1361,6 +1387,78 @@ namespace FleetOps.Migrations.Migrations
                         });
                 });
 
+            modelBuilder.Entity("FleetOps.Modules.Schedule.ScheduleChangeRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("CommandId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("command_id");
+
+                    b.Property<Guid>("CycleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("cycle_id");
+
+                    b.Property<DateTimeOffset?>("DecidedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("decided_at");
+
+                    b.Property<Guid?>("DecidedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("decided_by");
+
+                    b.Property<string>("DeclineReason")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("decline_reason");
+
+                    b.Property<DateTimeOffset>("DeviceTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("device_time");
+
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("employee_id");
+
+                    b.Property<string>("Note")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("note");
+
+                    b.Property<DateOnly>("ProposedFrom")
+                        .HasColumnType("date")
+                        .HasColumnName("proposed_from");
+
+                    b.Property<DateOnly>("ProposedTo")
+                        .HasColumnType("date")
+                        .HasColumnName("proposed_to");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CycleId")
+                        .IsUnique()
+                        .HasFilter("status = 'Open'");
+
+                    b.HasIndex("DecidedBy");
+
+                    b.HasIndex("EmployeeId", "CommandId")
+                        .IsUnique();
+
+                    b.ToTable("schedule_change_requests", "fleetops", t =>
+                        {
+                            t.HasCheckConstraint("ck_schedule_request_dates", "proposed_from <= proposed_to");
+                        });
+                });
+
             modelBuilder.Entity("FleetOps.Modules.Setup.CompanyHoliday", b =>
                 {
                     b.Property<DateOnly>("Date")
@@ -1835,6 +1933,15 @@ namespace FleetOps.Migrations.Migrations
                         .HasColumnType("numeric(6,2)")
                         .HasColumnName("vacation_entitlement_days");
 
+                    b.Property<decimal?>("VacationOpeningBalance")
+                        .HasPrecision(6, 2)
+                        .HasColumnType("numeric(6,2)")
+                        .HasColumnName("vacation_opening_balance");
+
+                    b.Property<int?>("VacationOpeningBalanceYear")
+                        .HasColumnType("integer")
+                        .HasColumnName("vacation_opening_balance_year");
+
                     b.HasKey("Id");
 
                     b.HasIndex("DepotId");
@@ -2141,6 +2248,26 @@ namespace FleetOps.Migrations.Migrations
                     b.HasOne("FleetOps.Modules.Fleet.Vehicle", null)
                         .WithMany()
                         .HasForeignKey("VehicleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FleetOps.Modules.Schedule.ScheduleChangeRequest", b =>
+                {
+                    b.HasOne("FleetOps.Modules.Schedule.Cycle", null)
+                        .WithMany()
+                        .HasForeignKey("CycleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FleetOps.People.Employee", null)
+                        .WithMany()
+                        .HasForeignKey("DecidedBy")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("FleetOps.People.Employee", null)
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

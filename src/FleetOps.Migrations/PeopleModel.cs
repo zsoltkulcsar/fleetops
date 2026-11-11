@@ -17,6 +17,8 @@ public sealed partial class FleetOpsDbContext
             entity.Property(employee => employee.EmploymentType).HasColumnName("employment_type").HasMaxLength(20).HasDefaultValue("full_time");
             entity.Property(employee => employee.LanguagePref).HasColumnName("language_pref").HasMaxLength(2).HasDefaultValue("de");
             entity.Property(employee => employee.AdrRequired).HasColumnName("adr_required").HasDefaultValue(false);
+            entity.Property(employee => employee.VacationOpeningBalance).HasColumnName("vacation_opening_balance").HasPrecision(6, 2);
+            entity.Property(employee => employee.VacationOpeningBalanceYear).HasColumnName("vacation_opening_balance_year");
             entity.Property(employee => employee.VacationEntitlementDays).HasColumnName("vacation_entitlement_days").HasPrecision(6, 2);
             entity.HasOne<FleetOps.Modules.Setup.Depot>().WithMany().HasForeignKey(employee => employee.DepotId).OnDelete(DeleteBehavior.Restrict);
         });
