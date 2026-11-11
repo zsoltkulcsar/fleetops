@@ -71,6 +71,14 @@ public sealed class EfShiftCommandStore : IShiftCommandStore
         await db.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task UpdateReceiptResultAsync(Guid employeeId, Guid commandId, string result, CommandContext context, CancellationToken cancellationToken)
+    {
+        await using var db = Create(context, employeeId);
+        var receipt = await db.CommandReceipts.SingleAsync(receipt => receipt.EmployeeId == employeeId && receipt.CommandId == commandId, cancellationToken);
+        receipt.Result = result;
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
     private static FleetOpsDbContext Create(CommandContext context, Guid actorId)
     {
         var options = new DbContextOptionsBuilder<FleetOpsDbContext>();

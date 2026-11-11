@@ -69,7 +69,7 @@ public sealed class AlertEngine(IEnumerable<IAlertEvaluator> evaluators, ISettin
             insert.Parameters.AddWithValue(condition.ScopeKey);
             insert.Parameters.AddWithValue(condition.Severity.ToString());
             insert.Parameters.AddWithValue(condition.DueAt is null ? DBNull.Value : condition.DueAt.Value);
-            insert.Parameters.AddWithValue(assignedRole);
+            insert.Parameters.AddWithValue(evaluator.RuleId == "A-14" ? condition.ScopeKey : assignedRole);
             insert.Parameters.AddWithValue(now);
             var inserted = await insert.ExecuteScalarAsync(cancellationToken);
             if (inserted is Guid openedId)

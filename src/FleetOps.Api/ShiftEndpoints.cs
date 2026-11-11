@@ -11,6 +11,10 @@ public static class ShiftEndpoints
 {
     public static void Map(WebApplication app)
     {
+        app.MapGet("/api/v1/corrections", async (Guid? employeeId, IAccessContextAccessor access, QueryDispatcher dispatcher, CancellationToken cancellationToken) =>
+            Results.Ok(await dispatcher.DispatchAsync<GetCorrectionsQuery, CorrectionList>(new(employeeId ?? (access.Current?.Roles.Any(role => role is RoleCode.Dispatcher or RoleCode.Hr or RoleCode.Owner) == true ? null : access.Current?.EmployeeId)), cancellationToken))).Produces<CorrectionList>();
+        app.MapPost("/api/v1/corrections/{id:guid}/decide", async (Guid id, CorrectionDecisionRequest request, CommandDispatcher dispatcher, CancellationToken cancellationToken) =>
+            Results.Ok(await dispatcher.DispatchAsync<DecideCorrectionCommand, CorrectionList>(new(id, request.EmployeeId, request.Decision, request.Reason, request.ShiftId), cancellationToken))).Produces<CorrectionList>();
         app.MapGet("/api/v1/driver/shifts", async (IAccessContextAccessor access, QueryDispatcher dispatcher, HttpContext context, CancellationToken cancellationToken) =>
         {
             context.Response.Headers.CacheControl = "no-store";

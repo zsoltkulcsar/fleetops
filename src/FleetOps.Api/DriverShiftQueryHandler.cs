@@ -7,7 +7,7 @@ using System.Text.Json;
 
 namespace FleetOps.Api;
 
-public sealed class DriverShiftQueryHandler(FleetOpsDbContext db, ICompanyTimeService companyTime, TimeProvider clock, IConfiguration configuration)
+public sealed class DriverShiftQueryHandler(FleetOpsDbContext db, ICompanyTimeService companyTime, TimeProvider clock, IConfiguration configuration, FleetOps.Modules.Setup.IComplianceRuleStore compliance, ICorrectionStore corrections)
     : IQueryHandler<GetDriverShiftsQuery, ShiftSnapshot>
 {
     public async Task<ShiftSnapshot> HandleAsync(GetDriverShiftsQuery query, AccessContext actor, CancellationToken cancellationToken)
@@ -53,13 +53,21 @@ public sealed class DriverShiftQueryHandler(FleetOpsDbContext db, ICompanyTimeSe
             (assignment.To == null || assignment.To >= from)).OrderByDescending(assignment => assignment.From).ThenByDescending(assignment => assignment.Id)
             .Select(assignment => new DriverTruckAssignment(assignment.VehicleId, assignment.From, assignment.To)).ToListAsync(cancellationToken);
         var plates = await db.Vehicles.AsNoTracking().ToDictionaryAsync(vehicle => vehicle.Id, vehicle => vehicle.Plate, cancellationToken);
+        var ruleValues = await compliance.ReadAsync(null, cancellationToken);
+        var correctionViews = await corrections.ListAsync(actor.EmployeeId, null, cancellationToken);
         var shiftViews = new List<ShiftView>();
         foreach (var shift in shifts)
         {
             var history = await EfTimesheetReadStore.HistoryAsync(db, shift, companyTime, cancellationToken, officeOnly: true);
-            shiftViews.Add(ShiftViews.From(shift) with { OfficeChanges = DriverOfficeChanges.Project(history, plates) });
+            shiftViews.Add(ShiftViews.From(shift) with { OfficeChanges = DriverOfficeChanges.Project(history, plates), RuleWarnings = ComplianceRuleEngine.ShiftWarnings(shift, shifts, ruleValues, now), Corrections = correctionViews.Where(request => request.ShiftId == shift.Id).ToArray() });
         }
         return new(now, configuration["Company:Timezone"] ?? "Europe/Berlin", shiftViews, applied, choices,
-            await EfShiftStartFacts.ResolveTruckForShift(db, actor.EmployeeId, today, cancellationToken), conflictViews, assignments);
+            await EfShiftStartFacts.ResolveTruckForShift(db, actor.EmployeeId, today, cancellationToken), conflictViews, assignments)
+        {
+            ComplianceRules = ruleValues,
+            Corrections = correctionViews,
+            WeekGuidance = shifts.Select(shift => shift.Date.AddDays(-(((int)shift.Date.DayOfWeek + 6) % 7))).Distinct()
+                .Select(week => new DriverWeekGuidance(week, ComplianceRuleEngine.WeekWarnings(week, shifts, ruleValues, now))).ToArray()
+        };
     }
 }

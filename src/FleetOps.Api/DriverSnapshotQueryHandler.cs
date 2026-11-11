@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FleetOps.Api;
 
-public sealed class DriverSnapshotQueryHandler(FleetOpsDbContext db, ICompanyTimeService companyTime, TimeProvider time, FleetOps.Modules.Absences.IAbsenceStore absences, IScheduleRequestStore scheduleRequests) : IQueryHandler<GetDriverSnapshotQuery, DriverSnapshot>
+public sealed class DriverSnapshotQueryHandler(FleetOpsDbContext db, ICompanyTimeService companyTime, TimeProvider time, FleetOps.Modules.Absences.IAbsenceStore absences, IScheduleRequestStore scheduleRequests, FleetOps.Modules.Setup.IComplianceRuleStore compliance) : IQueryHandler<GetDriverSnapshotQuery, DriverSnapshot>
 {
     public async Task<DriverSnapshot> HandleAsync(GetDriverSnapshotQuery query, AccessContext actor, CancellationToken cancellationToken)
     {
@@ -30,6 +30,7 @@ public sealed class DriverSnapshotQueryHandler(FleetOpsDbContext db, ICompanyTim
             Holidays = await db.CompanyHolidays.AsNoTracking().Where(holiday => holiday.Date >= today && holiday.Date < today.AddMonths(12)).OrderBy(holiday => holiday.Date).Select(holiday => new FleetOps.Modules.Setup.HolidayView(holiday.Date, holiday.Name)).ToArrayAsync(cancellationToken),
             VacationBalance = absenceFacts is null ? null : FleetOps.Modules.Absences.AbsenceRules.Balance(absenceFacts, today.Year),
             Absences = absenceFacts?.Absences.Select(absence => FleetOps.Modules.Absences.AbsenceRules.View(absence) with { WorkingDays = Enumerable.Range(absence.From.Year, absence.To.Year - absence.From.Year + 1).Sum(year => FleetOps.Modules.Absences.AbsenceRules.Days(absence, year, absenceFacts.Holidays)) }).ToArray() ?? [],
+            ComplianceRules = await compliance.ReadAsync(null, cancellationToken),
             ScheduleRequests = await scheduleRequests.ListAsync(actor.EmployeeId, cancellationToken),
             EmployeeStatus = (await db.Employees.Where(employee => employee.Id == actor.EmployeeId).Select(employee => employee.Status).SingleAsync(cancellationToken)).ToString().ToLowerInvariant(),
             Swaps = await db.Assignments.AsNoTracking().Where(assignment => assignment.EmployeeId == actor.EmployeeId &&

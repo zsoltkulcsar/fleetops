@@ -7,7 +7,7 @@ using FleetOps.Modules.Fleet;
 
 namespace FleetOps.Modules.Shifts;
 
-public sealed class ApplyDriverCommandHandler(IShiftCommandStore store, IShiftStartFacts facts, IShiftEvents events, ICompanyTimeService companyTime, ISettings settings, TimeProvider clock, IDriverDefectCommands defects, IFleetOdometer odometer, IDriverPlanningCommands? planning = null)
+public sealed class ApplyDriverCommandHandler(IShiftCommandStore store, IShiftStartFacts facts, IShiftEvents events, ICompanyTimeService companyTime, ISettings settings, TimeProvider clock, IDriverDefectCommands defects, IFleetOdometer odometer, IDriverPlanningCommands planning, IShiftGuidance guidance, IDriverCorrections corrections)
     : ICommandHandler<ApplyDriverCommand, DriverCommandResult>
 {
     public static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
@@ -29,13 +29,15 @@ public sealed class ApplyDriverCommandHandler(IShiftCommandStore store, IShiftSt
             return prior.Type != command.Type ? new(command.CommandId, "failed", "command_id_reused", null)
                 : JsonSerializer.Deserialize<DriverCommandResult>(prior.Result, JsonOptions) ?? throw new InvalidOperationException("invalid_command_receipt");
         var receivedAt = clock.GetUtcNow();
-        if (command.Type is "defect.report" or "defect.cancel" or "absence.request" or "absence.cancel" or "schedule.request_change" or "schedule.request")
+        if (command.Type is "defect.report" or "defect.cancel" or "absence.request" or "absence.cancel" or "schedule.request_change" or "schedule.request" or "correction.request")
         {
             DriverCommandResult defectResult;
             try
             {
                 defectResult = command.SchemaVersion != 1
                     ? new(command.CommandId, "failed", "unsupported_schema_version", null)
+                    : command.Type == "correction.request"
+                        ? await (corrections ?? throw new InvalidOperationException("Correction commands are not configured.")).ApplyAsync(command, actor, context, cancellationToken)
                     : command.Type is "defect.report" or "defect.cancel"
                         ? await defects.ApplyAsync(command, actor, context, receivedAt, cancellationToken)
                         : await (planning ?? throw new InvalidOperationException("Planning commands are not configured.")).ApplyAsync(command, actor, context, cancellationToken);
@@ -122,6 +124,12 @@ public sealed class ApplyDriverCommandHandler(IShiftCommandStore store, IShiftSt
             Type = command.Type, SchemaVersion = command.SchemaVersion, BaseVersion = command.BaseVersion, DeviceTime = command.DeviceTime,
             ServerReceivedAt = receivedAt, Payload = command.Payload.GetRawText(), Result = JsonSerializer.Serialize(result, JsonOptions), Outcome = result.Status };
         await store.SaveAsync(result.Status == "applied" ? shift : null, receipt, conflict, context, cancellationToken);
+        if (result.Status == "applied" && shift is not null)
+        {
+            var warnings = await guidance.RecomputeAsync(shift, context, cancellationToken);
+            result = result with { Shift = result.Shift is null ? null : result.Shift with { RuleWarnings = warnings } };
+            await store.UpdateReceiptResultAsync(actor.EmployeeId, command.CommandId, JsonSerializer.Serialize(result, JsonOptions), context, cancellationToken);
+        }
         return result;
     }
 

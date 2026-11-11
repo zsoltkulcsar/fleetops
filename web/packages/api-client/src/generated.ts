@@ -1240,6 +1240,160 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/alerts/{id}/acknowledge-rule-warning": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RuleWarningAcknowledgement"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReleaseReviewResult"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/settings/compliance-rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ComplianceRulesView"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/settings/compliance-rules/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ComplianceRuleEditRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ComplianceRulesView"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/settings/compliance-rules/{id}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ComplianceRulesView"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/holidays": {
         parameters: {
             query?: never;
@@ -1956,6 +2110,84 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["DriverDocumentDetail"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/corrections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    employeeId?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CorrectionList"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/corrections/{id}/decide": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CorrectionDecisionRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CorrectionList"];
                     };
                 };
             };
@@ -5164,6 +5396,24 @@ export interface components {
         CloseDefectRequest: {
             reason: null | string;
         };
+        ComplianceRuleEditRequest: {
+            value: null | components["schemas"]["JsonElement"];
+        };
+        ComplianceRulesView: {
+            rules: components["schemas"]["ComplianceRuleView"][];
+            /** Format: int32 */
+            confirmed: number;
+            /** Format: int32 */
+            total: number;
+        };
+        ComplianceRuleView: {
+            id: string;
+            name: string;
+            guideValue: string;
+            value: null | string;
+            confirmed: boolean;
+            valueSchema?: string;
+        };
         ConfirmFileInput: {
             /** Format: uuid */
             fileId: string;
@@ -5173,6 +5423,46 @@ export interface components {
             /** Format: uuid */
             vehicleId: string;
             files: components["schemas"]["ConfirmFileInput"][];
+        };
+        CorrectionDecisionRequest: {
+            /** Format: uuid */
+            employeeId: string;
+            decision: string;
+            reason?: null | string;
+            /** Format: uuid */
+            shiftId?: null | string;
+        };
+        CorrectionFieldDiff: {
+            field: string;
+            before: null | string;
+            after: null | string;
+        };
+        CorrectionList: {
+            requests: components["schemas"]["CorrectionView"][];
+        };
+        CorrectionView: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            employeeId: string;
+            /** Format: uuid */
+            shiftId: null | string;
+            /** Format: date */
+            date: string;
+            reason: string;
+            /** Format: date-time */
+            proposedStartAt: null | string;
+            /** Format: date-time */
+            proposedEndAt: null | string;
+            note: null | string;
+            status: string;
+            requiresHr: boolean;
+            declineReason: null | string;
+            diffs: components["schemas"]["CorrectionFieldDiff"][];
+            /** Format: date-time */
+            requestedAt: string;
+            /** Format: date-time */
+            decidedAt: null | string;
         };
         CreateAssignmentCommand: {
             /** Format: uuid */
@@ -5710,6 +6000,7 @@ export interface components {
             absences?: components["schemas"]["AbsenceView"][];
             scheduleRequests?: components["schemas"]["ScheduleRequestView"][];
             holidays?: components["schemas"]["HolidayView"][];
+            complianceRules?: components["schemas"]["ComplianceRuleView"][];
             employeeStatus?: string;
             swaps?: components["schemas"]["DriverSwap"][];
             defects?: components["schemas"]["DriverOwnDefect"][];
@@ -5777,6 +6068,11 @@ export interface components {
             documentId: null | string;
             /** Format: uuid */
             fileId: null | string;
+        };
+        DriverWeekGuidance: {
+            /** Format: date */
+            week: string;
+            ruleWarnings: components["schemas"]["RuleWarning"][];
         };
         EditAssignmentRequest: {
             /** Format: date */
@@ -5887,6 +6183,7 @@ export interface components {
             version: number;
             status: components["schemas"]["ShiftStatus"];
             flagged: boolean;
+            ruleWarnings?: components["schemas"]["RuleWarning"][];
         };
         /** @enum {unknown} */
         HalfDay: "am" | "pm" | null;
@@ -6047,6 +6344,7 @@ export interface components {
             /** Format: int32 */
             version: number;
             status: components["schemas"]["ShiftStatus"];
+            ruleWarnings?: components["schemas"]["RuleWarning"][];
         };
         OfficeShiftView: {
             /** Format: uuid */
@@ -6379,6 +6677,16 @@ export interface components {
             roles: null | string[];
             reason: null | string;
         };
+        RuleWarning: {
+            ruleId: string;
+            severity: string;
+            message: string;
+        };
+        RuleWarningAcknowledgement: {
+            /** Format: int32 */
+            version: number;
+            note: string;
+        };
         SaveCyclePatternRequest: {
             /** Format: int32 */
             version: number;
@@ -6497,6 +6805,8 @@ export interface components {
             flags: string[];
             conflicts: components["schemas"]["ShiftConflictView"][];
             history: components["schemas"]["ShiftHistory"][];
+            ruleWarnings?: components["schemas"]["RuleWarning"][];
+            corrections?: components["schemas"]["CorrectionView"][];
         };
         ShiftHistory: {
             /** Format: uuid */
@@ -6523,6 +6833,9 @@ export interface components {
             suggestedTruckId: null | string;
             conflicts: components["schemas"]["DriverShiftConflict"][];
             assignments: components["schemas"]["DriverTruckAssignment"][];
+            complianceRules?: components["schemas"]["ComplianceRuleView"][];
+            corrections?: components["schemas"]["CorrectionView"][];
+            weekGuidance?: components["schemas"]["DriverWeekGuidance"][];
         };
         /** @enum {unknown} */
         ShiftSource: "app" | "office";
@@ -6563,6 +6876,8 @@ export interface components {
             /** Format: date-time */
             submittedAt?: null | string;
             source?: components["schemas"]["ShiftSource"];
+            ruleWarnings?: components["schemas"]["RuleWarning"][];
+            corrections?: components["schemas"]["CorrectionView"][];
         };
         SignInRequest: {
             email: string;
@@ -6819,6 +7134,7 @@ export interface components {
             nights: components["schemas"]["NightCount"][];
             status: string;
             warnings: boolean;
+            ruleWarnings?: components["schemas"]["RuleWarning"][];
         };
     };
     responses: never;

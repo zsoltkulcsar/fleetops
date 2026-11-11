@@ -1505,6 +1505,109 @@ namespace FleetOps.Migrations.Migrations
                     b.ToTable("company_holidays", "fleetops");
                 });
 
+            modelBuilder.Entity("FleetOps.Modules.Setup.ComplianceRule", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<bool>("Confirmed")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("GuideValue")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Value")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("ValueSchema")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("compliance_rules", "fleetops");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = "C-01",
+                            Confirmed = false,
+                            GuideValue = "9 h; 10 h allowed max. 2× per week",
+                            Name = "Max daily driving",
+                            Value = "{\"minutes\":540,\"extendedMinutes\":600,\"extensionsPerWeek\":2}",
+                            ValueSchema = "{\"minutes\":540,\"extendedMinutes\":600,\"extensionsPerWeek\":2}"
+                        },
+                        new
+                        {
+                            Id = "C-02",
+                            Confirmed = false,
+                            GuideValue = "56 h",
+                            Name = "Max weekly driving",
+                            Value = "{\"minutes\":3360}",
+                            ValueSchema = "{\"minutes\":3360}"
+                        },
+                        new
+                        {
+                            Id = "C-03",
+                            Confirmed = false,
+                            GuideValue = "90 h",
+                            Name = "Max driving in 2 consecutive weeks",
+                            Value = "{\"minutes\":5400}",
+                            ValueSchema = "{\"minutes\":5400}"
+                        },
+                        new
+                        {
+                            Id = "C-04",
+                            Confirmed = false,
+                            GuideValue = "≥45 min after 4 h 30 min driving (split 15 + 30 allowed — verify)",
+                            Name = "Break after driving",
+                            Value = "{\"drivingMinutes\":270,\"breakMinutes\":45,\"splitFirstMinutes\":15,\"splitLastMinutes\":30}",
+                            ValueSchema = "{\"drivingMinutes\":270,\"breakMinutes\":45,\"splitFirstMinutes\":15,\"splitLastMinutes\":30}"
+                        },
+                        new
+                        {
+                            Id = "C-05",
+                            Confirmed = false,
+                            GuideValue = "≥11 h; may reduce to ≥9 h max. 3× between weekly rests",
+                            Name = "Daily rest",
+                            Value = "{\"minutes\":660,\"reducedMinutes\":540,\"reductions\":3}",
+                            ValueSchema = "{\"minutes\":660,\"reducedMinutes\":540,\"reductions\":3}"
+                        },
+                        new
+                        {
+                            Id = "C-06",
+                            Confirmed = false,
+                            GuideValue = "≥45 h regular; ≥24 h reduced (compensation rules apply)",
+                            Name = "Weekly rest",
+                            ValueSchema = "{\"minutes\":2700,\"reducedMinutes\":1440}"
+                        },
+                        new
+                        {
+                            Id = "C-07",
+                            Confirmed = false,
+                            GuideValue = "30 min if >6 h work; 45 min if >9 h",
+                            Name = "Working-time breaks",
+                            Value = "{\"workMinutes\":360,\"breakMinutes\":30,\"longWorkMinutes\":540,\"longBreakMinutes\":45}",
+                            ValueSchema = "{\"workMinutes\":360,\"breakMinutes\":30,\"longWorkMinutes\":540,\"longBreakMinutes\":45}"
+                        },
+                        new
+                        {
+                            Id = "C-08",
+                            Confirmed = false,
+                            GuideValue = "max 60 h in a week, average ≤48 h; reference period NEEDS_CONFIRMATION (4 months standard)",
+                            Name = "Weekly working time (mobile workers)",
+                            ValueSchema = "{\"minutes\":3600,\"averageMinutes\":2880}"
+                        });
+                });
+
             modelBuilder.Entity("FleetOps.Modules.Setup.Depot", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1533,6 +1636,33 @@ namespace FleetOps.Migrations.Migrations
                             Address = "Default address",
                             Name = "Default depot"
                         });
+                });
+
+            modelBuilder.Entity("FleetOps.Modules.Setup.RuleConfirmation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("ConfirmedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ConfirmedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("RuleId")
+                        .IsRequired()
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RuleId");
+
+                    b.ToTable("rule_confirmations", "fleetops");
                 });
 
             modelBuilder.Entity("FleetOps.Modules.Shifts.CommandReceipt", b =>
@@ -1641,6 +1771,83 @@ namespace FleetOps.Migrations.Migrations
                         .IsUnique();
 
                     b.ToTable("shift_conflicts", "fleetops");
+                });
+
+            modelBuilder.Entity("FleetOps.Modules.Shifts.CorrectionRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Before")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<Guid>("CommandId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<DateTimeOffset?>("DecidedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("DecidedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DeclineReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTimeOffset>("DeviceTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Diffs")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTimeOffset?>("ProposedEndAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("ProposedStartAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<DateTimeOffset>("RequestedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("RequiresHr")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid?>("ShiftId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ShiftId");
+
+                    b.HasIndex("EmployeeId", "CommandId")
+                        .IsUnique();
+
+                    b.HasIndex("EmployeeId", "Date");
+
+                    b.ToTable("correction_requests", "fleetops");
                 });
 
             modelBuilder.Entity("FleetOps.Modules.Shifts.Overnight", b =>
@@ -1851,6 +2058,20 @@ namespace FleetOps.Migrations.Migrations
                         {
                             t.HasCheckConstraint("ck_activities_dates", "end_at IS NULL OR end_at >= start_at");
                         });
+                });
+
+            modelBuilder.Entity("FleetOps.Modules.Shifts.ShiftRuleGuidance", b =>
+                {
+                    b.Property<Guid>("ShiftId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Warnings")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.HasKey("ShiftId");
+
+                    b.ToTable("shift_rule_guidance", "fleetops");
                 });
 
             modelBuilder.Entity("FleetOps.People.Employee", b =>
@@ -2319,6 +2540,15 @@ namespace FleetOps.Migrations.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("FleetOps.Modules.Setup.RuleConfirmation", b =>
+                {
+                    b.HasOne("FleetOps.Modules.Setup.ComplianceRule", null)
+                        .WithMany()
+                        .HasForeignKey("RuleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("FleetOps.Modules.Shifts.CommandReceipt", b =>
                 {
                     b.HasOne("FleetOps.People.Employee", null)
@@ -2335,6 +2565,14 @@ namespace FleetOps.Migrations.Migrations
                         .HasForeignKey("ShiftId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("FleetOps.Modules.Shifts.CorrectionRequest", b =>
+                {
+                    b.HasOne("FleetOps.Modules.Shifts.Shift", null)
+                        .WithMany()
+                        .HasForeignKey("ShiftId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("FleetOps.Modules.Shifts.Overnight", b =>
@@ -2375,6 +2613,15 @@ namespace FleetOps.Migrations.Migrations
                     b.HasOne("FleetOps.Modules.Shifts.Shift", null)
                         .WithMany("Activities")
                         .HasForeignKey("ShiftId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FleetOps.Modules.Shifts.ShiftRuleGuidance", b =>
+                {
+                    b.HasOne("FleetOps.Modules.Shifts.Shift", null)
+                        .WithOne()
+                        .HasForeignKey("FleetOps.Modules.Shifts.ShiftRuleGuidance", "ShiftId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

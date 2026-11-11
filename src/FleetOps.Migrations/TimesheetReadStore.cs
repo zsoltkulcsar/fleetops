@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FleetOps.Migrations;
 
-public sealed class EfTimesheetReadStore(FleetOpsDbContext db, IConfiguration configuration, ICompanyTimeService companyTime) : ITimesheetReadStore
+public sealed class EfTimesheetReadStore(FleetOpsDbContext db, IConfiguration configuration, ICompanyTimeService companyTime, ICorrectionStore corrections, FleetOps.Modules.Setup.IComplianceRuleStore compliance) : ITimesheetReadStore
 {
     public string CompanyTimeZone => configuration["Company:Timezone"] ?? "Europe/Berlin";
 
@@ -26,7 +26,7 @@ public sealed class EfTimesheetReadStore(FleetOpsDbContext db, IConfiguration co
         var drivers = await employees.OrderBy(employee => employee.LastName).ThenBy(employee => employee.FirstName).ThenBy(employee => employee.Id).ToListAsync(cancellationToken);
         var ids = drivers.Select(employee => employee.Id).ToArray();
         var shifts = await db.Shifts.AsNoTracking().Include(shift => shift.Activities).Include(shift => shift.Overnights)
-            .Where(shift => ids.Contains(shift.EmployeeId) && shift.Date >= week && shift.Date <= end).ToListAsync(cancellationToken);
+            .Where(shift => ids.Contains(shift.EmployeeId) && shift.Date >= week.AddDays(-14) && shift.Date <= end).ToListAsync(cancellationToken);
         var absences = await db.Absences.AsNoTracking().Where(absence => ids.Contains(absence.EmployeeId) && absence.Status == AbsenceStatus.Approved && absence.From <= end && absence.To >= week).ToListAsync(cancellationToken);
         var alerts = await db.Alerts.AsNoTracking().Where(alert => alert.Status != AlertStatus.Resolved && (alert.RuleId == "A-16" || alert.RuleId == "A-17")).ToListAsync(cancellationToken);
         var days = Enumerable.Range(0, 7).Select(offset => week.AddDays(offset)).ToArray();
@@ -34,12 +34,12 @@ public sealed class EfTimesheetReadStore(FleetOpsDbContext db, IConfiguration co
         var result = new List<WeekDriverFacts>();
         foreach (var employee in drivers)
         {
-            var ownShifts = shifts.Where(shift => shift.EmployeeId == employee.Id).ToArray();
+            var ownShifts = shifts.Where(shift => shift.EmployeeId == employee.Id && shift.Date >= week).ToArray();
             var flagged = ownShifts.Where(shift => alerts.Any(alert => (alert.SubjectType == "shift" && alert.SubjectId == shift.Id) ||
                 (alert.SubjectId == employee.Id && alert.ScopeKey == "shift_conflict:" + shift.Id))).Select(shift => shift.Id).ToHashSet();
             result.Add(new(employee.Id, employee.FirstName + " " + employee.LastName, employee.PersonnelNumber, ownShifts,
                 await cycleStore.ForEmployeeDatesAsync(employee.Id, days.Where(date => date >= employee.StartDate && (employee.EndDate == null || date <= employee.EndDate)).ToArray(), cancellationToken),
-                absences.Where(absence => absence.EmployeeId == employee.Id).Select(absence => new WeekAbsence(absence.From, absence.To, absence.Type.ToString())).ToArray(), flagged));
+                absences.Where(absence => absence.EmployeeId == employee.Id).Select(absence => new WeekAbsence(absence.From, absence.To, absence.Type.ToString())).ToArray(), flagged) { GuidanceHistory = shifts.Where(shift => shift.EmployeeId == employee.Id).ToArray() });
         }
         return result;
     }
@@ -70,7 +70,13 @@ public sealed class EfTimesheetReadStore(FleetOpsDbContext db, IConfiguration co
             shift.ApprovedBy, shift.ApprovedAt, shift.ApprovalNote, shift.RejectReason, view.Activities, view.Overnights,
             ShiftRules.Hours(shift, ActivityType.Driving, now), ShiftRules.Hours(shift, ActivityType.OtherWork, now),
             ShiftRules.Hours(shift, ActivityType.Break, now), ShiftRules.Hours(shift, ActivityType.Availability, now)), flags, conflicts,
-            await HistoryAsync(db, shift, companyTime, cancellationToken));
+            await HistoryAsync(db, shift, companyTime, cancellationToken))
+        {
+            RuleWarnings = ComplianceRuleEngine.ShiftWarnings(shift,
+                await db.Shifts.AsNoTracking().Include(day => day.Activities).Where(day => day.EmployeeId == shift.EmployeeId && day.Date >= shift.Date.AddDays(-14) && day.Date <= shift.Date).ToArrayAsync(cancellationToken),
+                await compliance.ReadAsync(null, cancellationToken), now),
+            Corrections = (await corrections.ListAsync(shift.EmployeeId, null, cancellationToken)).Where(request => request.ShiftId == shift.Id).ToArray()
+        };
     }
 
     public static async Task<IReadOnlyList<ShiftHistory>> HistoryAsync(FleetOpsDbContext db, Shift shift, ICompanyTimeService companyTime, CancellationToken cancellationToken, bool officeOnly = false)

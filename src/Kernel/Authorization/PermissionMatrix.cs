@@ -55,6 +55,7 @@ public static class PermissionMatrix
         E("schedule.view", Cell.Own, Cell.Full, Cell.View, Cell.Full), E("schedule.request_change", Cell.Own, Cell.Full, Cell.None, Cell.Full),
         E("schedule.edit", Cell.None, Cell.Full, Cell.View, Cell.Full),
         E("vehicles.release", Cell.None, Cell.Full, Cell.None, Cell.Full),
+        E("alerts.rules.acknowledge", Cell.None, Cell.Full, Cell.Full, Cell.Full, state: true),
         E("alerts.release.acknowledge", Cell.None, Cell.None, Cell.Full, Cell.Full),
         E("override.manage", Cell.None, Cell.Full, Cell.None, Cell.Full), E("absences.vacation.request", Cell.Own, Cell.None, Cell.Full, Cell.View),
         E("holidays.view", Cell.Full, Cell.Full, Cell.Full, Cell.Full),

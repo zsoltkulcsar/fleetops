@@ -5,7 +5,7 @@ using FleetOps.Kernel.Authorization;
 namespace FleetOps.Modules.Shifts;
 
 public sealed class OfficeShiftHandler(IOfficeShiftStore store, IShiftCommandStore driverStore, IShiftStartFacts startFacts,
-    IShiftEvents events, ICompanyTimeService companyTime, TimeProvider clock, IFleetOdometer odometer) :
+    IShiftEvents events, ICompanyTimeService companyTime, TimeProvider clock, IFleetOdometer odometer, IShiftGuidance guidance) :
     ICommandHandler<ApproveShiftCommand, OfficeShiftResult>, ICommandHandler<RejectShiftCommand, OfficeShiftResult>,
     ICommandHandler<EditOfficeShiftCommand, OfficeShiftResult>, ICommandHandler<AddOfficeShiftCommand, OfficeShiftResult>,
     ICommandHandler<EndOfficeShiftCommand, OfficeShiftResult>
@@ -114,9 +114,10 @@ public sealed class OfficeShiftHandler(IOfficeShiftStore store, IShiftCommandSto
         shift.Version++;
         shift.LastOfficeVersion = shift.Version;
         var auditId = await store.SaveAsync(shift, actor.EmployeeId, reason, context, cancellationToken);
+        var warnings = await guidance.RecomputeAsync(shift, context, cancellationToken);
         if (notification is not null) await store.NotifyAsync(shift.EmployeeId, shift.Id, auditId, notification, context, cancellationToken);
         await events.ChangedAsync(shift.EmployeeId, shift.Id, null, context, cancellationToken);
-        return new(shift.Id, shift.Version, shift.Status);
+        return new(shift.Id, shift.Version, shift.Status) { RuleWarnings = warnings };
     }
 
     private void ApplyInput(Shift shift, OfficeShiftInput input)

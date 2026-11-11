@@ -35,6 +35,18 @@ builder.Services.AddAbsences();
 builder.Services.AddVehicleRelease();
 builder.Services.AddPersonAccess();
 builder.Services.AddCompanySettings();
+builder.Services.AddScoped<IShiftGuidance, ShiftGuidance>();
+builder.Services.AddScoped<IGuidanceFailureLog, GuidanceFailureLog>();
+builder.Services.AddScoped<ICorrectionStore, EfCorrectionStore>();
+builder.Services.AddScoped<IDriverCorrections, CorrectionHandler>();
+builder.Services.AddScoped<IQueryHandler<GetCorrectionsQuery, CorrectionList>, CorrectionHandler>();
+builder.Services.AddScoped<ICommandHandler<DecideCorrectionCommand, CorrectionList>, CorrectionHandler>();
+builder.Services.AddScoped<ICorrectionRequestFacts, EfCorrectionRequestFacts>();
+builder.Services.AddScoped<IAlertEvaluator, CorrectionRequestEvaluator>();
+builder.Services.AddScoped<IShiftGuidanceStore, EfShiftGuidanceStore>();
+builder.Services.AddScoped<IRuleWarningAlertStore, EfRuleWarningAlertStore>();
+builder.Services.AddScoped<IRuleWarningAlerts, RuleWarningAlerts>();
+builder.Services.AddScoped<ICommandHandler<AcknowledgeRuleWarningCommand, ReleaseReviewResult>, AcknowledgeRuleWarningHandler>();
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 builder.Logging.SetMinimumLevel(LogLevel.None);
@@ -278,12 +290,22 @@ app.UseExceptionHandler(new ExceptionHandlerOptions
         if (exception is ReleaseReviewConflictException reviewConflict) { await Results.Problem(statusCode: reviewConflict.Code == "not_found" ? 404 : 409, extensions: new Dictionary<string, object?> { ["code"] = reviewConflict.Code }).ExecuteAsync(context); return; }
         if (exception is AccessValidationException accessValidation) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "validation_error", ["fields"] = accessValidation.Fields }).ExecuteAsync(context); return; }
         if (exception is AccessConflictException accessConflict) { await Results.Problem(statusCode: accessConflict.Code == "not_found" ? 404 : 409, extensions: new Dictionary<string, object?> { ["code"] = accessConflict.Code }).ExecuteAsync(context); return; }
+        if (exception is TimesheetValidationException timesheetValidation)
+        {
+            await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "validation_error", ["fields"] = timesheetValidation.Fields }).ExecuteAsync(context);
+            return;
+        }
+        if (exception is ShiftRuleException shiftFailure)
+        {
+            await Results.Problem(statusCode: shiftFailure.Code is "not_found" or "shift_not_found" ? 404 : 409, extensions: new Dictionary<string, object?> { ["code"] = shiftFailure.Code }).ExecuteAsync(context);
+            return;
+        }
         if (exception is SettingsValidationException settingsValidation) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "validation_error", ["fields"] = settingsValidation.Fields }).ExecuteAsync(context); return; }
         if (exception is VehicleValidationException validation) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "validation_error", ["fields"] = validation.Fields }).ExecuteAsync(context); return; }
         if (exception is StorageUnavailableException) { await Results.Problem(statusCode: 503, extensions: new Dictionary<string, object?> { ["code"] = "storage_unavailable" }).ExecuteAsync(context); return; }
         if (exception is DocumentValidationException documentValidation) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = documentValidation.Code, ["fields"] = documentValidation.Fields }).ExecuteAsync(context); return; }
         var jsonException = VehicleJsonException.Find(exception);
-        if (context.Request.Method is "POST" or "PUT" && (context.Request.Path.StartsWithSegments("/api/v1/fleet/vehicles") || context.Request.Path.StartsWithSegments("/api/v1/documents") || context.Request.Path.StartsWithSegments("/api/v1/people") || context.Request.Path.StartsWithSegments("/api/v1/driver") || context.Request.Path.StartsWithSegments("/api/v1/schedule") || context.Request.Path.StartsWithSegments("/api/v1/settings")) && jsonException is not null)
+        if (context.Request.Method is "POST" or "PUT" && (context.Request.Path.StartsWithSegments("/api/v1/fleet/vehicles") || context.Request.Path.StartsWithSegments("/api/v1/documents") || context.Request.Path.StartsWithSegments("/api/v1/people") || context.Request.Path.StartsWithSegments("/api/v1/driver") || context.Request.Path.StartsWithSegments("/api/v1/schedule") || context.Request.Path.StartsWithSegments("/api/v1/settings") || context.Request.Path.StartsWithSegments("/api/v1/corrections")) && jsonException is not null)
         {
             var field = VehicleJsonException.FieldName(jsonException.Path);
             await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "validation_error", ["fields"] = field is null ? Array.Empty<string>() : new[] { field } }).ExecuteAsync(context); return;

@@ -119,7 +119,7 @@ public sealed class AuthorizationTests
     [Fact]
     public void Matrix_contains_all_permission_rows()
     {
-        Assert.Equal(60, PermissionMatrix.Entries.Count);
+        Assert.Equal(61, PermissionMatrix.Entries.Count);
         Assert.Contains(PermissionMatrix.Entries, x => x.ActionKey == "shifts.approve_reject" && x.AllowedRoles.SetEquals([RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner]));
         Assert.Contains(PermissionMatrix.Entries, x => x.ActionKey == "documents.medical.view" && x.OwnRoles.SetEquals([RoleCode.Driver]));
     }
@@ -140,6 +140,7 @@ public sealed class AuthorizationTests
             ["people.invite"] = [RoleCode.Hr, RoleCode.Owner],
             ["vehicles.release"] = [RoleCode.Dispatcher, RoleCode.Owner],
             ["alerts.release.acknowledge"] = [RoleCode.Hr, RoleCode.Owner],
+            ["alerts.rules.acknowledge"] = [RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner],
             ["documents.view"] = [RoleCode.Hr, RoleCode.Owner],
             ["documents.people.lookup"] = [RoleCode.Hr, RoleCode.Owner],
             ["readiness.summary"] = [RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner],
@@ -212,6 +213,7 @@ public sealed class AuthorizationTests
             ["people.invite"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full),
             ["vehicles.release"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full),
             ["alerts.release.acknowledge"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full),
+            ["alerts.rules.acknowledge"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full),
             ["documents.view"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.View, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full),
             ["documents.people.lookup"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full),
             ["readiness.summary"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full),
@@ -339,6 +341,7 @@ public sealed class AuthorizationTests
         "absences.view" => role is RoleCode.Dispatcher or RoleCode.Hr or RoleCode.Owner,
         "absences.record" or "absences.sick_other.record" => role is RoleCode.Dispatcher or RoleCode.Hr,
         "alerts.view" => role is RoleCode.Dispatcher or RoleCode.Hr,
+        "alerts.rules.acknowledge" => role is RoleCode.Dispatcher or RoleCode.Hr or RoleCode.Owner,
         "alerts.snooze" => role is RoleCode.Dispatcher or RoleCode.Hr,
         "settings.manage" => role == RoleCode.Owner,
         "defects.report" => role == RoleCode.Driver,

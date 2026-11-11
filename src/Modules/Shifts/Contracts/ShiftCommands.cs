@@ -23,6 +23,8 @@ public sealed record ShiftView(Guid Id, DateOnly Date, DateTimeOffset StartAt, D
     public IReadOnlyList<ShiftHistory> OfficeChanges { get; init; } = [];
     public DateTimeOffset? SubmittedAt { get; init; }
     public ShiftSource Source { get; init; }
+    public IReadOnlyList<RuleWarning> RuleWarnings { get; init; } = [];
+    public IReadOnlyList<CorrectionView> Corrections { get; init; } = [];
 }
 [VisibleTo(RoleCode.Driver, RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner)]
 public sealed record ActivityView(Guid Id, ActivityType Type, DateTimeOffset StartAt, DateTimeOffset? EndAt);
@@ -30,7 +32,14 @@ public sealed record ActivityView(Guid Id, ActivityType Type, DateTimeOffset Sta
 public sealed record OvernightView(Guid Id, DateOnly Night, string CountryCode, OvernightKind Kind);
 
 [VisibleTo(RoleCode.Driver)]
-public sealed record ShiftSnapshot(DateTimeOffset GeneratedAt, string CompanyTimeZone, IReadOnlyList<ShiftView> Shifts, IReadOnlyList<Guid> AppliedCommandIds, IReadOnlyList<ShiftTruckChoice> Trucks, Guid? SuggestedTruckId, IReadOnlyList<DriverShiftConflict> Conflicts, IReadOnlyList<DriverTruckAssignment> Assignments) : IReadModel;
+public sealed record ShiftSnapshot(DateTimeOffset GeneratedAt, string CompanyTimeZone, IReadOnlyList<ShiftView> Shifts, IReadOnlyList<Guid> AppliedCommandIds, IReadOnlyList<ShiftTruckChoice> Trucks, Guid? SuggestedTruckId, IReadOnlyList<DriverShiftConflict> Conflicts, IReadOnlyList<DriverTruckAssignment> Assignments) : IReadModel
+{
+    public IReadOnlyList<FleetOps.Modules.Setup.ComplianceRuleView> ComplianceRules { get; init; } = [];
+    public IReadOnlyList<CorrectionView> Corrections { get; init; } = [];
+    public IReadOnlyList<DriverWeekGuidance> WeekGuidance { get; init; } = [];
+}
+[VisibleTo(RoleCode.Driver)]
+public sealed record DriverWeekGuidance(DateOnly Week, IReadOnlyList<RuleWarning> RuleWarnings);
 public sealed record ShiftTruckChoice(Guid Id, string Plate, string Kind, bool Usable, string? Reason, bool LicenceClassWarning)
 {
     public FleetOps.Modules.Fleet.ReleaseBanner? Release { get; init; }
@@ -57,6 +66,7 @@ public interface IShiftCommandStore
     Task<bool> HasFailedDependencyAsync(Guid employeeId, Guid aggregateId, CommandContext context, CancellationToken cancellationToken);
     Task<Shift?> LoadAsync(Guid employeeId, Guid shiftId, CommandContext context, CancellationToken cancellationToken);
     Task<bool> HasRunningShiftAsync(Guid employeeId, CommandContext context, CancellationToken cancellationToken);
+    Task UpdateReceiptResultAsync(Guid employeeId, Guid commandId, string result, CommandContext context, CancellationToken cancellationToken);
     Task SaveAsync(Shift? shift, CommandReceipt receipt, ConflictRecord? conflict, CommandContext context, CancellationToken cancellationToken);
 }
 

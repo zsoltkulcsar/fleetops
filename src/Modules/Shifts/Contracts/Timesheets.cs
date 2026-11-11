@@ -17,18 +17,28 @@ public sealed record GridCounts(int All, int Awaiting, int Missing, int Warnings
 public sealed record CutoffBanner(DateOnly Date, int AwaitingShifts);
 [VisibleTo(RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner)]
 public sealed record WeekRow(Guid EmployeeId, string Driver, string? PersonnelNumber, IReadOnlyList<WeekCell> Days,
-    int WorkMinutes, IReadOnlyList<NightCount> Nights, string Status, bool Warnings);
+    int WorkMinutes, IReadOnlyList<NightCount> Nights, string Status, bool Warnings)
+{
+    public IReadOnlyList<RuleWarning> RuleWarnings { get; init; } = [];
+}
 [VisibleTo(RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner)]
 public sealed record NightCount(string CountryCode, int Count);
 [VisibleTo(RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner)]
 public sealed record WeekCell(DateOnly Date, int WorkMinutes, string Status, string Label, bool Missing, bool Warnings,
     IReadOnlyList<GridShift> Shifts, IReadOnlyList<string> Absences);
 [VisibleTo(RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner)]
-public sealed record GridShift(Guid Id, int Version, ShiftStatus Status, bool Flagged);
+public sealed record GridShift(Guid Id, int Version, ShiftStatus Status, bool Flagged)
+{
+    public IReadOnlyList<RuleWarning> RuleWarnings { get; init; } = [];
+}
 
 [VisibleTo(RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner)]
 public sealed record ShiftDetail(Guid EmployeeId, string Driver, string? TruckPlate, OfficeShiftView Shift,
-    IReadOnlyList<string> Flags, IReadOnlyList<ShiftConflictView> Conflicts, IReadOnlyList<ShiftHistory> History) : IReadModel;
+    IReadOnlyList<string> Flags, IReadOnlyList<ShiftConflictView> Conflicts, IReadOnlyList<ShiftHistory> History) : IReadModel
+{
+    public IReadOnlyList<RuleWarning> RuleWarnings { get; init; } = [];
+    public IReadOnlyList<CorrectionView> Corrections { get; init; } = [];
+}
 [VisibleTo(RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner)]
 public sealed record OfficeShiftView(Guid Id, DateOnly Date, DateTimeOffset StartAt, DateTimeOffset? EndAt, Guid? TruckId,
     Guid? TrailerId, ShiftStatus Status, ShiftSource Source, int Version, bool? DepartureCheckOk,
@@ -55,7 +65,10 @@ public sealed record EndOfficeShiftCommand(Guid ShiftId, Guid? SubjectId, int Ve
 public sealed record OfficeShiftInput(DateOnly Date, DateTimeOffset StartAt, DateTimeOffset? EndAt, Guid? TruckId,
     Guid? TrailerId, int? OdometerStartKm, int? OdometerEndKm, IReadOnlyList<ActivityView>? Activities, IReadOnlyList<OvernightView>? Overnights);
 [VisibleTo(RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner)]
-public sealed record OfficeShiftResult(Guid ShiftId, int Version, ShiftStatus Status) : IReadModel;
+public sealed record OfficeShiftResult(Guid ShiftId, int Version, ShiftStatus Status) : IReadModel
+{
+    public IReadOnlyList<RuleWarning> RuleWarnings { get; init; } = [];
+}
 public sealed class TimesheetValidationException(params string[] fields) : Exception("validation_error")
 {
     public IReadOnlyList<string> Fields { get; } = fields;
@@ -78,5 +91,8 @@ public interface ITimesheetReadStore
     Task<int> AwaitingPeriodAsync(DateOnly from, DateOnly to, CancellationToken cancellationToken);
 }
 public sealed record WeekDriverFacts(Guid EmployeeId, string Driver, string? PersonnelNumber, IReadOnlyList<Shift> Shifts,
-    IReadOnlySet<DateOnly> CycleDates, IReadOnlyList<WeekAbsence> Absences, IReadOnlySet<Guid> FlaggedShifts);
+    IReadOnlySet<DateOnly> CycleDates, IReadOnlyList<WeekAbsence> Absences, IReadOnlySet<Guid> FlaggedShifts)
+{
+    public IReadOnlyList<Shift> GuidanceHistory { get; init; } = [];
+}
 public sealed record WeekAbsence(DateOnly From, DateOnly To, string Type);

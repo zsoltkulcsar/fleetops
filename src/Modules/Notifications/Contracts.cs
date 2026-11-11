@@ -72,6 +72,8 @@ public static class NotificationTemplates
             var label = templateCode == "vacation_decided" ? (german ? "Urlaub" : "Vacation") : (german ? "Dienstplananfrage" : "Schedule request");
             return label + ": " + status + (string.IsNullOrWhiteSpace(reason) ? "" : ". " + reason);
         }
+        if (templateCode == "correction_done") return german ? "Ihre Korrekturanfrage wurde erledigt. Bitte pr\u00fcfen Sie die \u00c4nderungen." : "Your correction is done. Review the field changes on your shift.";
+        if (templateCode == "correction_declined") return german ? "Ihre Korrekturanfrage wurde abgelehnt. Bitte pr\u00fcfen Sie die Begr\u00fcndung." : "Your correction was declined. Review the reason on your request.";
         if (templateCode == "absence_recorded") return german ? "Eine Abwesenheit wurde erfasst." : "An absence was recorded. Please review it.";
         if (templateCode == "doc_expiring")
         {

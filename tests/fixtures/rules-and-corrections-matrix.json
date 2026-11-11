@@ -1,0 +1,83 @@
+{
+  "roles": [
+    "driver",
+    "dispatcher",
+    "hr",
+    "owner"
+  ],
+  "cases": [
+    {
+      "action": "compliance_rules.read",
+      "policy": "settings.manage",
+      "allowed": [
+        "owner"
+      ]
+    },
+    {
+      "action": "compliance_rules.edit",
+      "policy": "settings.manage",
+      "allowed": [
+        "owner"
+      ]
+    },
+    {
+      "action": "compliance_rules.confirm",
+      "policy": "settings.manage",
+      "allowed": [
+        "owner"
+      ]
+    },
+    {
+      "action": "a11.acknowledge",
+      "policy": "alerts.rules.acknowledge",
+      "allowed": [
+        "dispatcher",
+        "hr",
+        "owner"
+      ],
+      "requiredFields": [
+        "note",
+        "version"
+      ]
+    },
+    {
+      "action": "correction.request",
+      "policy": "shifts.enter_edit",
+      "allowed": [
+        "driver"
+      ],
+      "subject": "own",
+      "states": [
+        "submitted",
+        "approved",
+        "exported"
+      ]
+    },
+    {
+      "action": "correction.missing_shift",
+      "policy": "shifts.enter_edit",
+      "allowed": [
+        "driver"
+      ],
+      "subject": "own",
+      "condition": "empty_past_workday"
+    },
+    {
+      "action": "correction.decide",
+      "policy": "shifts.enter_edit",
+      "allowed": [
+        "dispatcher",
+        "hr",
+        "owner"
+      ]
+    },
+    {
+      "action": "correction.decide_exported",
+      "policy": "shifts.enter_edit",
+      "allowed": [
+        "hr",
+        "owner"
+      ]
+    }
+  ]
+}

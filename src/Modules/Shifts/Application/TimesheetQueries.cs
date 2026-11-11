@@ -4,7 +4,7 @@ using FleetOps.Modules.Setup;
 
 namespace FleetOps.Modules.Shifts;
 
-public sealed class TimesheetQueries(ITimesheetReadStore store, ICompanyTimeService companyTime, ISettings settings, TimeProvider clock) :
+public sealed class TimesheetQueries(ITimesheetReadStore store, ICompanyTimeService companyTime, ISettings settings, TimeProvider clock, IComplianceRuleStore compliance) :
     IQueryHandler<GetWeekGridQuery, WeekGrid>, IQueryHandler<GetShiftDetailQuery, ShiftDetail>
 {
     public async Task<WeekGrid> HandleAsync(GetWeekGridQuery query, AccessContext actor, CancellationToken cancellationToken)
@@ -17,7 +17,8 @@ public sealed class TimesheetQueries(ITimesheetReadStore store, ICompanyTimeServ
         var now = clock.GetUtcNow();
         var today = companyTime.ToCompanyDate(now);
         var facts = await store.WeekAsync(query.Week, query.Search?.Trim(), cancellationToken);
-        var rows = facts.Select(driver => Row(driver, query.Week, today, now)).ToArray();
+        var rules = await compliance.ReadAsync(null, cancellationToken);
+        var rows = facts.Select(driver => Row(driver, query.Week, today, now, rules)).ToArray();
         var counts = new GridCounts(rows.Length, rows.Count(row => row.Days.Any(day => day.Shifts.Any(shift => shift.Status == ShiftStatus.Submitted))),
             rows.Count(row => row.Days.Any(day => day.Missing)), rows.Count(row => row.Warnings));
         var filtered = rows.Where(row => query.Filter switch
@@ -44,7 +45,7 @@ public sealed class TimesheetQueries(ITimesheetReadStore store, ICompanyTimeServ
     public async Task<ShiftDetail> HandleAsync(GetShiftDetailQuery query, AccessContext actor, CancellationToken cancellationToken) =>
         await store.DetailAsync(query.ShiftId, clock.GetUtcNow(), cancellationToken) ?? throw new ShiftRuleException("not_found");
 
-    private static WeekRow Row(WeekDriverFacts driver, DateOnly week, DateOnly today, DateTimeOffset now)
+    private static WeekRow Row(WeekDriverFacts driver, DateOnly week, DateOnly today, DateTimeOffset now, IReadOnlyList<ComplianceRuleView> rules)
     {
         var days = Enumerable.Range(0, 7).Select(offset =>
         {
@@ -54,14 +55,17 @@ public sealed class TimesheetQueries(ITimesheetReadStore store, ICompanyTimeServ
             var missing = date < today && driver.CycleDates.Contains(date) && shifts.Length == 0 && absences.Length == 0;
             var minutes = shifts.Sum(shift => WorkMinutes(shift, now));
             var status = missing ? "missing" : shifts.Length > 0 ? Status(shifts) : absences.Length > 0 ? "absence" : "empty";
-            var warning = shifts.Any(shift => shift.OdometerLower || shift.DeviceTimeGap || shift.BlockedAtStart is not null || driver.FlaggedShifts.Contains(shift.Id));
+            var ruleWarnings = shifts.ToDictionary(shift => shift.Id, shift => ComplianceRuleEngine.ShiftWarnings(shift, driver.GuidanceHistory, rules, now));
+            // Info-level guidance (unconfirmed rules) shows on the cell but does not count as a warning for the filter.
+            var warning = ruleWarnings.Values.Any(warnings => warnings.Any(item => item.Severity == "warning")) || shifts.Any(shift => shift.OdometerLower || shift.DeviceTimeGap || shift.BlockedAtStart is not null || driver.FlaggedShifts.Contains(shift.Id));
             var label = status switch { "missing" => "Missing", "approved" => "Approved", "awaiting" => "Awaiting approval", "rejected" => "Rejected", "running" => "Running", "draft" => "Draft", "absence" => "Absence", _ => "No shift" };
             return new WeekCell(date, minutes, status, label, missing, warning,
-                shifts.Select(shift => new GridShift(shift.Id, shift.Version, shift.Status, shift.OdometerLower || shift.DeviceTimeGap || shift.BlockedAtStart is not null || driver.FlaggedShifts.Contains(shift.Id))).ToArray(), absences);
+                shifts.Select(shift => new GridShift(shift.Id, shift.Version, shift.Status, shift.OdometerLower || shift.DeviceTimeGap || shift.BlockedAtStart is not null || driver.FlaggedShifts.Contains(shift.Id) || ruleWarnings[shift.Id].Any(warning => warning.Severity == "warning")) { RuleWarnings = ruleWarnings[shift.Id] }).ToArray(), absences);
         }).ToArray();
         var rowStatus = days.Any(day => day.Missing) ? "missing" : driver.Shifts.Count > 0 ? Status(driver.Shifts) : days.All(day => day.Absences.Count > 0) ? "absence" : "empty";
+        var weekWarnings = ComplianceRuleEngine.WeekWarnings(week, driver.GuidanceHistory, rules, now);
         return new(driver.EmployeeId, driver.Driver, driver.PersonnelNumber, days, days.Sum(day => day.WorkMinutes),
-            driver.Shifts.SelectMany(shift => shift.Overnights).GroupBy(night => night.CountryCode).Select(group => new NightCount(group.Key, group.Count())).ToArray(), rowStatus, days.Any(day => day.Warnings));
+            driver.Shifts.SelectMany(shift => shift.Overnights).GroupBy(night => night.CountryCode).Select(group => new NightCount(group.Key, group.Count())).ToArray(), rowStatus, days.Any(day => day.Warnings) || weekWarnings.Any(warning => warning.Severity == "warning")) { RuleWarnings = weekWarnings };
     }
 
     private static string Status(IEnumerable<Shift> shifts)

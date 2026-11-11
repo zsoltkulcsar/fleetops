@@ -34,6 +34,8 @@ public sealed partial class FleetOpsDbContext(DbContextOptions<FleetOpsDbContext
     {
         base.OnModelCreating(modelBuilder);
         ConfigureCompanySettings(modelBuilder);
+        ConfigureComplianceRules(modelBuilder);
+        ConfigureCorrections(modelBuilder);
         ConfigureVehicleOverrides(modelBuilder);
         ConfigurePeople(modelBuilder);
         ConfigureDefects(modelBuilder);

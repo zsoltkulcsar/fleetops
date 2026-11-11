@@ -1,0 +1,506 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "name": "under_break_limit",
+      "rules": [
+        {
+          "id": "C-01",
+          "value": {
+            "minutes": 540,
+            "extendedMinutes": 600,
+            "extensionsPerWeek": 2
+          },
+          "confirmed": false
+        },
+        {
+          "id": "C-04",
+          "value": {
+            "drivingMinutes": 270,
+            "breakMinutes": 45,
+            "splitFirstMinutes": 15,
+            "splitLastMinutes": 30
+          },
+          "confirmed": false
+        },
+        {
+          "id": "C-07",
+          "value": {
+            "workMinutes": 360,
+            "breakMinutes": 30,
+            "longWorkMinutes": 540,
+            "longBreakMinutes": 45
+          },
+          "confirmed": false
+        }
+      ],
+      "activities": [
+        {
+          "type": "driving",
+          "minutes": 270
+        }
+      ],
+      "expectedWarnings": []
+    },
+    {
+      "name": "break_due",
+      "rules": [
+        {
+          "id": "C-01",
+          "value": {
+            "minutes": 540,
+            "extendedMinutes": 600,
+            "extensionsPerWeek": 2
+          },
+          "confirmed": false
+        },
+        {
+          "id": "C-04",
+          "value": {
+            "drivingMinutes": 270,
+            "breakMinutes": 45,
+            "splitFirstMinutes": 15,
+            "splitLastMinutes": 30
+          },
+          "confirmed": false
+        },
+        {
+          "id": "C-07",
+          "value": {
+            "workMinutes": 360,
+            "breakMinutes": 30,
+            "longWorkMinutes": 540,
+            "longBreakMinutes": 45
+          },
+          "confirmed": false
+        }
+      ],
+      "activities": [
+        {
+          "type": "driving",
+          "minutes": 271
+        }
+      ],
+      "expectedWarnings": [
+        "C-04"
+      ]
+    },
+    {
+      "name": "full_break_resets",
+      "rules": [
+        {
+          "id": "C-01",
+          "value": {
+            "minutes": 540,
+            "extendedMinutes": 600,
+            "extensionsPerWeek": 2
+          },
+          "confirmed": false
+        },
+        {
+          "id": "C-04",
+          "value": {
+            "drivingMinutes": 270,
+            "breakMinutes": 45,
+            "splitFirstMinutes": 15,
+            "splitLastMinutes": 30
+          },
+          "confirmed": false
+        },
+        {
+          "id": "C-07",
+          "value": {
+            "workMinutes": 360,
+            "breakMinutes": 30,
+            "longWorkMinutes": 540,
+            "longBreakMinutes": 45
+          },
+          "confirmed": false
+        }
+      ],
+      "activities": [
+        {
+          "type": "driving",
+          "minutes": 270
+        },
+        {
+          "type": "break",
+          "minutes": 45
+        },
+        {
+          "type": "driving",
+          "minutes": 270
+        }
+      ],
+      "expectedWarnings": []
+    },
+    {
+      "name": "split_break_resets",
+      "rules": [
+        {
+          "id": "C-01",
+          "value": {
+            "minutes": 540,
+            "extendedMinutes": 600,
+            "extensionsPerWeek": 2
+          },
+          "confirmed": false
+        },
+        {
+          "id": "C-04",
+          "value": {
+            "drivingMinutes": 270,
+            "breakMinutes": 45,
+            "splitFirstMinutes": 15,
+            "splitLastMinutes": 30
+          },
+          "confirmed": false
+        },
+        {
+          "id": "C-07",
+          "value": {
+            "workMinutes": 360,
+            "breakMinutes": 30,
+            "longWorkMinutes": 540,
+            "longBreakMinutes": 45
+          },
+          "confirmed": false
+        }
+      ],
+      "activities": [
+        {
+          "type": "driving",
+          "minutes": 120
+        },
+        {
+          "type": "break",
+          "minutes": 15
+        },
+        {
+          "type": "driving",
+          "minutes": 150
+        },
+        {
+          "type": "break",
+          "minutes": 30
+        },
+        {
+          "type": "driving",
+          "minutes": 270
+        }
+      ],
+      "expectedWarnings": []
+    },
+    {
+      "name": "reversed_split_does_not_reset",
+      "rules": [
+        {
+          "id": "C-01",
+          "value": {
+            "minutes": 540,
+            "extendedMinutes": 600,
+            "extensionsPerWeek": 2
+          },
+          "confirmed": false
+        },
+        {
+          "id": "C-04",
+          "value": {
+            "drivingMinutes": 270,
+            "breakMinutes": 45,
+            "splitFirstMinutes": 15,
+            "splitLastMinutes": 30
+          },
+          "confirmed": false
+        },
+        {
+          "id": "C-07",
+          "value": {
+            "workMinutes": 360,
+            "breakMinutes": 30,
+            "longWorkMinutes": 540,
+            "longBreakMinutes": 45
+          },
+          "confirmed": false
+        }
+      ],
+      "activities": [
+        {
+          "type": "driving",
+          "minutes": 120
+        },
+        {
+          "type": "break",
+          "minutes": 30
+        },
+        {
+          "type": "driving",
+          "minutes": 150
+        },
+        {
+          "type": "break",
+          "minutes": 15
+        },
+        {
+          "type": "driving",
+          "minutes": 1
+        }
+      ],
+      "expectedWarnings": [
+        "C-04"
+      ]
+    },
+    {
+      "name": "other_work_is_not_driving",
+      "rules": [
+        {
+          "id": "C-01",
+          "value": {
+            "minutes": 540,
+            "extendedMinutes": 600,
+            "extensionsPerWeek": 2
+          },
+          "confirmed": false
+        },
+        {
+          "id": "C-04",
+          "value": {
+            "drivingMinutes": 270,
+            "breakMinutes": 45,
+            "splitFirstMinutes": 15,
+            "splitLastMinutes": 30
+          },
+          "confirmed": false
+        },
+        {
+          "id": "C-07",
+          "value": {
+            "workMinutes": 360,
+            "breakMinutes": 30,
+            "longWorkMinutes": 540,
+            "longBreakMinutes": 45
+          },
+          "confirmed": false
+        }
+      ],
+      "activities": [
+        {
+          "type": "other_work",
+          "minutes": 361
+        }
+      ],
+      "expectedWarnings": [
+        "C-07"
+      ]
+    },
+    {
+      "name": "availability_is_not_work",
+      "rules": [
+        {
+          "id": "C-01",
+          "value": {
+            "minutes": 540,
+            "extendedMinutes": 600,
+            "extensionsPerWeek": 2
+          },
+          "confirmed": false
+        },
+        {
+          "id": "C-04",
+          "value": {
+            "drivingMinutes": 270,
+            "breakMinutes": 45,
+            "splitFirstMinutes": 15,
+            "splitLastMinutes": 30
+          },
+          "confirmed": false
+        },
+        {
+          "id": "C-07",
+          "value": {
+            "workMinutes": 360,
+            "breakMinutes": 30,
+            "longWorkMinutes": 540,
+            "longBreakMinutes": 45
+          },
+          "confirmed": false
+        }
+      ],
+      "activities": [
+        {
+          "type": "availability",
+          "minutes": 700
+        }
+      ],
+      "expectedWarnings": []
+    },
+    {
+      "name": "daily_extended_limit",
+      "rules": [
+        {
+          "id": "C-01",
+          "value": {
+            "minutes": 540,
+            "extendedMinutes": 600,
+            "extensionsPerWeek": 2
+          },
+          "confirmed": false
+        },
+        {
+          "id": "C-04",
+          "value": {
+            "drivingMinutes": 270,
+            "breakMinutes": 45,
+            "splitFirstMinutes": 15,
+            "splitLastMinutes": 30
+          },
+          "confirmed": false
+        },
+        {
+          "id": "C-07",
+          "value": {
+            "workMinutes": 360,
+            "breakMinutes": 30,
+            "longWorkMinutes": 540,
+            "longBreakMinutes": 45
+          },
+          "confirmed": false
+        }
+      ],
+      "activities": [
+        {
+          "type": "driving",
+          "minutes": 601
+        }
+      ],
+      "expectedWarnings": [
+        "C-01",
+        "C-04",
+        "C-07"
+      ]
+    },
+    {
+      "name": "guide_value_changed",
+      "rules": [
+        {
+          "id": "C-01",
+          "value": {
+            "minutes": 540,
+            "extendedMinutes": 600,
+            "extensionsPerWeek": 2
+          },
+          "confirmed": false
+        },
+        {
+          "id": "C-04",
+          "value": {
+            "drivingMinutes": 60,
+            "breakMinutes": 45,
+            "splitFirstMinutes": 15,
+            "splitLastMinutes": 30
+          },
+          "confirmed": false
+        },
+        {
+          "id": "C-07",
+          "value": {
+            "workMinutes": 360,
+            "breakMinutes": 30,
+            "longWorkMinutes": 540,
+            "longBreakMinutes": 45
+          },
+          "confirmed": false
+        }
+      ],
+      "activities": [
+        {
+          "type": "driving",
+          "minutes": 61
+        }
+      ],
+      "expectedWarnings": [
+        "C-04"
+      ]
+    },
+    {
+      "name": "confirmed_break_due",
+      "rules": [
+        {
+          "id": "C-04",
+          "value": {
+            "drivingMinutes": 270,
+            "breakMinutes": 45,
+            "splitFirstMinutes": 15,
+            "splitLastMinutes": 30
+          },
+          "confirmed": true
+        }
+      ],
+      "activities": [
+        {
+          "type": "driving",
+          "minutes": 271
+        }
+      ],
+      "expectedWarnings": [
+        "C-04"
+      ]
+    },
+    {
+      "name": "missing_rule_value_is_no_warning",
+      "rules": [
+        {
+          "id": "C-04",
+          "value": null,
+          "confirmed": false
+        }
+      ],
+      "activities": [
+        {
+          "type": "driving",
+          "minutes": 800
+        }
+      ],
+      "expectedWarnings": []
+    },
+    {
+      "name": "week_uses_stored_values",
+      "scope": "week",
+      "rules": [
+        {
+          "id": "C-02",
+          "value": {
+            "minutes": 60
+          },
+          "confirmed": false
+        },
+        {
+          "id": "C-03",
+          "value": {
+            "minutes": 90
+          },
+          "confirmed": false
+        },
+        {
+          "id": "C-08",
+          "value": {
+            "minutes": 70,
+            "averageMinutes": 48
+          },
+          "confirmed": false
+        }
+      ],
+      "activities": [
+        {
+          "type": "driving",
+          "minutes": 91
+        }
+      ],
+      "expectedWarnings": [
+        "C-02",
+        "C-03",
+        "C-08"
+      ]
+    }
+  ]
+}
