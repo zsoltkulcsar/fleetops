@@ -19,7 +19,9 @@ test.describe("navigation and responsive shell", () => {
       await expect(page).toHaveURL(new RegExp(`${route === "/" ? "\\/" : route}$`));
       await expect(page.getByRole("heading", { level: 1, name: label })).toBeVisible();
       await expect(page.locator(".topbar strong")).toHaveText(label);
-      await expect(page).toHaveTitle(`${label} · FleetOps Office`);
+      await expect(page).toHaveTitle(
+        label === "People" ? "People \u00b7 FleetOps" : `${label} · FleetOps Office`,
+      );
       if (page.viewportSize()!.width < 768 && ["/documents", "/payroll", "/settings"].includes(route)) {
         await expect(page.getByRole("button", { name: "More" })).toHaveAttribute("aria-current", "page");
       } else {

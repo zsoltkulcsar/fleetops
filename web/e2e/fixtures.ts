@@ -10,6 +10,8 @@ export const test = base.extend({
         body: JSON.stringify({ employeeId: "demo", roles: ["owner"] }),
       }),
     );
+    const emptyPeople: components["schemas"]["PeoplePage"] = { items: [], page: 1, pageSize: 50, total: 0 };
+    await page.route("**/api/v1/people?*", (route) => route.fulfill({ json: emptyPeople }));
     const emptyList: components["schemas"]["VehicleListResult"] = { items: [], nextCursor: null };
     const emptyImpact: components["schemas"]["VehicleRetirementImpact"] = { items: [] };
     await page.route("**/api/v1/fleet/vehicles/*/retirement-impact", (route) =>

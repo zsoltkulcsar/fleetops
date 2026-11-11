@@ -1,3 +1,4 @@
+import { peoplePage, personRow } from "./people-helpers";
 import { test, expect } from "./fixtures";
 import type { Page } from "@playwright/test";
 import type { components } from "@fleetops/api-client";
@@ -13,12 +14,9 @@ const success: components["schemas"]["SendEnrolmentResult"] = {
 test.beforeEach(async ({ page }) => {
   // The generated session endpoint currently declares no response body.
   const session: Session = { employeeId: "hr-user", roles: ["hr"], stepUpMethod: "password" };
-  const drivers: components["schemas"]["DriverReadinessList"] = {
-    items: [{ id: driverId, name: "Dana Driver", canDrive: true, enrolled: false, causes: [] }],
-    nextCursor: null,
-  };
+  const drivers: components["schemas"]["PeoplePage"] = peoplePage([{ ...personRow, id: driverId }]);
   await page.route("**/api/v1/auth/session", (route) => route.fulfill({ json: session }));
-  await page.route("**/api/v1/readiness/drivers?*", (route) => route.fulfill({ json: drivers }));
+  await page.route("**/api/v1/people?*", (route) => route.fulfill({ json: drivers }));
 });
 
 async function send(page: Page) {

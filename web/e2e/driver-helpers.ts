@@ -8,6 +8,8 @@ export const config: components["schemas"]["DriverConfig"] = {
   maxOfflineDays: 7,
   officePhone: "+40123456789",
   name: "Dana Driver",
+  employeeStatus: "active",
+  pinResetRequired: false,
 };
 
 export async function driverRoutes(page: Page) {

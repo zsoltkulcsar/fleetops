@@ -1,3 +1,4 @@
+import { peoplePage, personRow, officeSession } from "./people-helpers";
 import { test, expect } from "./fixtures";
 import type { Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
@@ -131,40 +132,34 @@ test("record shows set off road for a dispatcher", async ({ page }) => {
 });
 
 test("people page shows the masked block text", async ({ page }) => {
-  const driver: Driver = {
-    id: "d-1",
-    name: "A Driver",
-    canDrive: false,
-    causes: [{ code: "document_expired", documentType: null }],
-  };
-  await page.route("**/api/v1/readiness/drivers?*", (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ items: [driver], nextCursor: null }),
-    }),
-  );
+  await officeSession(page, ["dispatcher"]);
+  const people = peoplePage([
+    { ...personRow, canDrive: false, reasonCategory: "document_expired", worstState: "expired" },
+  ]);
+  await page.route("**/api/v1/people?*", (route) => route.fulfill({ json: people }));
   await page.goto("/people");
-  await expect(page.getByText("Blocked — document expired", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("row").filter({ hasText: "Dana Driver" }).getByText("No", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("row").filter({ hasText: "Dana Driver" }).getByText("Document expired", { exact: true }),
+  ).toBeVisible();
   await expect(page.getByText("Medical", { exact: true })).not.toBeVisible();
 });
 
 test("people page shows the type to hr", async ({ page }) => {
-  const driver: Driver = {
-    id: "d-1",
-    name: "A Driver",
-    canDrive: false,
-    causes: [{ code: "document_expired", documentType: "medical" }],
-  };
-  await page.route("**/api/v1/readiness/drivers?*", (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ items: [driver], nextCursor: null }),
-    }),
-  );
+  await officeSession(page, ["hr"]);
+  const people = peoplePage([
+    { ...personRow, canDrive: false, reasonCategory: "medical", worstState: "expired" },
+  ]);
+  await page.route("**/api/v1/people?*", (route) => route.fulfill({ json: people }));
   await page.goto("/people");
-  await expect(page.getByText("Blocked — Medical expired", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("row").filter({ hasText: "Dana Driver" }).getByText("No", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("row").filter({ hasText: "Dana Driver" }).getByText("Medical", { exact: true }),
+  ).toBeVisible();
 });
 
 test("people page offers blocked only", async ({ page }) => {

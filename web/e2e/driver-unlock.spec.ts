@@ -1,3 +1,4 @@
+import { peopleProblem } from "./people-helpers";
 import { test, expect } from "@playwright/test";
 import type { components } from "@fleetops/api-client";
 import { driverRoutes, enrolDriver, enterPin, storedVault, config } from "./driver-helpers";
@@ -86,18 +87,21 @@ test("old vault asks for internet", async ({ page, context }) => {
 });
 
 test("revoked session erases the vault", async ({ page }) => {
-  const problem: components["schemas"]["ProblemDetails"] = { status: 401 };
+  const problem: components["schemas"]["ProblemDetails"] = peopleProblem("session_revoked");
   await page.route("**/api/v1/auth/session", (route) => route.fulfill({ status: 401, json: problem }));
   expect((await storedVault(page))?.wrappedKey).toBeDefined();
   await enterPin(page);
-  await expect(
-    page.getByRole("heading", { name: "Your access was removed. Call the office." }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "This phone was signed out. Not sent:" })).toBeVisible();
+  expect((await storedVault(page))?.wrappedKey).toBeDefined();
+  await expect(page.getByText("No unsent items.", { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "This phone was signed out. Not sent:" })).toBeVisible();
+  expect((await storedVault(page))?.wrappedKey).toBeDefined();
+  await page.getByRole("button", { name: "OK", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Set up your driver app" })).toBeVisible();
   expect(await storedVault(page)).toBeUndefined();
   await page.reload();
-  await expect(
-    page.getByRole("heading", { name: "Your access was removed. Call the office." }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Set up your driver app" })).toBeVisible();
   expect(await storedVault(page)).toBeUndefined();
 });
 

@@ -9,8 +9,14 @@ const routes = [
 ] as const;
 
 test("every route shows its empty state heading", async ({ page }) => {
-  const people: components["schemas"]["DriverReadinessList"] = { items: [], nextCursor: null };
-  await page.route("**/api/v1/readiness/drivers?*", (route) => route.fulfill({ json: people }));
+  const people: components["schemas"]["PeoplePage"] = { items: [], page: 1, pageSize: 50, total: 0 };
+  await page.route("**/api/v1/people?*", (route) => route.fulfill({ json: people }));
+  const settings: components["schemas"]["SettingsView"] = {
+    values: {},
+    releasableDocTypes: [],
+    holidays: [],
+  };
+  await page.route("**/api/v1/settings", (route) => route.fulfill({ json: settings }));
   for (const [route, label] of routes) {
     await page.goto(route);
     await expect(page.getByRole("heading", { level: 1, name: label })).toBeVisible();
@@ -18,13 +24,26 @@ test("every route shows its empty state heading", async ({ page }) => {
       await expect(
         page.getByRole("heading", { level: 2, name: "Nothing needs attention right now." }),
       ).toBeVisible();
-    else await expect(page.getByRole("heading", { level: 2, name: "Nothing here yet" })).toBeVisible();
+    else if (route === "/people")
+      await expect(page.getByRole("heading", { level: 2, name: "No people yet." })).toBeVisible();
+    else if (route === "/settings") {
+      await expect(page.getByRole("heading", { name: "Holidays", exact: true })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Users & roles", exact: true })).toBeVisible();
+    } else await expect(page.getByRole("heading", { level: 2, name: "Nothing here yet" })).toBeVisible();
   }
 });
 test("placeholder pages have no action buttons", async ({ page }) => {
   for (const [route] of routes) {
     await page.goto(route);
-    await expect(page.locator(".empty-state button")).toHaveCount(0);
+    if (route === "/people") {
+      await expect(page.getByRole("heading", { name: "No people yet." })).toBeVisible();
+      await expect(
+        page
+          .getByRole("region", { name: "People", exact: true })
+          .getByRole("button", { name: "Add person", exact: true }),
+      ).toBeEnabled();
+      await expect(page.getByRole("button", { name: "Import from Excel", exact: true })).toBeEnabled();
+    } else await expect(page.locator(".empty-state button")).toHaveCount(0);
   }
 });
 
