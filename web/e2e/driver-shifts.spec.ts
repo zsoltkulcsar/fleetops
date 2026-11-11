@@ -70,7 +70,7 @@ test("driver change list shows plain labels and no ids", async ({ page }) => {
   await driverWeek(page, current);
   await page.locator(".driver-shift-list button").click();
   const changes = page.getByRole("region", { name: "Office changes" });
-  await expect(changes).toContainText("Status: Submitted \u2192 Rejected");
+  await expect(changes).toContainText("Status: Awaiting approval \u2192 Rejected");
   await expect(changes).toContainText("Truck: B-OLD 10 \u2192 B-NEW 20");
   await expect(changes).not.toContainText(
     /(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i,

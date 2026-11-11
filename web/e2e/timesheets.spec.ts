@@ -333,6 +333,8 @@ test("drawer leaves edit mode and shows the new status after saving", async ({ p
 });
 
 test("a running shift cell says Running", async ({ page }) => {
+  // Per-day cells are desktop and tablet only (spec 6.1: mobile shows driver, hours and status).
+  test.skip((await page.evaluate(() => innerWidth)) < 768);
   const grid = week();
   const day = grid.rows[0].days[0];
   day.status = "running";
