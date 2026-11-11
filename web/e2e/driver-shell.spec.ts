@@ -21,15 +21,18 @@ test("bottom nav has four tabs", async ({ page }) => {
 });
 
 async function checkTargets(page: Page) {
-  // Only visible targets can be tapped; elements leaving the DOM mid-check have no box.
-  const targets = page.locator("main button, main input, main nav a").filter({ visible: true });
-  expect(await targets.count()).toBeGreaterThan(0);
-  for (const target of await targets.all()) {
-    const bounds = await target.boundingBox();
-    expect(bounds).not.toBeNull();
-    expect(bounds!.height).toBeGreaterThanOrEqual(48);
-    expect(bounds!.width).toBeGreaterThanOrEqual(48);
-  }
+  // Only visible targets can be tapped. The screen may still re-render after navigation, removing an element
+  // between listing and measuring it, so the whole measurement is retried until the screen is stable.
+  await expect(async () => {
+    const targets = page.locator("main button, main input, main nav a").filter({ visible: true });
+    expect(await targets.count()).toBeGreaterThan(0);
+    for (const target of await targets.all()) {
+      const bounds = await target.boundingBox();
+      expect(bounds).not.toBeNull();
+      expect(bounds!.height).toBeGreaterThanOrEqual(48);
+      expect(bounds!.width).toBeGreaterThanOrEqual(48);
+    }
+  }).toPass({ timeout: 10000 });
 }
 
 test("targets are at least 48 pixels", async ({ page }) => {
