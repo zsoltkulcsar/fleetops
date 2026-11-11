@@ -27,6 +27,7 @@ public sealed class DriverSnapshotQueryHandler(FleetOpsDbContext db, ICompanyTim
         var absenceFacts = await absences.FactsAsync(actor.EmployeeId, null, cancellationToken);
         return new(actor.EmployeeId, generatedAt, cycles, documents, own.CanDrive, own.Causes)
         {
+            Holidays = await db.CompanyHolidays.AsNoTracking().Where(holiday => holiday.Date >= today && holiday.Date < today.AddMonths(12)).OrderBy(holiday => holiday.Date).Select(holiday => new FleetOps.Modules.Setup.HolidayView(holiday.Date, holiday.Name)).ToArrayAsync(cancellationToken),
             VacationBalance = absenceFacts is null ? null : FleetOps.Modules.Absences.AbsenceRules.Balance(absenceFacts, today.Year),
             Absences = absenceFacts?.Absences.Select(absence => FleetOps.Modules.Absences.AbsenceRules.View(absence) with { WorkingDays = Enumerable.Range(absence.From.Year, absence.To.Year - absence.From.Year + 1).Sum(year => FleetOps.Modules.Absences.AbsenceRules.Days(absence, year, absenceFacts.Holidays)) }).ToArray() ?? [],
             ScheduleRequests = await scheduleRequests.ListAsync(actor.EmployeeId, cancellationToken),

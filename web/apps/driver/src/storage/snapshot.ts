@@ -11,6 +11,7 @@ export function snapshotFields(snapshot: DriverSnapshot): DriverSnapshot {
   return {
     employeeId: snapshot.employeeId,
     generatedAt: snapshot.generatedAt,
+    holidays: snapshot.holidays?.map(({ date, name }) => ({ date, name })),
     vacationBalance: snapshot.vacationBalance
       ? {
           year: snapshot.vacationBalance.year,
@@ -18,6 +19,7 @@ export function snapshotFields(snapshot: DriverSnapshot): DriverSnapshot {
           entitlement: snapshot.vacationBalance.entitlement,
           used: snapshot.vacationBalance.used,
           remaining: snapshot.vacationBalance.remaining,
+          left: snapshot.vacationBalance.left,
         }
       : snapshot.vacationBalance,
     absences: snapshot.absences?.map(

@@ -1,4 +1,6 @@
 import { useState, type FormEvent } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { apiClient } from "@fleetops/api-client";
 import type { components } from "@fleetops/api-client";
 import { Drawer, StatusPill } from "@fleetops/ui";
 import { commandQueue, newCommand } from "./storage/commandQueue";
@@ -16,15 +18,53 @@ export function DriverAbsences({ snapshot, online }: { snapshot?: DriverSnapshot
   const [to, setTo] = useState("");
   const [halfDay, setHalfDay] = useState<components["schemas"]["HalfDay"]>(null);
   const waiting = queue.commands.filter((command) => command.type === "absence.request");
+  const preview = useQuery({
+    queryKey: ["absence-preview", from, to, halfDay],
+    enabled: online && open && Boolean(from && to && from <= to),
+    queryFn: async () => {
+      const result = await apiClient.GET("/api/v1/absences/preview", {
+        params: { query: { from, to, halfDay: from === to ? halfDay : null, type: "vacation" } },
+      });
+      if (!result.response.ok || !result.data) throw new Error("preview_failed");
+      return result.data;
+    },
+  });
+  const holidayCoverageStart = snapshot
+    ? new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Europe/Berlin",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(new Date(snapshot.generatedAt))
+    : undefined;
+  const coverageEnd = holidayCoverageStart ? new Date(holidayCoverageStart + "T12:00:00Z") : undefined;
+  if (coverageEnd) {
+    const day = coverageEnd.getUTCDate();
+    coverageEnd.setUTCDate(1);
+    coverageEnd.setUTCFullYear(coverageEnd.getUTCFullYear() + 1);
+    const lastDay = new Date(
+      Date.UTC(coverageEnd.getUTCFullYear(), coverageEnd.getUTCMonth() + 1, 0),
+    ).getUTCDate();
+    coverageEnd.setUTCDate(Math.min(day, lastDay));
+  }
+  const covered = Boolean(
+    snapshot?.holidays &&
+      holidayCoverageStart &&
+      coverageEnd &&
+      from >= holidayCoverageStart &&
+      to < coverageEnd.toISOString().slice(0, 10),
+  );
   const weekdays = (() => {
     if (!from || !to || from > to) return 0;
     const first = Date.parse(`${from}T12:00:00Z`);
     const last = Date.parse(`${to}T12:00:00Z`);
-    if ((last - first) / 86_400_000 > 366) return null;
+    if ((last - first) / 86_400_000 > 3660) return null;
     let days = 0;
     for (let time = first; time <= last; time += 86_400_000) {
       const day = new Date(time).getUTCDay();
-      if (day !== 0 && day !== 6) days += from === to && halfDay ? 0.5 : 1;
+      const date = new Date(time).toISOString().slice(0, 10);
+      if (day !== 0 && day !== 6 && !snapshot?.holidays?.some((holiday) => holiday.date === date))
+        days += from === to && halfDay ? 0.5 : 1;
     }
     return days;
   })();
@@ -180,10 +220,27 @@ export function DriverAbsences({ snapshot, online }: { snapshot?: DriverSnapshot
               <textarea name="note" maxLength={2000} />
             </label>
             <p>
-              {weekdays === null
-                ? "Choose up to one year."
-                : `${weekdays} weekdays before Company holidays. Final working days confirmed by the office.`}
+              {online
+                ? preview.isError
+                  ? "Preview could not be loaded."
+                  : preview.data
+                    ? `${preview.data.countedDays} working days`
+                    : "Loading preview\u2026"
+                : !covered
+                  ? "Connect to preview dates outside the cached holiday calendar."
+                  : weekdays === null
+                    ? "Choose up to ten years."
+                    : `${weekdays} working days (cached holidays)`}
             </p>
+            {online && preview.data && (
+              <>
+                <p>
+                  Balance before {preview.data.balanceBefore} days; after {preview.data.balanceAfter} days
+                </p>
+                {preview.data.overBalance && <p role="status">Over vacation balance</p>}
+                <p>Others absent on these dates: {preview.data.othersAbsentCount}</p>
+              </>
+            )}
             <p>{"Day counting: Mon\u2013Fri without holidays (to confirm with payroll)"}</p>
             {error && <p role="alert">{error}</p>}
             <button className="primary" disabled={busy || weekdays === null}>

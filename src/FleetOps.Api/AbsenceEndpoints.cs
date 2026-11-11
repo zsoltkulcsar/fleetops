@@ -11,6 +11,8 @@ public static class AbsenceEndpoints
     public static void AddAbsences(this IServiceCollection services)
     {
         services.AddScoped<ICommandHandler<AcknowledgeAbsenceCommand, ReleaseReviewResult>, AcknowledgeAbsenceHandler>();
+        services.AddScoped<IQueryHandler<PreviewAbsenceQuery, AbsencePreview>, AbsenceQueries>();
+        services.AddScoped<IQueryHandler<GetVacationBalanceQuery, VacationBalance>, AbsenceQueries>();
         services.AddScoped<IAbsenceStore, EfAbsenceStore>();
         services.AddScoped<IDriverAbsences, DriverAbsences>();
         services.AddScoped<IDriverPlanningCommands, DriverPlanningCommands>();
@@ -32,6 +34,10 @@ public static class AbsenceEndpoints
     {
         app.MapPost("/api/v1/alerts/{id:guid}/acknowledge-absence", async (Guid id, AbsenceAcknowledgementRequest request, CommandDispatcher dispatcher, CancellationToken cancellationToken) =>
             Results.Ok(await dispatcher.DispatchAsync<AcknowledgeAbsenceCommand, ReleaseReviewResult>(new(id, request.Version), cancellationToken))).Produces<ReleaseReviewResult>();
+        app.MapGet("/api/v1/absences/preview", async (Guid? employeeId, DateOnly from, DateOnly to, HalfDay? halfDay, string type, IAccessContextAccessor access, QueryDispatcher dispatcher, CancellationToken cancellationToken) =>
+            Results.Ok(await dispatcher.DispatchAsync<PreviewAbsenceQuery, AbsencePreview>(new(employeeId ?? access.Current?.EmployeeId, from, to, halfDay, AbsencePreviewRequest.ParseType(type)), cancellationToken))).Produces<AbsencePreview>();
+        app.MapGet("/api/v1/people/{id:guid}/vacation-balance", async (Guid id, int year, QueryDispatcher dispatcher, CancellationToken cancellationToken) =>
+            Results.Ok(await dispatcher.DispatchAsync<GetVacationBalanceQuery, VacationBalance>(new(id, year), cancellationToken))).Produces<VacationBalance>();
         app.MapGet("/api/v1/absences", async (DateOnly from, DateOnly to, Guid? employeeId, QueryDispatcher dispatcher, CancellationToken cancellationToken) =>
             Results.Ok(await dispatcher.DispatchAsync<ListAbsencesQuery, AbsenceList>(new(from, to, employeeId), cancellationToken))).Produces<AbsenceList>();
         app.MapGet("/api/v1/absences/{id:guid}", async (Guid id, QueryDispatcher dispatcher, CancellationToken cancellationToken) =>

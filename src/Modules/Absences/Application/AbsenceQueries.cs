@@ -1,7 +1,7 @@
 using FleetOps.Kernel;
 using FleetOps.Kernel.Authorization;
 namespace FleetOps.Modules.Absences;
-public sealed class AbsenceQueries(IAbsenceStore store) : IQueryHandler<ListAbsencesQuery, AbsenceList>, IQueryHandler<GetAbsenceQuery, AbsenceDetail>
+public sealed class AbsenceQueries(IAbsenceStore store) : IQueryHandler<ListAbsencesQuery, AbsenceList>, IQueryHandler<GetAbsenceQuery, AbsenceDetail>, IQueryHandler<PreviewAbsenceQuery, AbsencePreview>, IQueryHandler<GetVacationBalanceQuery, VacationBalance>
 {
     public async Task<AbsenceList> HandleAsync(ListAbsencesQuery query, AccessContext actor, CancellationToken cancellationToken)
     {
@@ -13,6 +13,36 @@ public sealed class AbsenceQueries(IAbsenceStore store) : IQueryHandler<ListAbse
     }
     public async Task<AbsenceDetail> HandleAsync(GetAbsenceQuery query, AccessContext actor, CancellationToken cancellationToken) =>
         await Detail(await store.LoadAsync(query.Id, null, cancellationToken) ?? throw new AbsenceConflictException("not_found"), actor, cancellationToken);
+    public async Task<VacationBalance> HandleAsync(GetVacationBalanceQuery query, AccessContext actor, CancellationToken cancellationToken)
+    {
+        if (query.Year < 1 || query.Year > 9999) throw new AbsenceValidationException("year");
+        var facts = await store.FactsAsync(query.EmployeeId, null, cancellationToken) ?? throw new AbsenceConflictException("not_found");
+        return AbsenceRules.Balance(facts, query.Year);
+    }
+    public async Task<AbsencePreview> HandleAsync(PreviewAbsenceQuery query, AccessContext actor, CancellationToken cancellationToken)
+    {
+        AbsenceRules.Validate(query.From, query.To, query.HalfDay, query.Type, null);
+        var employeeId = query.EmployeeId ?? actor.EmployeeId;
+        var facts = await store.FactsAsync(employeeId, null, cancellationToken) ?? throw new AbsenceConflictException("not_found");
+        var absence = new Absence { EmployeeId = employeeId, From = query.From, To = query.To, HalfDay = query.HalfDay, Type = query.Type };
+        decimal counted = 0;
+        decimal before = 0;
+        decimal after = 0;
+        var overBalance = false;
+        for (var year = query.From.Year; year <= query.To.Year; year++)
+        {
+            var days = AbsenceRules.Days(absence, year, facts.Holidays);
+            var balance = AbsenceRules.Balance(facts, year).Remaining;
+            var remaining = balance - (query.Type == AbsenceType.Vacation ? days : 0);
+            counted += days;
+            before += balance;
+            after += remaining;
+            overBalance |= remaining < 0;
+        }
+        var others = await store.OthersAsync(absence, null, cancellationToken);
+        var visible = actor.Roles.Contains(RoleCode.Hr) || actor.Roles.Contains(RoleCode.Owner) || employeeId == actor.EmployeeId && actor.Roles.Contains(RoleCode.Driver);
+        return new(counted, visible ? before : null, visible ? after : null, visible ? overBalance : null, others.Count);
+    }
     private async Task<AbsenceDetail> Detail(Absence absence, AccessContext actor, CancellationToken cancellationToken)
     {
         var facts = await store.FactsAsync(absence.EmployeeId, null, cancellationToken) ?? throw new AbsenceConflictException("not_found");

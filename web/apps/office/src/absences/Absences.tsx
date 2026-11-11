@@ -1,11 +1,9 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useSearchParams, useNavigate } from "react-router";
-import { apiClient } from "@fleetops/api-client";
 import { Banner, Drawer, StatusPill } from "@fleetops/ui";
 import { useSession } from "../auth/AuthGate";
 import { useOnline } from "../shell/Shell";
-import { checked } from "../people/api";
 import { formatDocumentDate } from "../shell/date";
 import { AbsenceForm, AbsenceFailure } from "./AbsenceForm";
 import {
@@ -56,9 +54,8 @@ export function Absences({ employeeId }: { employeeId?: string }) {
     enabled: Boolean(focusedId),
   });
   const settings = useQuery({
-    queryKey: ["company-settings"],
-    queryFn: () => apiClient.GET("/api/v1/settings").then(checked),
-    enabled: hr || owner,
+    queryKey: ["holidays", from, to],
+    queryFn: () => absencesApi.holidays(from, to),
   });
   const drivers = useQuery({
     queryKey: ["absence-drivers"],
@@ -74,9 +71,6 @@ export function Absences({ employeeId }: { employeeId?: string }) {
       groups.set(item.absence.employeeId, { name: item.employeeName, items: [] });
     groups.get(item.absence.employeeId)!.items.push(item);
   }
-  const balance = annual.data?.items
-    .flatMap((item) => (item.absence.status === "approved" ? item.balancesAfter : item.balancesBefore))
-    .find((entry) => entry.year === Number(year));
   const active = selected ?? focused.data;
   const closeDetail = () => {
     setSelected(undefined);
@@ -119,11 +113,7 @@ export function Absences({ employeeId }: { employeeId?: string }) {
         <Banner label="Offline">Cached absences are read-only until the connection returns.</Banner>
       )}
       {saved && <p role="status">Absence saved.</p>}
-      {employeeId && (
-        <p>
-          {balance ? `${balance.remaining} days left in ${year}` : "Days left unavailable for this year."}
-        </p>
-      )}
+      {employeeId && (hr || owner) && <PersonBalance employeeId={employeeId} year={Number(year)} />}
       <div className="directory-toolbar absence-toolbar">
         <label>
           Month
@@ -219,7 +209,7 @@ export function Absences({ employeeId }: { employeeId?: string }) {
                 <th>Driver</th>
                 {Array.from({ length: last.getUTCDate() }, (_, day) => {
                   const date = `${month}-${String(day + 1).padStart(2, "0")}`;
-                  const holiday = settings.data?.holidays.find((item) => item.date === date);
+                  const holiday = settings.data?.items.find((item) => item.date === date);
                   return (
                     <th key={date} data-holiday={Boolean(holiday)} title={holiday?.name}>
                       {day + 1}
@@ -232,10 +222,13 @@ export function Absences({ employeeId }: { employeeId?: string }) {
             <tbody>
               {[...groups].map(([id, group]) => (
                 <tr key={id}>
-                  <th>{group.name}</th>
+                  <th>
+                    {group.name}
+                    {(hr || owner) && <PersonBalance employeeId={id} year={Number(year)} />}
+                  </th>
                   {Array.from({ length: last.getUTCDate() }, (_, day) => {
                     const date = `${month}-${String(day + 1).padStart(2, "0")}`;
-                    const holiday = settings.data?.holidays.find((item) => item.date === date);
+                    const holiday = settings.data?.items.find((item) => item.date === date);
                     return (
                       <td key={date} data-holiday={Boolean(holiday)}>
                         {group.items
@@ -267,7 +260,6 @@ export function Absences({ employeeId }: { employeeId?: string }) {
         </div>
       )}
       {settings.isError && <p role="status">Company holidays could not be loaded.</p>}
-      {!hr && !owner && <p className="ui-muted">Company holiday calendar is unavailable to this role.</p>}
       {hr && (
         <section className="ui-panel absence-requests">
           <h2>Requests</h2>
@@ -306,6 +298,22 @@ export function Absences({ employeeId }: { employeeId?: string }) {
         />
       )}
     </div>
+  );
+}
+
+function PersonBalance({ employeeId, year }: { employeeId: string; year: number }) {
+  const balance = useQuery({
+    queryKey: ["absences", "balance", employeeId, year],
+    queryFn: () => absencesApi.balance(employeeId, year),
+  });
+  return (
+    <p>
+      {balance.data
+        ? `${balance.data.left} days left in ${year}`
+        : balance.isError
+          ? "Balance could not be loaded."
+          : "Loading balance\u2026"}
+    </p>
   );
 }
 

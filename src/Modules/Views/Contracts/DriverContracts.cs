@@ -13,6 +13,7 @@ public sealed record DriverSnapshot(Guid EmployeeId, DateTimeOffset GeneratedAt,
     public FleetOps.Modules.Absences.VacationBalance? VacationBalance { get; init; }
     public IReadOnlyList<FleetOps.Modules.Absences.AbsenceView> Absences { get; init; } = [];
     public IReadOnlyList<ScheduleRequestView> ScheduleRequests { get; init; } = [];
+    public IReadOnlyList<FleetOps.Modules.Setup.HolidayView> Holidays { get; init; } = [];
     public string EmployeeStatus { get; init; } = "active";
     public IReadOnlyList<DriverSwap> Swaps { get; init; } = [];
     public IReadOnlyList<DriverOwnDefect> Defects { get; init; } = [];

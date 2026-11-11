@@ -40,6 +40,12 @@ async function checkAbsence<T>(result: { data?: T; response: Response; error?: u
   );
 }
 export const absencesApi = {
+  holidays: (from: string, to: string) =>
+    apiClient.GET("/api/v1/holidays", { params: { query: { from, to } } }).then(checked),
+  balance: (id: string, year: number) =>
+    apiClient
+      .GET("/api/v1/people/{id}/vacation-balance", { params: { path: { id }, query: { year } } })
+      .then(checked),
   people: async (role?: string) => {
     const people: components["schemas"]["PersonRow"][] = [];
     for (let page = 1; ; page += 1) {

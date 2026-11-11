@@ -526,6 +526,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/absences/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query: {
+                    employeeId?: string;
+                    from: string;
+                    to: string;
+                    halfDay?: components["schemas"]["HalfDay"];
+                    type: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AbsencePreview"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/people/{id}/vacation-balance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query: {
+                    year: number;
+                };
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["VacationBalance"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/absences": {
         parameters: {
             query?: never;
@@ -1154,6 +1234,44 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/holidays": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query: {
+                    from: string;
+                    to: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HolidayList"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4671,6 +4789,17 @@ export interface components {
         AbsenceList: {
             items: components["schemas"]["AbsenceDetail"][];
         };
+        AbsencePreview: {
+            /** Format: double */
+            countedDays: number;
+            /** Format: double */
+            balanceBefore: null | number;
+            /** Format: double */
+            balanceAfter: null | number;
+            overBalance: null | boolean;
+            /** Format: int32 */
+            othersAbsentCount: number;
+        };
         /** @enum {unknown} */
         AbsenceStatus: "requested" | "approved" | "declined" | "cancelled";
         /** @enum {unknown} */
@@ -5357,6 +5486,7 @@ export interface components {
             vacationBalance?: null | components["schemas"]["VacationBalance"];
             absences?: components["schemas"]["AbsenceView"][];
             scheduleRequests?: components["schemas"]["ScheduleRequestView"][];
+            holidays?: components["schemas"]["HolidayView"][];
             employeeStatus?: string;
             swaps?: components["schemas"]["DriverSwap"][];
             defects?: components["schemas"]["DriverOwnDefect"][];
@@ -5537,6 +5667,9 @@ export interface components {
         };
         /** @enum {unknown} */
         HalfDay: "am" | "pm" | null;
+        HolidayList: {
+            items: components["schemas"]["HolidayView"][];
+        };
         HolidayView: {
             /** Format: date */
             date: string;
@@ -6229,6 +6362,8 @@ export interface components {
             used: number;
             /** Format: double */
             remaining: number;
+            /** Format: double */
+            left?: number;
         };
         VehicleDetail: {
             /** Format: uuid */
