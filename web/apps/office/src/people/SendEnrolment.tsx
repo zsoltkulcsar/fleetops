@@ -2,7 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 import { apiClient } from "@fleetops/api-client";
 import { en } from "../i18n/en";
 
-export function SendEnrolment({ id, name }: { id: string; name: string }) {
+export function SendEnrolment({ id, name, label }: { id: string; name: string; label?: string }) {
   const send = useMutation({
     mutationFn: async () => {
       const result = await apiClient.POST("/api/v1/people/{id}/enrolment", { params: { path: { id } } });
@@ -15,7 +15,7 @@ export function SendEnrolment({ id, name }: { id: string; name: string }) {
   return (
     <div>
       <button type="button" className="ui-button" disabled={send.isPending} onClick={() => send.mutate()}>
-        {send.isPending ? en.enrolment.sending : en.enrolment.send}
+        {send.isPending ? en.enrolment.sending : (label ?? en.enrolment.send)}
       </button>
       {send.isError && <p role="alert">{send.error.message}</p>}
       {send.isSuccess && (

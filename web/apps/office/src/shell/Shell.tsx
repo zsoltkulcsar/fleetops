@@ -75,7 +75,12 @@ export function Shell() {
       </a>
       {layoutMode === "wide" && <Sidebar />}
       {layoutMode === "tablet" && <TabletRail />}
-      <Header pageName={routeNames[normalisePath(location.pathname)] ?? en.nav.attention} />
+      <Header
+        pageName={
+          routeNames[normalisePath(location.pathname)] ??
+          (location.pathname.startsWith("/people/") ? en.nav.people : en.nav.attention)
+        }
+      />
       <main id="main-content" className="content" tabIndex={-1}>
         <RouteErrorBoundary key={location.pathname}>
           <Outlet />
@@ -91,14 +96,14 @@ export function OfficePage({ section }: { section: string }) {
   const online = useOnline();
   const label = routeNames[normalisePath(location.pathname)] ?? section;
   useEffect(() => {
-    document.title = `${label} · ${en.appName}`;
+    document.title = `${label} \u00b7 ${en.appName}`;
   }, [label]);
   return (
     <div className="page">
       <div className="page-title">
         <div>
           <span className="eyebrow" data-testid="today">
-            Today · {formatTodayBerlin()}
+            Today {"\u00b7"} {formatTodayBerlin()}
           </span>
           <h1 ref={heading} tabIndex={-1}>
             {label}
@@ -119,7 +124,7 @@ export function OfficePage({ section }: { section: string }) {
 }
 export function DevGalleryRoute() {
   useEffect(() => {
-    document.title = `Gallery · ${en.appName}`;
+    document.title = `Gallery \u00b7 ${en.appName}`;
   }, []);
   return import.meta.env.DEV ? <Gallery /> : null;
 }

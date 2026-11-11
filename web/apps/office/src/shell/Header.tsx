@@ -1,3 +1,5 @@
+import { peopleApi } from "../people/api";
+import { personRoles, personStatus } from "../people/labels";
 import { en } from "../i18n/en";
 import { useQueryClient } from "@tanstack/react-query";
 import { authApi } from "../auth/api";
@@ -15,6 +17,11 @@ export function Header({ pageName }: { pageName: string }) {
   const [search, setSearch] = useState("");
   const [term, setTerm] = useState("");
   const [results, setResults] = useState<Awaited<ReturnType<typeof documentsApi.searchAll>> | null>(null);
+  const people = useQuery({
+    queryKey: ["people-search", term],
+    queryFn: () => peopleApi.list({ search: term, pageSize: 10 }),
+    enabled: term.length >= 2,
+  });
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const notifications = useQuery({
     queryKey: ["notifications"],
@@ -37,10 +44,19 @@ export function Header({ pageName }: { pageName: string }) {
       setResults(null);
       return;
     }
+    let active = true;
+    setResults(null);
     void documentsApi
       .searchAll(term)
-      .then(setResults)
-      .catch(() => setResults(null));
+      .then((result) => {
+        if (active) setResults(result);
+      })
+      .catch(() => {
+        if (active) setResults(null);
+      });
+    return () => {
+      active = false;
+    };
   }, [term]);
   useEffect(() => {
     if (!notificationsOpen) return;
@@ -94,6 +110,9 @@ export function Header({ pageName }: { pageName: string }) {
       </div>
       <div className="topbar-actions">
         <div className="office-search">
+          <label className="visually-hidden" htmlFor="office-search">
+            {en.header.searchLabel}
+          </label>
           <input
             id="office-search"
             aria-label={en.header.searchLabel}
@@ -103,15 +122,14 @@ export function Header({ pageName }: { pageName: string }) {
           />
           {term.length >= 2 && (
             <div className="search-popover">
-              {!results ||
-              (!results.documents.length && !results.vehicles.length && !results.people.length) ? (
+              {!results?.documents.length && !results?.vehicles.length && !people.data?.items.length ? (
                 <span>{en.header.noResults}</span>
               ) : (
                 <>
-                  {results.documents.length > 0 && (
+                  {Boolean(results?.documents.length) && (
                     <section>
                       <strong>{en.header.documents}</strong>
-                      {results.documents.map((item) => (
+                      {results?.documents.map((item) => (
                         <button
                           key={item.id}
                           type="button"
@@ -120,26 +138,29 @@ export function Header({ pageName }: { pageName: string }) {
                             setSearch("");
                           }}
                         >
-                          {en.documents.types[item.type]} {item.number ?? ""} · {item.ownerName}
+                          {en.documents.types[item.type]} {item.number ?? ""} {"\u00b7"} {item.ownerName}
                         </button>
                       ))}
                     </section>
                   )}
-                  {results.vehicles.length > 0 && (
+                  {Boolean(results?.vehicles.length) && (
                     <section>
                       <strong>{en.header.vehicles}</strong>
-                      {results.vehicles.map((item) => (
+                      {results?.vehicles.map((item) => (
                         <Link key={item.id} to={`/fleet/${item.id}`}>
-                          {item.plate} · {item.make} {item.model}
+                          {item.plate} {"\u00b7"} {item.make} {item.model}
                         </Link>
                       ))}
                     </section>
                   )}
-                  {results.people.length > 0 && (
+                  {Boolean(people.data?.items.length) && (
                     <section>
                       <strong>{en.header.people}</strong>
-                      {results.people.map((item) => (
-                        <span key={item.id}>{item.name}</span>
+                      {people.data?.items.map((item) => (
+                        <Link key={item.id} to={`/people/${item.id}`} onClick={() => setSearch("")}>
+                          {item.name} {"\u00b7"} {personRoles(item.roles)} {"\u00b7"}{" "}
+                          {personStatus(item.status)}
+                        </Link>
                       ))}
                     </section>
                   )}

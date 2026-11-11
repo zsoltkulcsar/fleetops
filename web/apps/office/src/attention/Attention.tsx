@@ -1,5 +1,10 @@
 import { useEffect, useId, useMemo, useState } from "react";
 import { CalendarDays, Check, ChevronDown, CircleAlert, Clock3, Info, Truck, UserRound } from "lucide-react";
+import { apiClient } from "@fleetops/api-client";
+import { documentLabel } from "../people/labels";
+import { checked } from "../people/api";
+import { ReleaseReview } from "./ReleaseReview";
+import "../people/people.css";
 import { Banner, Plate, SegmentedControl, Skeleton, Toast } from "@fleetops/ui";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router";
@@ -12,6 +17,9 @@ import "./attention.css";
 
 const severityRank = { critical: 2, warning: 1, info: 0 } as const;
 function itemTitle(item: AttentionItem) {
+  if (item.ruleId === "A-01") return "Driver document expiring";
+  if (item.ruleId === "A-04") return "Vehicle document expiring";
+  if (item.ruleId === "A-13") return "Office override used";
   if (item.ruleId === "A-07") return "Critical defect: vehicle off road";
   if (item.ruleId === "A-08") return "Major defect awaiting repair";
   if (item.ruleId === "A-21") return "Schedule clash";
@@ -22,15 +30,23 @@ function itemTitle(item: AttentionItem) {
   if (item.ruleId === "A-16") return "Shift running too long";
   if (item.ruleId === "A-17") return "Driver change on a locked shift";
   if (item.ruleId === "A-20") return "Cycle overrun: handover late";
-  if (item.ruleId === "A-02")
-    return `${en.attention.rules.a02} · ${en.documents.types[item.scopeKey as keyof typeof en.documents.types] ?? item.scopeKey}`;
-  if (item.ruleId === "A-03")
-    return `${en.attention.rules.a03} · ${en.documents.types[item.scopeKey as keyof typeof en.documents.types] ?? item.scopeKey}`;
-  if (item.ruleId === "A-05")
-    return `${en.attention.rules.a05} · ${en.documents.types[item.scopeKey as keyof typeof en.documents.types] ?? item.scopeKey}`;
+  if (item.ruleId === "A-02") return `${en.attention.rules.a02} \u00b7 ${documentLabel(item.scopeKey ?? "")}`;
+  if (item.ruleId === "A-03") return `${en.attention.rules.a03} \u00b7 ${documentLabel(item.scopeKey ?? "")}`;
+  if (item.ruleId === "A-05") return `${en.attention.rules.a05} \u00b7 ${documentLabel(item.scopeKey ?? "")}`;
   return item.ruleId;
 }
-function actionFor(item: AttentionItem, group: AttentionGroup, owner: boolean) {
+function actionFor(item: AttentionItem, group: AttentionGroup, owner: boolean, dispatcherOnly: boolean) {
+  if (item.ruleId === "A-01")
+    return dispatcherOnly
+      ? {
+          label: "Plan truck reassignment",
+          href: `/schedule?search=${encodeURIComponent(group.subjectName ?? "")}`,
+        }
+      : { label: "Upload renewal", href: `/documents?upload=employee:${group.subjectId}:${item.scopeKey}` };
+  if (item.ruleId === "A-04")
+    return owner
+      ? { label: "Open vehicle", href: `/fleet/${group.subjectId}` }
+      : { label: "Upload renewal", href: `/documents?upload=vehicle:${group.subjectId}:${item.scopeKey}` };
   if (item.ruleId === "A-07" || item.ruleId === "A-08")
     return {
       label: owner ? "View defect" : "Open defect",
@@ -41,14 +57,19 @@ function actionFor(item: AttentionItem, group: AttentionGroup, owner: boolean) {
   if (item.ruleId === "A-16" || item.ruleId === "A-17")
     return { label: "Open shift", href: `/timesheets?shiftId=${group.subjectId}` };
   if (item.ruleId === "A-09") {
-    const day = /^\d{4}-\d{2}-\d{2}$/.test(item.scopeKey ?? "") ? item.scopeKey : (item.dueAt ?? "").slice(0, 10);
+    const day = /^\d{4}-\d{2}-\d{2}$/.test(item.scopeKey ?? "")
+      ? item.scopeKey
+      : (item.dueAt ?? "").slice(0, 10);
     return {
       label: "Add shift for driver",
       href: `/timesheets?filter=missing&search=${encodeURIComponent(group.subjectName ?? "")}${day ? `&week=${day}` : ""}`,
     };
   }
   if (item.ruleId === "A-15")
-    return { label: "Open shifts", href: `/timesheets?search=${encodeURIComponent(group.subjectName ?? "")}` };
+    return {
+      label: "Open shifts",
+      href: `/timesheets?search=${encodeURIComponent(group.subjectName ?? "")}`,
+    };
   if (item.ruleId === "A-20")
     return {
       label: "Open Schedule",
@@ -82,6 +103,9 @@ export function Attention() {
   const client = useQueryClient();
   const navigate = useNavigate();
   const owner = session.data?.roles.includes("owner") === true;
+  const canManagePeople = session.data?.roles.some((role) => role === "hr" || role === "owner") === true;
+  const dispatcherOnly = session.data?.roles.includes("dispatcher") === true && !canManagePeople;
+  const [reviewing, setReviewing] = useState<{ item: AttentionItem; group: AttentionGroup } | null>(null);
   const canSnooze = session.data?.roles.some((role) => role === "hr" || role === "dispatcher") === true;
   const [filter, setFilter] = useState("all");
   const [visibleCount, setVisibleCount] = useState(8);
@@ -97,16 +121,12 @@ export function Attention() {
   );
   const readiness = useQuery({
     queryKey: ["readiness-summary"],
-    queryFn: async () =>
-      (await (await fetch("/api/v1/readiness/summary")).json()) as {
-        vehiclesUsable: number;
-        vehiclesTotal: number;
-      },
+    queryFn: () => apiClient.GET("/api/v1/readiness/summary").then(checked),
     enabled: owner || Boolean(session.data),
     refetchInterval: 60_000,
   });
   useEffect(() => {
-    document.title = `${en.nav.attention} · ${en.appName}`;
+    document.title = `${en.nav.attention} \u00b7 ${en.appName}`;
   }, []);
   const visibleGroups = groups.slice(0, visibleCount);
   useEffect(() => setVisibleCount(8), [filter]);
@@ -171,7 +191,7 @@ export function Attention() {
       <header className="page-title">
         <div>
           <span className="eyebrow" data-testid="today">
-            {en.nav.attention} · {formatTodayBerlin()}
+            {en.nav.attention} {"\u00b7"} {formatTodayBerlin()}
           </span>
           <h1 tabIndex={-1}>{en.attention.title}</h1>
           <p className="ui-muted">{en.attention.openLine(data.totals.open, data.totals.critical)}</p>
@@ -227,6 +247,9 @@ export function Attention() {
               group={group}
               owner={owner}
               canSnooze={canSnooze}
+              canManagePeople={canManagePeople}
+              dispatcherOnly={dispatcherOnly}
+              onReview={setReviewing}
               onSnooze={setSnoozing}
             />
           ))}
@@ -241,6 +264,17 @@ export function Attention() {
             </button>
           )}
         </div>
+      )}
+      {reviewing && (
+        <ReleaseReview
+          group={reviewing.group}
+          item={reviewing.item}
+          onClose={() => setReviewing(null)}
+          onSaved={() => {
+            setReviewing(null);
+            void query.refetch();
+          }}
+        />
       )}
       {snoozing && (
         <SnoozeDialog
@@ -277,13 +311,20 @@ function AttentionCard({
   group,
   owner,
   canSnooze,
+  canManagePeople,
+  dispatcherOnly,
+  onReview,
   onSnooze,
 }: {
   group: AttentionGroup;
   owner: boolean;
   canSnooze: boolean;
+  canManagePeople: boolean;
+  dispatcherOnly: boolean;
+  onReview: (value: { item: AttentionItem; group: AttentionGroup }) => void;
   onSnooze: (value: { item: AttentionItem; group: AttentionGroup }) => void;
 }) {
+  const online = useOnline();
   const [expanded, setExpanded] = useState(false);
   const actionsId = useId();
   const critical = group.worstSeverity === "critical";
@@ -315,7 +356,7 @@ function AttentionCard({
       <div className="attention-body">
         <div className="attention-items">
           {group.items.map((item) => {
-            const action = actionFor(item, group, owner);
+            const action = actionFor(item, group, owner, dispatcherOnly);
             const SeverityIcon =
               item.severity === "critical" ? CircleAlert : item.severity === "warning" ? Clock3 : Info;
             return (
@@ -343,9 +384,30 @@ function AttentionCard({
                   </p>
                 </div>
                 <div className="attention-item-actions">
-                  <Link className="ui-button primary" to={action.href}>
-                    {action.label}
-                  </Link>
+                  {item.ruleId === "A-13" && canManagePeople ? (
+                    <button
+                      type="button"
+                      className="ui-button primary"
+                      disabled={!online}
+                      onClick={() => onReview({ item, group })}
+                    >
+                      Review
+                    </button>
+                  ) : (
+                    <Link className="ui-button primary" to={action.href}>
+                      {action.label}
+                    </Link>
+                  )}
+                  {item.ruleId === "A-02" && canManagePeople && (
+                    <Link className="ui-button" to={`/people/${group.subjectId}?action=suspend`}>
+                      Suspend driver
+                    </Link>
+                  )}
+                  {item.ruleId === "A-04" && !owner && (
+                    <Link className="ui-button" to={`/fleet/${group.subjectId}`}>
+                      Open vehicle
+                    </Link>
+                  )}
                   {!owner && item.ruleId === "A-07" && (
                     <>
                       <Link
@@ -370,15 +432,19 @@ function AttentionCard({
                       Create repair
                     </Link>
                   )}
-                  {expanded && canSnooze && item.ruleId !== "A-07" && item.snoozable && (
-                    <button
-                      className="ui-button ghost"
-                      type="button"
-                      onClick={() => onSnooze({ item, group })}
-                    >
-                      {en.attention.snooze}
-                    </button>
-                  )}
+                  {expanded &&
+                    canSnooze &&
+                    !(dispatcherOnly && item.ruleId === "A-01") &&
+                    item.ruleId !== "A-07" &&
+                    item.snoozable && (
+                      <button
+                        className="ui-button ghost"
+                        type="button"
+                        onClick={() => onSnooze({ item, group })}
+                      >
+                        {en.attention.snooze}
+                      </button>
+                    )}
                 </div>
               </div>
             );
@@ -440,7 +506,7 @@ function SnoozeDialog({
               until: new Date(`${until}T23:59:59.000Z`).toISOString(),
               reason,
             })
-            .then((result) => onSaved(item.id, (result as { version: number }).version))
+            .then((result) => onSaved(item.id, result.version))
             .catch(() => setError(en.attention.snoozeError));
         }}
       >

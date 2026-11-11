@@ -1,0 +1,89 @@
+/* FleetOps data view: existing industrial palette and compact directory rhythm; no new motion. */
+.people-filters {
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 16px;
+}
+.people-filters > div:not(.people-check) {
+  display: grid;
+  gap: 4px;
+}
+.people-filters input:not([type="checkbox"]),
+.people-filters select {
+  max-width: 240px;
+}
+.people-check,
+.people-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.people-reason {
+  display: block;
+  color: var(--ink-2);
+  font-size: 13px;
+  margin-top: 4px;
+}
+.people-form {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+}
+.people-field {
+  display: grid;
+  gap: 4px;
+}
+.people-form fieldset {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 12px;
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.people-form input,
+.people-form select,
+.people-form textarea {
+  width: 100%;
+  min-width: 0;
+}
+.people-form input[type="checkbox"] {
+  width: auto;
+}
+.people-profile-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin-top: 12px;
+}
+.people-profile-panel {
+  padding: 16px;
+}
+.people-profile-panel h2 {
+  margin-bottom: 16px;
+}
+.people-profile .directory-tabs {
+  margin: 16px 0;
+}
+.people-profile .directory-tabs button[aria-selected="true"] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.people-session {
+  border-bottom: 1px solid var(--line);
+  padding: 16px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.people-session p {
+  margin: 4px 0;
+}
+.people-profile .table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+}

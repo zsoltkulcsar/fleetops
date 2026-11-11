@@ -12,6 +12,7 @@ import { Fleet } from "./fleet/Fleet";
 import { FleetRecord } from "./fleet/FleetRecord";
 import { Documents } from "./documents/Documents";
 import { People } from "./people/People";
+import { PersonProfile } from "./people/PersonProfile";
 import { Settings } from "./settings/Settings";
 import { Attention } from "./attention/Attention";
 import { Schedule } from "./schedule/Schedule";
@@ -57,6 +58,7 @@ createRoot(document.getElementById("app")!).render(
             <Route path="/fleet/maintenance" element={<Maintenance />} />
             <Route path="/fleet/:id" element={<FleetRecordRoute />} />
             <Route path="/people" element={<People />} />
+            <Route path="/people/:id" element={<PersonProfile />} />
             <Route path="/documents" element={<Documents />} />
             <Route path="/payroll" element={page("payroll")} />
             <Route path="/settings" element={<Settings />} />
