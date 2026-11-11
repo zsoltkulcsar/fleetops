@@ -21,7 +21,8 @@ test("bottom nav has four tabs", async ({ page }) => {
 });
 
 async function checkTargets(page: Page) {
-  const targets = page.locator("main button, main input, main nav a");
+  // Only visible targets can be tapped; elements leaving the DOM mid-check have no box.
+  const targets = page.locator("main button, main input, main nav a").filter({ visible: true });
   expect(await targets.count()).toBeGreaterThan(0);
   for (const target of await targets.all()) {
     const bounds = await target.boundingBox();
