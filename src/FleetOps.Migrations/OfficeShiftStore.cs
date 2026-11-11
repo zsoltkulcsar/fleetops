@@ -16,7 +16,7 @@ public sealed class EfOfficeShiftStore(INotifications notifications) : IOfficeSh
     public async Task<bool> IsFlaggedAsync(Shift shift, CommandContext context, CancellationToken cancellationToken)
     {
         await using var db = Create(context);
-        return shift.DeviceTimeGap || shift.BlockedAtStart is not null || await db.Alerts.AnyAsync(alert =>
+        return shift.OdometerLower || shift.DeviceTimeGap || shift.BlockedAtStart is not null || await db.Alerts.AnyAsync(alert =>
             alert.Status != AlertStatus.Resolved && ((alert.SubjectType == "shift" && alert.SubjectId == shift.Id && (alert.RuleId == "A-16" || alert.RuleId == "A-17")) ||
             (alert.RuleId == "A-17" && alert.SubjectId == shift.EmployeeId && alert.ScopeKey == "shift_conflict:" + shift.Id)), cancellationToken);
     }

@@ -3,10 +3,11 @@ using System.Text.Json.Serialization;
 using FleetOps.Kernel;
 using FleetOps.Kernel.Authorization;
 using FleetOps.Modules.Setup;
+using FleetOps.Modules.Fleet;
 
 namespace FleetOps.Modules.Shifts;
 
-public sealed class ApplyDriverCommandHandler(IShiftCommandStore store, IShiftStartFacts facts, IShiftEvents events, ICompanyTimeService companyTime, ISettings settings, TimeProvider clock, IDriverDefectCommands defects, IDriverPlanningCommands? planning = null)
+public sealed class ApplyDriverCommandHandler(IShiftCommandStore store, IShiftStartFacts facts, IShiftEvents events, ICompanyTimeService companyTime, ISettings settings, TimeProvider clock, IDriverDefectCommands defects, IFleetOdometer odometer, IDriverPlanningCommands? planning = null)
     : ICommandHandler<ApplyDriverCommand, DriverCommandResult>
 {
     public static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
@@ -98,6 +99,12 @@ public sealed class ApplyDriverCommandHandler(IShiftCommandStore store, IShiftSt
                     if (shift is null) throw new ShiftRuleException("shift_not_found");
                     if (command.BaseVersion > shift.Version) throw new ShiftRuleException("dependency");
                     ApplyChange(shift, command);
+                }
+                if (shift.TruckId is Guid vehicleId)
+                {
+                    var km = command.Type == "shift.start" ? shift.OdometerStartKm : command.Type == "shift.end" ? shift.OdometerEndKm : null;
+                    var at = command.Type == "shift.end" ? shift.EndAt ?? command.DeviceTime : shift.StartAt;
+                    if (km.HasValue) shift.OdometerLower |= !await odometer.RecordAsync(vehicleId, km.Value, at, actor.EmployeeId, context, cancellationToken);
                 }
                 shift.DeviceTime = command.DeviceTime;
                 shift.ServerReceivedAt = receivedAt;

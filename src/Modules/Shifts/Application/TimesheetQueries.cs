@@ -54,10 +54,10 @@ public sealed class TimesheetQueries(ITimesheetReadStore store, ICompanyTimeServ
             var missing = date < today && driver.CycleDates.Contains(date) && shifts.Length == 0 && absences.Length == 0;
             var minutes = shifts.Sum(shift => WorkMinutes(shift, now));
             var status = missing ? "missing" : shifts.Length > 0 ? Status(shifts) : absences.Length > 0 ? "absence" : "empty";
-            var warning = shifts.Any(shift => shift.DeviceTimeGap || shift.BlockedAtStart is not null || driver.FlaggedShifts.Contains(shift.Id));
+            var warning = shifts.Any(shift => shift.OdometerLower || shift.DeviceTimeGap || shift.BlockedAtStart is not null || driver.FlaggedShifts.Contains(shift.Id));
             var label = status switch { "missing" => "Missing", "approved" => "Approved", "awaiting" => "Awaiting approval", "rejected" => "Rejected", "running" => "Running", "draft" => "Draft", "absence" => "Absence", _ => "No shift" };
             return new WeekCell(date, minutes, status, label, missing, warning,
-                shifts.Select(shift => new GridShift(shift.Id, shift.Version, shift.Status, shift.DeviceTimeGap || shift.BlockedAtStart is not null || driver.FlaggedShifts.Contains(shift.Id))).ToArray(), absences);
+                shifts.Select(shift => new GridShift(shift.Id, shift.Version, shift.Status, shift.OdometerLower || shift.DeviceTimeGap || shift.BlockedAtStart is not null || driver.FlaggedShifts.Contains(shift.Id))).ToArray(), absences);
         }).ToArray();
         var rowStatus = days.Any(day => day.Missing) ? "missing" : driver.Shifts.Count > 0 ? Status(driver.Shifts) : days.All(day => day.Absences.Count > 0) ? "absence" : "empty";
         return new(driver.EmployeeId, driver.Driver, driver.PersonnelNumber, days, days.Sum(day => day.WorkMinutes),

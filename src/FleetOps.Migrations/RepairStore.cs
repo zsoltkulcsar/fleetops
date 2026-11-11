@@ -9,6 +9,20 @@ namespace FleetOps.Migrations;
 
 public sealed class EfRepairStore(FleetOpsDbContext reads) : IRepairStore
 {
+    public async Task<Vehicle?> LoadVehicleAsync(Guid id, CommandContext context, CancellationToken cancellationToken)
+    {
+        await using var db = Create(context);
+        return await db.Vehicles.AsNoTracking().SingleOrDefaultAsync(vehicle => vehicle.Id == id, cancellationToken);
+    }
+    public async Task ValidateInvoiceAsync(Guid documentId, Guid vehicleId, CommandContext context, CancellationToken cancellationToken)
+    {
+        await using var db = Create(context);
+        if (!await db.Documents.AnyAsync(document => document.Id == documentId && document.OwnerId == vehicleId &&
+            document.OwnerType == FleetOps.Modules.Documents.DocumentOwnerType.Vehicle &&
+            document.Type == FleetOps.Modules.Documents.DocumentType.MaintenanceInvoice &&
+            (document.Status == FleetOps.Modules.Documents.DocumentStatus.Uploaded || document.Status == FleetOps.Modules.Documents.DocumentStatus.Verified) && document.Files.Any(), cancellationToken))
+            throw new VehicleValidationException(["invoiceDocumentId"]);
+    }
     public async Task LockAsync(CommandContext context, CancellationToken cancellationToken)
     {
         await using var db = Create(context);

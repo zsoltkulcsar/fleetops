@@ -618,6 +618,7 @@ public sealed partial class VehicleTests : IAsyncLifetime
         asTrailer["odometerKm"] = null;
         asTrailer["serviceIntervalKm"] = null;
         asTrailer["serviceIntervalMonths"] = null;
+        asTrailer["lastTachoDownloadAt"] = null;
 
         using var response = await PutBody(client, truck.Id, asTrailer);
 

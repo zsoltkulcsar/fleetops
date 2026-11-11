@@ -56,6 +56,7 @@ public sealed class EfTimesheetReadStore(FleetOpsDbContext db, IConfiguration co
         var conflicts = await db.ShiftConflicts.AsNoTracking().Where(conflict => conflict.ShiftId == shiftId).OrderByDescending(conflict => conflict.CreatedAt)
             .Select(conflict => new ShiftConflictView(conflict.Id, conflict.CommandId, conflict.BaseVersion, conflict.OfficeVersion, conflict.DriverPayload, conflict.CreatedAt)).ToListAsync(cancellationToken);
         var flags = new List<string>();
+        if (shift.OdometerLower) flags.Add("odometer_lower");
         if (shift.DeviceTimeGap) flags.Add("Phone clock differed from server time by more than 5 min");
         if (shift.BlockedAtStart is not null) flags.Add("Started while blocked: " + shift.BlockedAtStart);
         var rules = await db.Alerts.Where(alert => alert.Status != AlertStatus.Resolved &&

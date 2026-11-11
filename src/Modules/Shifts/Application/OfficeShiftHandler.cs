@@ -1,10 +1,11 @@
 using FleetOps.Kernel;
+using FleetOps.Modules.Fleet;
 using FleetOps.Kernel.Authorization;
 
 namespace FleetOps.Modules.Shifts;
 
 public sealed class OfficeShiftHandler(IOfficeShiftStore store, IShiftCommandStore driverStore, IShiftStartFacts startFacts,
-    IShiftEvents events, ICompanyTimeService companyTime, TimeProvider clock) :
+    IShiftEvents events, ICompanyTimeService companyTime, TimeProvider clock, IFleetOdometer odometer) :
     ICommandHandler<ApproveShiftCommand, OfficeShiftResult>, ICommandHandler<RejectShiftCommand, OfficeShiftResult>,
     ICommandHandler<EditOfficeShiftCommand, OfficeShiftResult>, ICommandHandler<AddOfficeShiftCommand, OfficeShiftResult>,
     ICommandHandler<EndOfficeShiftCommand, OfficeShiftResult>
@@ -42,6 +43,9 @@ public sealed class OfficeShiftHandler(IOfficeShiftStore store, IShiftCommandSto
         if (command.Input is null) throw new TimesheetValidationException("input");
         if (command.Input.StartAt != shift.StartAt || command.Input.Date != shift.Date) throw new TimesheetValidationException("startAt", "date");
         if (shift.Status == ShiftStatus.Running && command.Input.EndAt is not null) throw new ShiftRuleException("use_office_end");
+        var priorStart = shift.OdometerStartKm;
+        var priorEnd = shift.OdometerEndKm;
+        var priorTruck = shift.TruckId;
         ApplyInput(shift, command.Input);
         if (shift.Status == ShiftStatus.Approved)
         {
@@ -50,6 +54,7 @@ public sealed class OfficeShiftHandler(IOfficeShiftStore store, IShiftCommandSto
         }
         ClearApproval(shift);
         await store.ValidateReferencesAsync(shift, context, cancellationToken);
+        await RecordOdometerAsync(shift, priorStart != shift.OdometerStartKm || priorTruck != shift.TruckId, priorEnd != shift.OdometerEndKm || priorTruck != shift.TruckId, actor, context, cancellationToken);
         return await SaveAsync(shift, actor, command.Reason.Trim(), "shift_edited_by_office", context, cancellationToken);
     }
 
@@ -71,6 +76,7 @@ public sealed class OfficeShiftHandler(IOfficeShiftStore store, IShiftCommandSto
         if (!facts.Active || !facts.DriverCanDrive) shift.BlockedAtStart = "driver_blocked";
         else if (shift.TruckId is not null && !facts.TruckUsable) shift.BlockedAtStart = "truck_unusable";
         await store.ValidateReferencesAsync(shift, context, cancellationToken);
+        await RecordOdometerAsync(shift, true, true, actor, context, cancellationToken);
         return await SaveAsync(shift, actor, command.Reason.Trim(), "shift_edited_by_office", context, cancellationToken);
     }
 
@@ -80,7 +86,17 @@ public sealed class OfficeShiftHandler(IOfficeShiftStore store, IShiftCommandSto
         var shift = await LoadAsync(command.SubjectId, command.ShiftId, command.Version, actor, context, cancellationToken);
         if (command.EndAt == default || command.EndAt > clock.GetUtcNow()) throw new TimesheetValidationException("endAt");
         ShiftRules.End(shift, command.EndAt, command.OdometerEndKm);
+        await RecordOdometerAsync(shift, false, true, actor, context, cancellationToken);
         return await SaveAsync(shift, actor, command.Reason.Trim(), "shift_edited_by_office", context, cancellationToken);
+    }
+
+    private async Task RecordOdometerAsync(Shift shift, bool start, bool end, AccessContext actor, CommandContext context, CancellationToken cancellationToken)
+    {
+        if (shift.TruckId is not Guid vehicleId) return;
+        if (start && shift.OdometerStartKm is int startKm)
+            shift.OdometerLower |= !await odometer.RecordAsync(vehicleId, startKm, shift.StartAt, actor.EmployeeId, context, cancellationToken);
+        if (end && shift.OdometerEndKm is int endKm && shift.EndAt is DateTimeOffset endAt)
+            shift.OdometerLower |= !await odometer.RecordAsync(vehicleId, endKm, endAt, actor.EmployeeId, context, cancellationToken);
     }
 
     private async Task<Shift> LoadAsync(Guid? employeeId, Guid shiftId, int version, AccessContext actor, CommandContext context, CancellationToken cancellationToken)

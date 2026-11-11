@@ -13,6 +13,9 @@ public sealed class GetPersonHandler(IPeopleStore store, ICompanyTimeService clo
         var checklist = PersonRules.Checklist(facts, today, mask);
         var visible = checklist.Where(item => !item.Masked).ToArray();
         return new(PersonRules.Row(facts, today, mask), PersonRules.Fields(facts.Employee), facts.Employee.DepotId,
-            checklist, visible.Count(PersonRules.Valid), visible.Length);
+            checklist, visible.Count(PersonRules.Valid), visible.Length)
+        {
+            LastTachoDownloadAt = actor.Roles.Any(role => role is RoleCode.Dispatcher or RoleCode.Owner) ? facts.Employee.LastTachoDownloadAt : null
+        };
     }
 }

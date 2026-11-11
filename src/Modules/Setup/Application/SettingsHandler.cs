@@ -56,6 +56,9 @@ public sealed class SettingsHandler(ICompanySettingsStore store) : IQueryHandler
         "alerts.escalation_minutes" => (1, 1440),
         "alerts.a03.blocked_hours" => (1, 168),
         "alerts.a03.queue_days" or "alerts.a08.days" => (1, 365),
+        "alerts.a06.critical_days" => (0, 3650),
+        "alerts.a06.critical_km" => (0, 1000000),
+        "tacho.driver_card_days" or "tacho.vehicle_unit_days" => (1, 3650),
         "vehicles.lease_lead_days" => (0, 365),
         _ when key.StartsWith("documents.lead_days.", StringComparison.Ordinal) && SettingCatalog.Defaults.ContainsKey(key) => (0, 365),
         _ => null

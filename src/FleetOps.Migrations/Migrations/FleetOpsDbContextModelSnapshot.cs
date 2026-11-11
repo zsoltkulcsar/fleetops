@@ -1211,6 +1211,11 @@ namespace FleetOps.Migrations.Migrations
                         .HasColumnType("character varying(2000)")
                         .HasColumnName("cancel_reason");
 
+                    b.Property<decimal?>("CostEur")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)")
+                        .HasColumnName("cost_eur");
+
                     b.PrimitiveCollection<Guid[]>("DefectReportIds")
                         .IsRequired()
                         .HasColumnType("uuid[]")
@@ -1220,9 +1225,25 @@ namespace FleetOps.Migrations.Migrations
                         .HasColumnType("date")
                         .HasColumnName("done_at");
 
+                    b.Property<DateOnly?>("DueDate")
+                        .HasColumnType("date")
+                        .HasColumnName("due_date");
+
+                    b.Property<int?>("DueKm")
+                        .HasColumnType("integer")
+                        .HasColumnName("due_km");
+
+                    b.Property<Guid?>("InvoiceDocumentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("invoice_document_id");
+
                     b.Property<int?>("OdometerAtDoneKm")
                         .HasColumnType("integer")
                         .HasColumnName("odometer_at_done_km");
+
+                    b.Property<Guid?>("ResultDocumentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("result_document_id");
 
                     b.Property<DateOnly>("ScheduledFor")
                         .HasColumnType("date")
@@ -1250,13 +1271,21 @@ namespace FleetOps.Migrations.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("InvoiceDocumentId");
+
+                    b.HasIndex("ResultDocumentId");
+
                     b.HasIndex("VehicleId", "ScheduledFor");
 
                     b.ToTable("maintenance", "fleetops", t =>
                         {
+                            t.HasCheckConstraint("ck_maintenance_cost", "cost_eur IS NULL OR cost_eur >= 0");
+
+                            t.HasCheckConstraint("ck_maintenance_due_km", "due_km IS NULL OR due_km >= 0");
+
                             t.HasCheckConstraint("ck_maintenance_odometer", "odometer_at_done_km IS NULL OR odometer_at_done_km >= 0");
 
-                            t.HasCheckConstraint("ck_maintenance_type", "type = 'repair'");
+                            t.HasCheckConstraint("ck_maintenance_type", "type IN ('service', 'repair', 'inspection_hu', 'inspection_sp', 'tacho_check', 'tyres', 'other')");
                         });
                 });
 
@@ -1704,6 +1733,10 @@ namespace FleetOps.Migrations.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("odometer_end_km");
 
+                    b.Property<bool>("OdometerLower")
+                        .HasColumnType("boolean")
+                        .HasColumnName("odometer_lower");
+
                     b.Property<int?>("OdometerStartKm")
                         .HasColumnType("integer")
                         .HasColumnName("odometer_start_km");
@@ -1885,6 +1918,10 @@ namespace FleetOps.Migrations.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("last_name");
+
+                    b.Property<DateOnly?>("LastTachoDownloadAt")
+                        .HasColumnType("date")
+                        .HasColumnName("last_tacho_download_at");
 
                     b.Property<Guid?>("LeaveActorId")
                         .HasColumnType("uuid")
@@ -2230,6 +2267,16 @@ namespace FleetOps.Migrations.Migrations
 
             modelBuilder.Entity("FleetOps.Modules.Maintenance.Maintenance", b =>
                 {
+                    b.HasOne("FleetOps.Modules.Documents.Document", null)
+                        .WithMany()
+                        .HasForeignKey("InvoiceDocumentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("FleetOps.Modules.Documents.Document", null)
+                        .WithMany()
+                        .HasForeignKey("ResultDocumentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("FleetOps.Modules.Fleet.Vehicle", null)
                         .WithMany()
                         .HasForeignKey("VehicleId")

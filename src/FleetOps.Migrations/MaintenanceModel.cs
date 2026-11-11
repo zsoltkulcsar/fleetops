@@ -12,9 +12,18 @@ public sealed partial class FleetOpsDbContext
         {
             entity.ToTable("maintenance", table =>
             {
-                table.HasCheckConstraint("ck_maintenance_type", "type = 'repair'");
+                table.HasCheckConstraint("ck_maintenance_type", "type IN ('service', 'repair', 'inspection_hu', 'inspection_sp', 'tacho_check', 'tyres', 'other')");
+                table.HasCheckConstraint("ck_maintenance_due_km", "due_km IS NULL OR due_km >= 0");
+                table.HasCheckConstraint("ck_maintenance_cost", "cost_eur IS NULL OR cost_eur >= 0");
                 table.HasCheckConstraint("ck_maintenance_odometer", "odometer_at_done_km IS NULL OR odometer_at_done_km >= 0");
             });
+            entity.Property(repair => repair.DueDate).HasColumnName("due_date");
+            entity.Property(repair => repair.DueKm).HasColumnName("due_km");
+            entity.Property(repair => repair.CostEur).HasColumnName("cost_eur").HasPrecision(14, 2);
+            entity.Property(repair => repair.InvoiceDocumentId).HasColumnName("invoice_document_id");
+            entity.Property(repair => repair.ResultDocumentId).HasColumnName("result_document_id");
+            entity.HasOne<FleetOps.Modules.Documents.Document>().WithMany().HasForeignKey(repair => repair.InvoiceDocumentId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<FleetOps.Modules.Documents.Document>().WithMany().HasForeignKey(repair => repair.ResultDocumentId).OnDelete(DeleteBehavior.Restrict);
             entity.HasKey(repair => repair.Id);
             entity.Property(repair => repair.Id).HasColumnName("id");
             entity.Property(repair => repair.Type).HasColumnName("type");

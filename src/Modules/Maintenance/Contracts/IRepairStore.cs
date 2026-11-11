@@ -4,6 +4,8 @@ namespace FleetOps.Modules.Maintenance;
 
 public interface IRepairStore
 {
+    Task<Vehicle?> LoadVehicleAsync(Guid id, CommandContext context, CancellationToken cancellationToken);
+    Task ValidateInvoiceAsync(Guid documentId, Guid vehicleId, CommandContext context, CancellationToken cancellationToken);
     Task LockAsync(CommandContext context, CancellationToken cancellationToken);
     Task<Maintenance?> LoadRepairAsync(Guid id, CommandContext context, CancellationToken cancellationToken);
     Task SaveRepairAsync(Maintenance repair, Guid actorId, CommandContext context, CancellationToken cancellationToken);

@@ -4,4 +4,7 @@ namespace FleetOps.People;
 
 [VisibleTo(RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner)]
 public sealed record PersonDetail(PersonRow Header, PersonFields Fields, Guid? DepotId,
-    IReadOnlyList<ChecklistItem> Checklist, int VerifiedCount, int RequiredCount) : IReadModel;
+    IReadOnlyList<ChecklistItem> Checklist, int VerifiedCount, int RequiredCount) : IReadModel
+{
+    public DateOnly? LastTachoDownloadAt { get; init; }
+}

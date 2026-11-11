@@ -17,7 +17,10 @@ public sealed class EfCycleClashFacts : ICycleClashFacts
             (other.Status == CycleStatus.Planned || other.Status == CycleStatus.Active || other.Status == CycleStatus.Overrun) &&
             other.From < cycle.To && cycle.From < other.To, cancellationToken);
         overlaps |= open && await db.Absences.AnyAsync(absence => absence.EmployeeId == cycle.EmployeeId && absence.Status == FleetOps.Modules.Absences.AbsenceStatus.Approved && absence.From <= cycle.To && absence.To >= cycle.From, cancellationToken);
-        return new(cycle.VehicleId, cycle.From, cycle.To, open, overlaps);
+        var maintenanceDates = await db.Maintenance.AsNoTracking().Where(item => item.VehicleId == cycle.VehicleId &&
+            (item.Status == FleetOps.Modules.Maintenance.MaintenanceStatus.Scheduled || item.Status == FleetOps.Modules.Maintenance.MaintenanceStatus.InProgress))
+            .Select(item => item.ScheduledFor).ToListAsync(cancellationToken);
+        return new(cycle.VehicleId, cycle.From, cycle.To, open, overlaps) { MaintenanceDates = maintenanceDates };
     }
 
     public async Task<bool> VehicleUsableAsync(Guid vehicleId, DateOnly date, CommandContext context, CancellationToken cancellationToken)

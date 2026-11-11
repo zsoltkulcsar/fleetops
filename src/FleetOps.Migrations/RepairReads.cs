@@ -11,14 +11,27 @@ public sealed class EfRepairReads(FleetOpsDbContext db, ICompanyTimeService comp
     public async Task<MaintenanceList> ListAsync(ListMaintenanceQuery query, CancellationToken cancellationToken)
     {
         var repairs = db.Maintenance.AsNoTracking().AsQueryable();
+        if (query.Type is not null) repairs = repairs.Where(repair => repair.Type == query.Type);
         if (query.VehicleId.HasValue) repairs = repairs.Where(repair => repair.VehicleId == query.VehicleId);
         if (query.Status.HasValue) repairs = repairs.Where(repair => repair.Status == query.Status);
         if (query.From.HasValue) repairs = repairs.Where(repair => repair.ScheduledFor >= query.From);
         if (query.To.HasValue) repairs = repairs.Where(repair => repair.ScheduledFor <= query.To);
         var rows = await repairs.OrderBy(repair => repair.ScheduledFor).ThenBy(repair => repair.Id).ToListAsync(cancellationToken);
-        return new(rows.Select(repair => new RepairDetail(repair.Id, repair.Type, repair.VehicleId, repair.Workshop,
-            repair.ScheduledFor, repair.DefectReportIds, repair.Status, repair.CancelReason, repair.DoneAt,
-            repair.OdometerAtDoneKm, repair.Status == MaintenanceStatus.InProgress)).ToArray());
+        var vehicleIds = rows.Select(repair => repair.VehicleId).Distinct().ToArray();
+        var vehicles = await db.Vehicles.AsNoTracking().Where(vehicle => vehicleIds.Contains(vehicle.Id)).ToDictionaryAsync(vehicle => vehicle.Id, cancellationToken);
+        var today = companyTime.ToCompanyDate(time.GetUtcNow());
+        var details = rows.Select(repair =>
+        {
+            var vehicle = vehicles.GetValueOrDefault(repair.VehicleId);
+            return RepairViews.Detail(repair) with
+            {
+                Plate = vehicle?.Plate, OdometerKm = vehicle?.OdometerKm, KmAsOf = vehicle?.OdometerUpdatedAt,
+                KmReadingStale = repair.DueKm.HasValue && MaintenanceRules.KmStale(vehicle?.OdometerUpdatedAt, today),
+                Overdue = MaintenanceRules.IsOverdue(repair, vehicle?.OdometerKm, vehicle?.OdometerUpdatedAt, today)
+            };
+        });
+        if (query.Overdue.HasValue) details = details.Where(detail => detail.Overdue == query.Overdue);
+        return new(details.ToArray());
     }
     public async Task<SwapOptions> OptionsAsync(SwapOptionsQuery query, CancellationToken cancellationToken)
     {

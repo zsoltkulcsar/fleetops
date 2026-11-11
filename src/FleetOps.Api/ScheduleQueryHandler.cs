@@ -23,7 +23,16 @@ public sealed class ScheduleQueryHandler(FleetOpsDbContext db, TimeProvider time
                     assignment.VehicleId, db.Vehicles.Where(vehicle => vehicle.Id == assignment.VehicleId).Select(vehicle => vehicle.Plate).First(),
                     assignment.From, assignment.To, assignment.MaintenanceId, "Swap")).ToListAsync(cancellationToken)
             : [];
-        return new(time.GetUtcNow(), await ScheduleProjection.ReadAsync(db, cycles, cancellationToken)) { Swaps = swapRows };
+        var maintenance = db.Maintenance.AsNoTracking().Where(item => db.Vehicles.Any(vehicle => vehicle.Id == item.VehicleId && vehicle.Kind == FleetOps.Modules.Fleet.VehicleKind.Truck) && item.ScheduledFor >= query.From && item.ScheduledFor <= query.To &&
+            (item.Status == FleetOps.Modules.Maintenance.MaintenanceStatus.Scheduled || item.Status == FleetOps.Modules.Maintenance.MaintenanceStatus.InProgress));
+        if (query.VehicleId.HasValue) maintenance = maintenance.Where(item => item.VehicleId == query.VehicleId);
+        if (query.EmployeeId.HasValue) maintenance = maintenance.Where(item => cycles.Any(cycle => cycle.VehicleId == item.VehicleId));
+        var maintenanceRows = actor.Roles.Any(role => role is RoleCode.Dispatcher or RoleCode.Owner)
+            ? await maintenance.OrderBy(item => item.ScheduledFor).ThenBy(item => item.Id).Select(item => new ScheduleMaintenance(item.Id, item.VehicleId,
+                db.Vehicles.Where(vehicle => vehicle.Id == item.VehicleId).Select(vehicle => vehicle.Plate).First(), item.Type, item.ScheduledFor,
+                item.Status.ToString(), "Workshop: " + (item.Type == "inspection_hu" ? "HU" : item.Type == "inspection_sp" ? "SP" : item.Type))).ToListAsync(cancellationToken)
+            : [];
+        return new(time.GetUtcNow(), await ScheduleProjection.ReadAsync(db, cycles, cancellationToken)) { Swaps = swapRows, Maintenance = maintenanceRows };
     }
 }
 

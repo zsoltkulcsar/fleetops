@@ -2726,6 +2726,84 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/fleet/maintenance/documents/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RequestMaintenanceDocumentUploadCommand"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UploadLinkResult"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fleet/maintenance/invoices/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ConfirmMaintenanceInvoiceCommand"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DocumentDetail"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/fleet/maintenance": {
         parameters: {
             query?: never;
@@ -2737,9 +2815,11 @@ export interface paths {
             parameters: {
                 query?: {
                     vehicleId?: string;
-                    status?: components["schemas"]["MaintenanceStatus"];
+                    status?: string;
                     from?: string;
                     to?: string;
+                    type?: string;
+                    overdue?: boolean;
                 };
                 header?: never;
                 path?: never;
@@ -2783,6 +2863,47 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fleet/maintenance/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RescheduleMaintenanceRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RepairDetail"];
+                    };
+                };
+            };
+        };
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2918,9 +3039,11 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    status?: components["schemas"]["MaintenanceStatus"];
+                    status?: string;
                     from?: string;
                     to?: string;
+                    type?: string;
+                    overdue?: boolean;
                 };
                 header?: never;
                 path: {
@@ -3094,6 +3217,88 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["AssignmentDetail"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fleet/vehicles/{id}/tacho-downloads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["LogTachoDownloadRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TruckTachoDownloadResult"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/people/{id}/tacho-downloads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["LogTachoDownloadRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PersonTachoDownloadResult"];
                     };
                 };
             };
@@ -4903,6 +5108,8 @@ export interface components {
             version: number;
             actions?: string[];
             readOnly?: boolean;
+            message?: null | string;
+            guidance?: null | string;
         };
         AttentionResult: {
             groups: components["schemas"]["AttentionGroup"][];
@@ -4962,6 +5169,11 @@ export interface components {
             fileId: string;
             page: components["schemas"]["DocumentFilePage"];
         };
+        ConfirmMaintenanceInvoiceCommand: {
+            /** Format: uuid */
+            vehicleId: string;
+            files: components["schemas"]["ConfirmFileInput"][];
+        };
         CreateAssignmentCommand: {
             /** Format: uuid */
             employeeId: string;
@@ -4997,7 +5209,13 @@ export interface components {
             workshop: null | string;
             /** Format: date */
             scheduledFor: string;
-            defectReportIds: null | string[];
+            defectReportIds?: null | string[];
+            /** @default repair */
+            type: string;
+            /** Format: date */
+            dueDate?: null | string;
+            /** Format: int32 */
+            dueKm?: null | number;
         };
         CreateVehicleCommand: {
             kind: components["schemas"]["VehicleKind"];
@@ -5286,7 +5504,7 @@ export interface components {
         /** @enum {unknown} */
         DocumentStatus: "uploaded" | "verified" | "rejected" | "replaced";
         /** @enum {unknown} */
-        DocumentType: "licence_c_ce" | "driver_card" | "code95" | "medical" | "adr_certificate" | "id_card" | "employment_contract" | "registration" | "hu_report" | "sp_report" | "tacho_calibration" | "insurance" | "community_licence";
+        DocumentType: "licence_c_ce" | "driver_card" | "code95" | "medical" | "adr_certificate" | "id_card" | "employment_contract" | "registration" | "hu_report" | "sp_report" | "tacho_calibration" | "insurance" | "community_licence" | "maintenance_invoice";
         DocumentUploadRequest: {
             ownerType: components["schemas"]["DocumentOwnerType"];
             /** Format: uuid */
@@ -5311,6 +5529,11 @@ export interface components {
             doneAt?: null | string;
             /** Format: int32 */
             odometerAtDoneKm?: null | number;
+            /** Format: double */
+            costEur?: null | number;
+            /** Format: uuid */
+            invoiceDocumentId?: null | string;
+            resultDocument?: null | components["schemas"]["MaintenanceResultDocument"];
         };
         DowngradeDefectRequest: {
             severity: components["schemas"]["DefectSeverity"];
@@ -5730,8 +5953,26 @@ export interface components {
             reportedBy?: null | string;
             photos?: null | string[];
         };
+        LogTachoDownloadRequest: {
+            /** Format: date */
+            date: string;
+        };
+        MaintenanceDocumentFile: {
+            /** Format: uuid */
+            fileId: string;
+            page: string;
+        };
         MaintenanceList: {
             items: components["schemas"]["RepairDetail"][];
+        };
+        MaintenanceResultDocument: {
+            type: string;
+            /** Format: date */
+            issuedAt: null | string;
+            /** Format: date */
+            expiresAt: null | string;
+            number: null | string;
+            files: components["schemas"]["MaintenanceDocumentFile"][];
         };
         /** @enum {unknown} */
         MaintenanceStatus: "scheduled" | "in_progress" | "done" | "cancelled";
@@ -5745,6 +5986,15 @@ export interface components {
             /** Format: date */
             to: string;
             reason: string;
+        };
+        NextServiceProposal: {
+            /** Format: uuid */
+            vehicleId: string;
+            type: string;
+            /** Format: date */
+            dueDate: null | string;
+            /** Format: int32 */
+            dueKm: null | number;
         };
         NightCount: {
             countryCode: string;
@@ -5881,6 +6131,8 @@ export interface components {
             verifiedCount: number;
             /** Format: int32 */
             requiredCount: number;
+            /** Format: date */
+            lastTachoDownloadAt?: null | string;
         };
         PersonFields: {
             firstName: null | string;
@@ -5956,6 +6208,12 @@ export interface components {
         };
         PersonSessions: {
             items: components["schemas"]["PersonSession"][];
+        };
+        PersonTachoDownloadResult: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date */
+            lastTachoDownloadAt: string;
         };
         PhoneChangeResult: {
             code: string;
@@ -6056,6 +6314,33 @@ export interface components {
             /** Format: int32 */
             odometerAtDoneKm: null | number;
             inWorkshop: boolean;
+            /** Format: date */
+            dueDate?: null | string;
+            /** Format: int32 */
+            dueKm?: null | number;
+            /** Format: double */
+            costEur?: null | number;
+            /** Format: uuid */
+            invoiceDocumentId?: null | string;
+            /** Format: uuid */
+            resultDocumentId?: null | string;
+            plate?: null | string;
+            /** Format: int32 */
+            odometerKm?: null | number;
+            /** Format: date-time */
+            kmAsOf?: null | string;
+            kmReadingStale?: boolean;
+            kmNote?: null | string;
+            overdue?: boolean;
+            nextService?: null | components["schemas"]["NextServiceProposal"];
+        };
+        RequestMaintenanceDocumentUploadCommand: {
+            /** Format: uuid */
+            vehicleId: string;
+            type: components["schemas"]["DocumentType"];
+            contentType: string;
+            /** Format: int64 */
+            sizeBytes: number;
         };
         RequestOfficeDefectPhotoUploadCommand: {
             contentType: string;
@@ -6065,6 +6350,15 @@ export interface components {
         RequiredDocument: {
             type: string;
             needsConfirmation: boolean;
+        };
+        RescheduleMaintenanceRequest: {
+            /** Format: date */
+            scheduledFor: string;
+            workshop: null | string;
+            /** Format: date */
+            dueDate?: null | string;
+            /** Format: int32 */
+            dueKm?: null | number;
         };
         ResetRequest: {
             token: string;
@@ -6089,6 +6383,18 @@ export interface components {
             /** Format: int32 */
             version: number;
             pattern: components["schemas"]["CyclePattern"];
+        };
+        ScheduleMaintenance: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            vehicleId: string;
+            vehiclePlate: string;
+            type: string;
+            /** Format: date */
+            scheduledFor: string;
+            status: string;
+            label: string;
         };
         ScheduleRequestDecisionRequest: {
             accept: boolean;
@@ -6123,6 +6429,7 @@ export interface components {
             generatedAt: string;
             items: components["schemas"]["CycleDetail"][];
             swaps?: components["schemas"]["ScheduleSwap"][];
+            maintenance?: components["schemas"]["ScheduleMaintenance"][];
         };
         ScheduleSwap: {
             /** Format: uuid */
@@ -6158,6 +6465,9 @@ export interface components {
             };
             releasableDocTypes: string[];
             holidays: components["schemas"]["HolidayView"][];
+            guidance?: {
+                [key: string]: string;
+            };
         };
         SetVehicleOffRoadRequest: {
             /** Format: int32 */
@@ -6292,6 +6602,12 @@ export interface components {
         };
         /** @enum {unknown} */
         TrailerType: "curtainsider" | "box" | "reefer" | "flatbed" | "tanker" | null;
+        TruckTachoDownloadResult: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date */
+            lastTachoDownloadAt: string;
+        };
         UndoRetireVehicleRequest: {
             /** Format: int32 */
             version: number;

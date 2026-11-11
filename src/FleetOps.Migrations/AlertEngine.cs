@@ -50,7 +50,7 @@ public sealed class AlertEngine(IEnumerable<IAlertEvaluator> evaluators, ISettin
         command.Parameters.AddWithValue(subjectId);
         command.Parameters.AddWithValue(scopes);
         await command.ExecuteNonQueryAsync(cancellationToken);
-        var assignedRole = evaluator.RuleId is "A-04" or "A-07" or "A-08" or "A-05" or "A-09" or "A-10" or "A-15" or "A-16" or "A-19" or "A-20" or "A-21" ? "dispatcher" : "hr";
+        var assignedRole = evaluator.RuleId is "A-06" or "A-12" or "A-04" or "A-07" or "A-08" or "A-05" or "A-09" or "A-10" or "A-15" or "A-16" or "A-19" or "A-20" or "A-21" ? "dispatcher" : "hr";
         if (evaluator.RuleId == "A-03" && evaluator.SubjectType == "document")
         {
             await using var ownerTypeCommand = new NpgsqlCommand("select owner_type from fleetops.documents where id = $1", (NpgsqlConnection)context.DbConnection, (NpgsqlTransaction)context.DbTransaction);
@@ -118,7 +118,7 @@ public sealed class A03DocumentEvaluator : IAlertEvaluator
     {
         await using var db = AlertEvaluatorDb.CreateDb(context.Command);
         var document = await db.Documents.AsNoTracking().SingleOrDefaultAsync(x => x.Id == subjectId, cancellationToken);
-        if (document is null || document.Status != DocumentStatus.Uploaded) return [];
+        if (document is null || document.Type == DocumentType.MaintenanceInvoice || document.Status != DocumentStatus.Uploaded) return [];
         var queueDays = await context.Settings.GetIntAsync(new SettingKey("alerts.a03.queue_days"), context.Command, cancellationToken);
         var blockedHours = await context.Settings.GetIntAsync(new SettingKey("alerts.a03.blocked_hours"), context.Command, cancellationToken);
         var threshold = document.CreatedAt.AddDays(queueDays);

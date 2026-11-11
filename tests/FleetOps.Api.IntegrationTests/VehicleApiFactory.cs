@@ -174,7 +174,8 @@ public sealed class VehicleApiFactory : WebApplicationFactory<Program>, IAsyncLi
                 depotId = (Guid?)null,
                 serviceIntervalKm = 50000,
                 serviceIntervalMonths = 12,
-                lastTachoDownloadAt = (DateOnly?)null,
+                // A recent download keeps A-12 ("No download logged yet", Story 9.5) out of tests about other alerts.
+                lastTachoDownloadAt = (DateOnly?)DateOnly.FromDateTime(Clock.GetUtcNow().UtcDateTime),
                 reason,
             },
             TestContext.Current.CancellationToken);

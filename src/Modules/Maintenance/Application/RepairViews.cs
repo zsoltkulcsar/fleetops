@@ -5,7 +5,11 @@ public static class RepairViews
 {
     public static RepairDetail Detail(Maintenance repair) => new(repair.Id, repair.Type, repair.VehicleId, repair.Workshop,
         repair.ScheduledFor, repair.DefectReportIds, repair.Status, repair.CancelReason, repair.DoneAt,
-        repair.OdometerAtDoneKm, repair.Status == MaintenanceStatus.InProgress);
+        repair.OdometerAtDoneKm, repair.Status == MaintenanceStatus.InProgress)
+        {
+            DueDate = repair.DueDate, DueKm = repair.DueKm, CostEur = repair.CostEur,
+            InvoiceDocumentId = repair.InvoiceDocumentId, ResultDocumentId = repair.ResultDocumentId
+        };
     public static AssignmentDetail Detail(Assignment assignment) => new(assignment.Id, assignment.EmployeeId,
         assignment.VehicleId, assignment.From, assignment.To, assignment.MaintenanceId);
 }

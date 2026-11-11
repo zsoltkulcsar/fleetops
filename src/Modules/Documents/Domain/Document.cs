@@ -5,7 +5,7 @@ using System.Text.Json.Serialization;
 namespace FleetOps.Modules.Documents;
 
 public enum DocumentOwnerType { Employee, Vehicle }
-public enum DocumentType { [JsonStringEnumMemberName("licence_c_ce")] LicenceC_CE, DriverCard, Code95, Medical, AdrCertificate, IdCard, EmploymentContract, Registration, HuReport, SpReport, TachoCalibration, Insurance, CommunityLicence }
+public enum DocumentType { [JsonStringEnumMemberName("licence_c_ce")] LicenceC_CE, DriverCard, Code95, Medical, AdrCertificate, IdCard, EmploymentContract, Registration, HuReport, SpReport, TachoCalibration, Insurance, CommunityLicence, MaintenanceInvoice }
 public enum DocumentStatus { Uploaded, Verified, Rejected, Replaced }
 public enum DocumentFilePage { Front, Back, Page }
 public enum IssuedReason { Renewal, ReplacementLost, ClassChange }
@@ -23,6 +23,7 @@ public static class DocumentsCatalog
         new(DocumentType.AdrCertificate, DocumentOwnerType.Employee, true, false, false, false, 60),
         new(DocumentType.IdCard, DocumentOwnerType.Employee, true, false, false, false, 30),
         new(DocumentType.EmploymentContract, DocumentOwnerType.Employee, false, false, false, false, null),
+        new(DocumentType.MaintenanceInvoice, DocumentOwnerType.Vehicle, false, false, false, false, null),
         new(DocumentType.Registration, DocumentOwnerType.Vehicle, false, false, true, false, null),
         new(DocumentType.HuReport, DocumentOwnerType.Vehicle, true, false, true, false, 30),
         new(DocumentType.SpReport, DocumentOwnerType.Vehicle, true, false, true, false, 30),

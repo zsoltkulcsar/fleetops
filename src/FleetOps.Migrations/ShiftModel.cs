@@ -35,6 +35,7 @@ public sealed partial class FleetOpsDbContext
             entity.HasOne<VehicleOverride>().WithMany().HasForeignKey(shift => shift.OverrideId).OnDelete(DeleteBehavior.Restrict);
             entity.Property(shift => shift.TruckId).HasColumnName("truck_id");
             entity.Property(shift => shift.TrailerId).HasColumnName("trailer_id");
+            entity.Property(shift => shift.OdometerLower).HasColumnName("odometer_lower");
             entity.Property(shift => shift.OdometerStartKm).HasColumnName("odometer_start_km");
             entity.Property(shift => shift.OdometerEndKm).HasColumnName("odometer_end_km");
             entity.Property(shift => shift.DepartureCheckOk).HasColumnName("departure_check_ok");

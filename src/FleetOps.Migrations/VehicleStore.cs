@@ -47,7 +47,7 @@ public sealed class EfVehicleStore(TimeProvider? time = null, IChangedSubjects? 
         if (input.DepotId is Guid requestedDepot && requestedDepot != depot.Id) throw new VehicleValidationException(["depotId"]);
         var vehicle = new Vehicle { Kind = input.Kind, Plate = input.Plate, Vin = input.Vin, Make = input.Make, Model = input.Model,
             Year = input.Year, GrossWeightKg = input.GrossWeightKg, RequiredLicenceClass = input.RequiredLicenceClass, Ownership = input.Ownership,
-            LeaseEndDate = input.LeaseEndDate, TrailerType = input.TrailerType, OdometerKm = input.OdometerKm, DepotId = input.DepotId ?? depot.Id,
+            LeaseEndDate = input.LeaseEndDate, TrailerType = input.TrailerType, OdometerKm = input.OdometerKm, OdometerUpdatedAt = input.OdometerKm.HasValue ? clock.GetUtcNow() : null, DepotId = input.DepotId ?? depot.Id,
             ServiceIntervalKm = input.ServiceIntervalKm, ServiceIntervalMonths = input.ServiceIntervalMonths, LastTachoDownloadAt = input.LastTachoDownloadAt };
         db.Vehicles.Add(vehicle);
         try { await db.SaveChangesAsync(cancellationToken); } catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: "23505" }) { throw new VehicleConflictException("duplicate_vehicle"); }
@@ -69,6 +69,7 @@ public sealed class EfVehicleStore(TimeProvider? time = null, IChangedSubjects? 
         if (vehicle.Plate != input.Plate) db.PlateHistories.Add(new PlateHistory { VehicleId = vehicle.Id, Plate = vehicle.Plate });
         vehicle.Kind = input.Kind; vehicle.Plate = input.Plate; vehicle.Vin = input.Vin; vehicle.Make = input.Make; vehicle.Model = input.Model;
         vehicle.Year = input.Year; vehicle.GrossWeightKg = input.GrossWeightKg; vehicle.RequiredLicenceClass = input.RequiredLicenceClass;
+        if (vehicle.OdometerKm != input.OdometerKm) vehicle.OdometerUpdatedAt = input.OdometerKm.HasValue ? clock.GetUtcNow() : null;
         vehicle.Ownership = input.Ownership; vehicle.LeaseEndDate = input.LeaseEndDate; vehicle.TrailerType = input.TrailerType; vehicle.OdometerKm = input.OdometerKm;
         vehicle.DepotId = input.DepotId ?? vehicle.DepotId; vehicle.ServiceIntervalKm = input.ServiceIntervalKm; vehicle.ServiceIntervalMonths = input.ServiceIntervalMonths;
         vehicle.LastTachoDownloadAt = input.LastTachoDownloadAt; vehicle.Version++; vehicle.UpdatedAt = DateTimeOffset.UtcNow;

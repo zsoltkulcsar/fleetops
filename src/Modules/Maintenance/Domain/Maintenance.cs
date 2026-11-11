@@ -16,4 +16,9 @@ public sealed class Maintenance
     [AuditField(AuditFieldClasses.Personal)] public string? CancelReason { get; set; }
     [AuditField(AuditFieldClasses.Plain)] public DateOnly? DoneAt { get; set; }
     [AuditField(AuditFieldClasses.Plain)] public int? OdometerAtDoneKm { get; set; }
+    [AuditField(AuditFieldClasses.Plain)] public DateOnly? DueDate { get; set; }
+    [AuditField(AuditFieldClasses.Plain)] public int? DueKm { get; set; }
+    [AuditField(AuditFieldClasses.Personal)] public decimal? CostEur { get; set; }
+    [AuditField(AuditFieldClasses.Plain)] public Guid? InvoiceDocumentId { get; set; }
+    [AuditField(AuditFieldClasses.Plain)] public Guid? ResultDocumentId { get; set; }
 }

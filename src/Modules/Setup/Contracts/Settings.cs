@@ -13,6 +13,10 @@ public static class SettingCatalog
 {
     public static readonly IReadOnlyDictionary<string, int> Defaults = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
     {
+        ["alerts.a06.critical_days"] = 14,
+        ["alerts.a06.critical_km"] = 2000,
+        ["tacho.driver_card_days"] = 28,
+        ["tacho.vehicle_unit_days"] = 90,
         ["vehicles.lease_lead_days"] = 30,
         ["enrolment.code_minutes"] = 30,
         ["enrolment.max_tries"] = 5,

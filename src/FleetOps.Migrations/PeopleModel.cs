@@ -9,6 +9,7 @@ public sealed partial class FleetOpsDbContext
     {
         modelBuilder.Entity<Employee>(entity =>
         {
+            entity.Property(employee => employee.LastTachoDownloadAt).HasColumnName("last_tacho_download_at");
             entity.Property(employee => employee.LeaveReason).HasColumnName("leave_reason").HasMaxLength(500);
             entity.Property(employee => employee.LeaveActorId).HasColumnName("leave_actor_id");
             entity.Property(employee => employee.LeaveShiftEnd).HasColumnName("leave_shift_end");

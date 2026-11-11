@@ -11,6 +11,7 @@ public sealed record CycleDetail(Guid Id, Guid EmployeeId, string EmployeeName, 
 public sealed record ScheduleResult(DateTimeOffset GeneratedAt, IReadOnlyList<CycleDetail> Items) : IReadModel
 {
     public IReadOnlyList<ScheduleSwap> Swaps { get; init; } = [];
+    public IReadOnlyList<ScheduleMaintenance> Maintenance { get; init; } = [];
 }
 
 [VisibleTo(RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner)]

@@ -26,6 +26,7 @@ public sealed class DocumentListQueryHandler(IConfiguration configuration, IData
         var options = new DbContextOptionsBuilder<FleetOpsDbContext>().UseNpgsql(DatabaseConnectionString.Resolve(configuration) ?? throw new InvalidOperationException("Database is not configured.")).Options;
         await using var db = new FleetOpsDbContext(options);
         var rows = db.Documents.AsNoTracking().AsQueryable();
+        if (!actor.Roles.Any(role => role is RoleCode.Dispatcher or RoleCode.Owner)) rows = rows.Where(document => document.Type != DocumentType.MaintenanceInvoice);
         if (query.OwnerType.HasValue) rows = rows.Where(x => x.OwnerType == query.OwnerType.Value);
         if (query.OwnerId.HasValue) rows = rows.Where(x => x.OwnerId == query.OwnerId.Value);
         if (query.Status.HasValue) rows = rows.Where(x => x.Status == query.Status.Value);
@@ -75,7 +76,7 @@ public sealed class DocumentListQueryHandler(IConfiguration configuration, IData
 }
 public sealed class DocumentDetailQueryHandler(IConfiguration configuration) : IQueryHandler<GetDocumentQuery, DocumentDetail>
 {
-    public async Task<DocumentDetail> HandleAsync(GetDocumentQuery query, AccessContext actor, CancellationToken cancellationToken) { var options = new DbContextOptionsBuilder<FleetOpsDbContext>().UseNpgsql(DatabaseConnectionString.Resolve(configuration) ?? throw new InvalidOperationException("Database is not configured.")).Options; await using var db = new FleetOpsDbContext(options); var row = await EfDocumentStore.ReadDetailAsync(db, query.SubjectId ?? throw new DocumentValidationException(["id"]), cancellationToken, actor) ?? throw new DocumentConflictException("not_found"); if (actor.Roles.Contains(RoleCode.Dispatcher) && row.OwnerType == DocumentOwnerType.Employee) throw new DocumentConflictException("not_found"); return row; }
+    public async Task<DocumentDetail> HandleAsync(GetDocumentQuery query, AccessContext actor, CancellationToken cancellationToken) { var options = new DbContextOptionsBuilder<FleetOpsDbContext>().UseNpgsql(DatabaseConnectionString.Resolve(configuration) ?? throw new InvalidOperationException("Database is not configured.")).Options; await using var db = new FleetOpsDbContext(options); var row = await EfDocumentStore.ReadDetailAsync(db, query.SubjectId ?? throw new DocumentValidationException(["id"]), cancellationToken, actor) ?? throw new DocumentConflictException("not_found"); if (row.Type == DocumentType.MaintenanceInvoice && !actor.Roles.Any(role => role is RoleCode.Dispatcher or RoleCode.Owner)) throw new DocumentConflictException("not_found"); if (actor.Roles.Contains(RoleCode.Dispatcher) && row.OwnerType == DocumentOwnerType.Employee) throw new DocumentConflictException("not_found"); return row; }
 }
 public sealed class DocumentCountsQueryHandler(IConfiguration configuration, ICompanyTimeService companyTime, TimeProvider time, ISettings settings, IReadiness readiness) : IQueryHandler<GetDocumentCountsQuery, DocumentCounts>
 {
@@ -84,6 +85,7 @@ public sealed class DocumentCountsQueryHandler(IConfiguration configuration, ICo
         var options = new DbContextOptionsBuilder<FleetOpsDbContext>().UseNpgsql(DatabaseConnectionString.Resolve(configuration) ?? throw new InvalidOperationException("Database is not configured.")).Options;
         await using var db = new FleetOpsDbContext(options);
         var rows = db.Documents.AsNoTracking().AsQueryable();
+        if (!actor.Roles.Any(role => role is RoleCode.Dispatcher or RoleCode.Owner)) rows = rows.Where(document => document.Type != DocumentType.MaintenanceInvoice);
         if (actor.Roles.Contains(RoleCode.Dispatcher)) rows = rows.Where(x => x.OwnerType == DocumentOwnerType.Vehicle);
         var today = companyTime.ToCompanyDate(time.GetUtcNow());
         var queue = await rows.CountAsync(x => x.Status == DocumentStatus.Uploaded, cancellationToken);
@@ -159,6 +161,7 @@ public sealed class SearchDocumentsQueryHandler(IConfiguration configuration) : 
         await using var db = new FleetOpsDbContext(options);
         var search = query.Search.Trim().Replace("%", "\\%", StringComparison.Ordinal).Replace("_", "\\_", StringComparison.Ordinal);
         var documents = db.Documents.AsNoTracking().Where(x => EF.Functions.ILike(x.Number ?? "", $"%{search}%", "\\") || (x.OwnerType == DocumentOwnerType.Employee && db.Set<Employee>().Any(e => e.Id == x.OwnerId && EF.Functions.ILike(e.FirstName + " " + e.LastName, $"%{search}%", "\\"))) || (x.OwnerType == DocumentOwnerType.Vehicle && db.Vehicles.Any(v => v.Id == x.OwnerId && EF.Functions.ILike(v.Plate, $"%{search}%", "\\"))));
+        if (!actor.Roles.Any(role => role is RoleCode.Dispatcher or RoleCode.Owner)) documents = documents.Where(document => document.Type != DocumentType.MaintenanceInvoice);
         if (actor.Roles.Contains(RoleCode.Dispatcher)) documents = documents.Where(x => x.OwnerType == DocumentOwnerType.Vehicle);
         var rows = await documents.OrderByDescending(x => x.CreatedAt).Take(5).ToListAsync(cancellationToken);
         var employeeIds = rows.Where(x => x.OwnerType == DocumentOwnerType.Employee).Select(x => x.OwnerId).ToArray();
@@ -178,6 +181,7 @@ public sealed class DocumentFileLinkQueryHandler(IConfiguration configuration, I
         var options = new DbContextOptionsBuilder<FleetOpsDbContext>().UseNpgsql(DatabaseConnectionString.Resolve(configuration) ?? throw new InvalidOperationException("Database is not configured.")).Options;
         await using var db = new FleetOpsDbContext(options);
         var document = await EfDocumentStore.ReadDetailAsync(db, query.DocumentId, cancellationToken, actor) ?? throw new DocumentConflictException("not_found");
+        if (document.Type == DocumentType.MaintenanceInvoice && !actor.Roles.Any(role => role is RoleCode.Dispatcher or RoleCode.Owner)) throw new DocumentConflictException("not_found");
         if (actor.Roles.Contains(RoleCode.Dispatcher) && document.OwnerType == DocumentOwnerType.Employee) throw new DocumentConflictException("not_found");
         var key = await db.DocumentFiles.Where(x => x.DocumentId == query.DocumentId && x.Id == query.FileId).Select(x => x.ObjectKey).SingleOrDefaultAsync(cancellationToken) ?? throw new DocumentConflictException("not_found");
         return new(await objects.CreateDownloadLinkAsync(key, TimeSpan.FromMinutes(5), cancellationToken));
