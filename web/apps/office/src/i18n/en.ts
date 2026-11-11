@@ -290,6 +290,7 @@ export const en = {
       sp_report: "SP report",
       tacho_calibration: "Tacho calibration",
       insurance: "Insurance",
+      maintenance_invoice: "Maintenance invoice",
       community_licence: "Community licence",
     },
     status: { uploaded: "Uploaded", verified: "Verified", rejected: "Rejected", replaced: "Replaced" },

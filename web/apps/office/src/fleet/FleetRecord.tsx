@@ -1,3 +1,5 @@
+import { TachoDownload } from "./TachoDownload";
+import { MaintenancePlan } from "./MaintenancePlan";
 import { Defects } from "./Defects";
 import { VehicleRelease } from "./VehicleRelease";
 import { Maintenance } from "./Maintenance";
@@ -40,6 +42,7 @@ function retiredDate(value: string): string {
   return `${String(date.getUTCDate()).padStart(2, "0")}.${String(date.getUTCMonth() + 1).padStart(2, "0")}.${date.getUTCFullYear()}`;
 }
 export function FleetRecord({ id }: { id: string }) {
+  const [planning, setPlanning] = useState(false);
   const defectAccess = useDefectAccess();
   const [swapOpen, setSwapOpen] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -95,6 +98,8 @@ export function FleetRecord({ id }: { id: string }) {
   };
   return (
     <div className="page fleet-page">
+      <TachoDownload subjectId={id} subjectType="vehicle" lastDate={vehicle.lastTachoDownloadAt} />
+      {planning && <MaintenancePlan vehicleId={id} onClose={() => setPlanning(false)} />}
       <div className="record-back">
         <button className="ui-button ghost" onClick={() => window.history.back()}>
           <ArrowLeft size={16} aria-hidden /> Back to Fleet
@@ -111,6 +116,11 @@ export function FleetRecord({ id }: { id: string }) {
           </h1>
         </div>
         <div className="record-actions">
+          {defectAccess.canWrite && (
+            <button className="ui-button" onClick={() => setPlanning(true)}>
+              Plan maintenance
+            </button>
+          )}
           {defectAccess.canWrite && (
             <button className="ui-button" onClick={() => setSwapOpen(true)}>
               Swap driver

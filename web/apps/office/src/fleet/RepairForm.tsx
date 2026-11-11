@@ -39,6 +39,7 @@ export function RepairForm({
           setError("");
           try {
             await defectApi.createRepair({
+              type: "repair",
               vehicleId,
               workshop: String(form.get("workshop")).trim(),
               scheduledFor: String(form.get("scheduledFor")),

@@ -90,6 +90,11 @@ export function Schedule() {
       if (!result.has(id)) result.set(id, { title, cycles: [], swaps: [] });
       result.get(id)!.swaps.push(swap);
     }
+    if (view === "truck")
+      for (const item of query.data?.maintenance ?? []) {
+        if (!result.has(item.vehicleId))
+          result.set(item.vehicleId, { title: item.vehiclePlate, cycles: [], swaps: [] });
+      }
     if (view === "driver")
       for (const item of absences.data?.items ?? []) {
         if (item.absence.status !== "approved") continue;
@@ -220,6 +225,19 @@ export function Schedule() {
                     {view === "truck" ? <Plate>{group.title}</Plate> : <strong>{group.title}</strong>}
                   </div>
                   <div className="schedule-cycles">
+                    {view === "truck" &&
+                      query.data?.maintenance
+                        ?.filter((item) => item.vehicleId === id)
+                        .map((item) => (
+                          <a
+                            className="schedule-cycle schedule-swap"
+                            key={item.id}
+                            style={{ gridColumn: dayDifference(start, item.scheduledFor) + 1 + " / span 1" }}
+                            href={`/fleet/maintenance?vehicleId=${id}`}
+                          >
+                            Workshop: {item.type}
+                          </a>
+                        ))}
                     {view === "driver" &&
                       absences.data?.items
                         .filter(

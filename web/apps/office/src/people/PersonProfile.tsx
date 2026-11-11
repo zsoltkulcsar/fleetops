@@ -1,3 +1,4 @@
+import { TachoDownload } from "../fleet/TachoDownload";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams, useSearchParams } from "react-router";
@@ -92,6 +93,7 @@ export function PersonProfile() {
   );
   return (
     <div className="page directory-page people-profile">
+      <TachoDownload subjectId={id} subjectType="employee" lastDate={data.lastTachoDownloadAt} />
       <Link to="/people">Back to People</Link>
       <header className="page-title">
         <div>

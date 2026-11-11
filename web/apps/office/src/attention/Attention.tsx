@@ -1,3 +1,4 @@
+import { TachoDownload } from "../fleet/TachoDownload";
 import { useEffect, useId, useMemo, useState } from "react";
 import { CalendarDays, Check, ChevronDown, CircleAlert, Clock3, Info, Truck, UserRound } from "lucide-react";
 import { apiClient } from "@fleetops/api-client";
@@ -18,6 +19,8 @@ import "./attention.css";
 
 const severityRank = { critical: 2, warning: 1, info: 0 } as const;
 function itemTitle(item: AttentionItem) {
+  if (item.ruleId === "A-06") return "Maintenance due";
+  if (item.ruleId === "A-12") return "Tacho download overdue";
   if (item.ruleId === "A-01") return "Driver document expiring";
   if (item.ruleId === "A-04") return "Vehicle document expiring";
   if (item.ruleId === "A-13") return "Office override used";
@@ -39,6 +42,11 @@ function itemTitle(item: AttentionItem) {
   return item.ruleId;
 }
 function actionFor(item: AttentionItem, group: AttentionGroup, owner: boolean, dispatcherOnly: boolean) {
+  if (item.ruleId === "A-06")
+    return {
+      label: "Schedule",
+      href: `/fleet/maintenance?vehicleId=${group.subjectId}&action=plan&maintenanceId=${encodeURIComponent(item.scopeKey ?? "")}`,
+    };
   if (item.ruleId === "A-01")
     return dispatcherOnly
       ? {
@@ -387,7 +395,12 @@ function AttentionCard({
                   </p>
                 </div>
                 <div className="attention-item-actions">
-                  {item.ruleId === "A-18" || item.ruleId === "A-19" ? (
+                  {item.ruleId === "A-12" ? (
+                    <TachoDownload
+                      subjectId={group.subjectId}
+                      subjectType={group.subjectType === "vehicle" ? "vehicle" : "employee"}
+                    />
+                  ) : item.ruleId === "A-18" || item.ruleId === "A-19" ? (
                     <PlanningActions item={item} group={group} />
                   ) : item.ruleId === "A-13" && canManagePeople ? (
                     <button
@@ -401,6 +414,22 @@ function AttentionCard({
                   ) : (
                     <Link className="ui-button primary" to={action.href}>
                       {action.label}
+                    </Link>
+                  )}
+                  {item.ruleId === "A-06" && (
+                    <Link
+                      className="ui-button"
+                      to={`/fleet/maintenance?vehicleId=${group.subjectId}&action=done&maintenanceId=${encodeURIComponent(item.scopeKey ?? "")}`}
+                    >
+                      Mark done
+                    </Link>
+                  )}
+                  {item.ruleId === "A-04" && !owner && (
+                    <Link
+                      className="ui-button"
+                      to={`/fleet/maintenance?vehicleId=${group.subjectId}&action=plan&type=${({ hu_report: "inspection_hu", sp_report: "inspection_sp", tacho_calibration: "tacho_check" } as Record<string, string>)[item.scopeKey ?? ""] ?? "other"}`}
+                    >
+                      Plan maintenance
                     </Link>
                   )}
                   {item.ruleId === "A-02" && canManagePeople && (
