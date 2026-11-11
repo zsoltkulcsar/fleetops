@@ -39,6 +39,8 @@ public static class PermissionMatrix
         new(key, new Dictionary<RoleCode, Cell> { [RoleCode.Driver] = driver, [RoleCode.Dispatcher] = dispatcher, [RoleCode.Hr] = hr, [RoleCode.Owner] = owner }, separation, state);
     public static IReadOnlyList<Entry> Entries { get; } =
     [
+        E("people.manage", Cell.None, Cell.None, Cell.Full, Cell.Full),
+        E("people.view", Cell.None, Cell.Mask, Cell.Full, Cell.Full),
         E("documents.view", Cell.None, Cell.View, Cell.Full, Cell.Full), E("documents.people.lookup", Cell.None, Cell.None, Cell.Full, Cell.Full), E("readiness.summary", Cell.None, Cell.Full, Cell.Full, Cell.Full),
         E("shifts.enter_edit", Cell.Own, Cell.Full, Cell.Full, Cell.Full, state: true), E("shifts.approve_reject", Cell.None, Cell.Full, Cell.Full, Cell.Full, SeparationOfDuty.OwnerRoutesToHr),
         E("shifts.reopen_exported", Cell.None, Cell.None, Cell.Full, Cell.Full), E("payroll.export", Cell.None, Cell.None, Cell.Full, Cell.Full),

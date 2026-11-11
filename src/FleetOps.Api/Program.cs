@@ -29,6 +29,7 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddPeople();
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 builder.Logging.SetMinimumLevel(LogLevel.None);
@@ -246,6 +247,8 @@ app.UseExceptionHandler(new ExceptionHandlerOptions
         if (exception is InvalidOperationException { Message: "mailbox_unavailable" }) { await Results.Json(new { code = "mailbox_unavailable" }, statusCode: 503).ExecuteAsync(context); return; }
         if (exception is ScheduleValidationException scheduleValidation) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "validation_error", ["fields"] = scheduleValidation.Fields }).ExecuteAsync(context); return; }
         if (exception is ScheduleConflictException scheduleConflict) { await Results.Problem(statusCode: 409, extensions: new Dictionary<string, object?> { ["code"] = scheduleConflict.Code }).ExecuteAsync(context); return; }
+        if (exception is FleetOps.People.PersonValidationException personValidation) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "validation_error", ["fields"] = personValidation.Fields }).ExecuteAsync(context); return; }
+        if (exception is FleetOps.People.PersonConflictException personConflict) { await Results.Problem(statusCode: personConflict.Code == "not_found" ? 404 : 409, extensions: new Dictionary<string, object?> { ["code"] = personConflict.Code, ["types"] = personConflict.Types }).ExecuteAsync(context); return; }
         if (exception is VehicleValidationException validation) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "validation_error", ["fields"] = validation.Fields }).ExecuteAsync(context); return; }
         if (exception is StorageUnavailableException) { await Results.Problem(statusCode: 503, extensions: new Dictionary<string, object?> { ["code"] = "storage_unavailable" }).ExecuteAsync(context); return; }
         if (exception is DocumentValidationException documentValidation) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = documentValidation.Code, ["fields"] = documentValidation.Fields }).ExecuteAsync(context); return; }
@@ -289,6 +292,7 @@ app.MapGet("/jobs/{name}", async (string name, HttpContext context, JobRunner ru
 app.MapGet("/jobs/nightly", async (HttpContext context, JobRunner runner, CancellationToken cancellationToken) => await JobEndpoints.RunNightlyAsync(context, runner, cancellationToken)).ExcludeFromDescription();
 app.MapPost("/api/v1/admin/jobs/{name}/run", async (string name, CommandDispatcher dispatcher, JobRunner runner, IConfiguration configuration, CancellationToken cancellationToken) => !configuration.GetValue("Jobs:AdminTrigger", false) || !runner.Contains(name) ? Results.NotFound() : Results.Ok(await dispatcher.DispatchAsync<RunJobCommand, JobRunResult>(new(name), cancellationToken))).Produces<JobRunResult>();
 app.MapGet("/api/v1/admin/jobs", async (QueryDispatcher dispatcher, IConfiguration configuration, CancellationToken cancellationToken) => !configuration.GetValue("Jobs:AdminTrigger", false) ? Results.NotFound() : Results.Ok(await dispatcher.DispatchAsync<ListJobsQuery, JobListResult>(new(), cancellationToken))).Produces<JobListResult>();
+app.MapPeople();
 app.MapPut("/api/v1/people/{id:guid}/cycle-pattern", async (Guid id, SaveCyclePatternRequest request, CommandDispatcher dispatcher, CancellationToken cancellationToken) => Results.Ok(await dispatcher.DispatchAsync<SaveCyclePatternCommand, CyclePatternResult>(new(id, request.Version, request.Pattern), cancellationToken))).Produces<CyclePatternResult>();
 app.MapGet("/healthz", async (IDatabaseHealth database, CancellationToken cancellationToken) => await database.IsHealthyAsync(cancellationToken) ? Results.Ok(new { api = "ok", database = "ok" }) : Results.Problem(statusCode: 503, title: "Service unavailable", detail: "Database unavailable", extensions: new Dictionary<string, object?> { ["code"] = "database_unavailable", ["database"] = "unavailable" }));
 AuthEndpoints.Map(app);

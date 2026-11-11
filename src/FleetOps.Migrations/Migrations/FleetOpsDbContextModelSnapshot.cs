@@ -1639,6 +1639,12 @@ namespace FleetOps.Migrations.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<bool>("AdrRequired")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("adr_required");
+
                     b.Property<string>("CyclePattern")
                         .HasColumnType("jsonb")
                         .HasColumnName("cycle_pattern");
@@ -1650,11 +1656,23 @@ namespace FleetOps.Migrations.Migrations
                         .HasDefaultValue(0)
                         .HasColumnName("cycle_pattern_version");
 
+                    b.Property<Guid?>("DepotId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("depot_id");
+
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(320)
                         .HasColumnType("character varying(320)")
                         .HasColumnName("email");
+
+                    b.Property<string>("EmploymentType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("full_time")
+                        .HasColumnName("employment_type");
 
                     b.Property<DateOnly?>("EndDate")
                         .HasColumnType("date")
@@ -1665,6 +1683,14 @@ namespace FleetOps.Migrations.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("first_name");
+
+                    b.Property<string>("LanguagePref")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)")
+                        .HasDefaultValue("de")
+                        .HasColumnName("language_pref");
 
                     b.Property<string>("LastName")
                         .IsRequired()
@@ -1696,7 +1722,14 @@ namespace FleetOps.Migrations.Migrations
                         .HasColumnType("text")
                         .HasColumnName("status");
 
+                    b.Property<decimal?>("VacationEntitlementDays")
+                        .HasPrecision(6, 2)
+                        .HasColumnType("numeric(6,2)")
+                        .HasColumnName("vacation_entitlement_days");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("DepotId");
 
                     b.HasIndex("PersonnelNumber")
                         .IsUnique()
@@ -2042,6 +2075,14 @@ namespace FleetOps.Migrations.Migrations
                         .HasForeignKey("ShiftId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("FleetOps.People.Employee", b =>
+                {
+                    b.HasOne("FleetOps.Modules.Setup.Depot", null)
+                        .WithMany()
+                        .HasForeignKey("DepotId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>

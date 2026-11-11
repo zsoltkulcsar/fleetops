@@ -103,7 +103,7 @@ public sealed class DocumentQueueTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Search_hides_employee_documents_and_people_from_a_dispatcher()
+    public async Task Search_hides_employee_documents_from_a_dispatcher_but_finds_people()
     {
         await Upload(factory.AsHr(), "employee", employeeId, "code95", "PERSON-ONLY");
         using var response = await factory.AsDispatcher().GetAsync("/api/v1/search?q=Alice");

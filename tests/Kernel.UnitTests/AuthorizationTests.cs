@@ -119,7 +119,7 @@ public sealed class AuthorizationTests
     [Fact]
     public void Matrix_contains_all_permission_rows()
     {
-        Assert.Equal(39, PermissionMatrix.Entries.Count);
+        Assert.Equal(41, PermissionMatrix.Entries.Count);
         Assert.Contains(PermissionMatrix.Entries, x => x.ActionKey == "shifts.approve_reject" && x.AllowedRoles.SetEquals([RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner]));
         Assert.Contains(PermissionMatrix.Entries, x => x.ActionKey == "documents.medical.view" && x.OwnRoles.SetEquals([RoleCode.Driver]));
     }
@@ -136,6 +136,8 @@ public sealed class AuthorizationTests
             ["shifts.approve_reject"] = [RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner],
             ["shifts.reopen_exported"] = [RoleCode.Hr, RoleCode.Owner],
             ["payroll.export"] = [RoleCode.Hr, RoleCode.Owner],
+            ["people.manage"] = [RoleCode.Hr, RoleCode.Owner],
+            ["people.view"] = [RoleCode.Hr, RoleCode.Owner],
             ["employees.create_edit"] = [RoleCode.Hr, RoleCode.Owner],
             ["employees.view"] = [RoleCode.Driver, RoleCode.Hr, RoleCode.Owner],
             ["documents.driver.upload"] = [RoleCode.Driver, RoleCode.Hr],
@@ -187,6 +189,8 @@ public sealed class AuthorizationTests
             ["shifts.approve_reject"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full),
             ["shifts.reopen_exported"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full),
             ["payroll.export"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full),
+            ["people.manage"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full),
+            ["people.view"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.Mask, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full),
             ["employees.create_edit"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full),
             ["employees.view"] = (PermissionMatrix.Cell.Own, PermissionMatrix.Cell.Mask, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full),
             ["documents.driver.upload"] = (PermissionMatrix.Cell.Own, PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.View),
@@ -272,7 +276,7 @@ public sealed class AuthorizationTests
         "shifts.enter_edit" => role is RoleCode.Driver or RoleCode.Dispatcher or RoleCode.Hr or RoleCode.Owner,
         "shifts.approve_reject" or "sessions.manage" or "notifications.mine" => role is RoleCode.Dispatcher or RoleCode.Hr or RoleCode.Owner || (actionKey == "notifications.mine" && role == RoleCode.Driver),
         "jobs.trigger" => role == RoleCode.Owner,
-        "shifts.reopen_exported" or "payroll.export" or "employees.create_edit" or "settings.users" or "settings.purge" or "settings.payroll" or "employees.phone.change" or "audit.export" => role is RoleCode.Hr or RoleCode.Owner,
+        "people.manage" or "people.view" or "shifts.reopen_exported" or "payroll.export" or "employees.create_edit" or "settings.users" or "settings.purge" or "settings.payroll" or "employees.phone.change" or "audit.export" => role is RoleCode.Hr or RoleCode.Owner,
         "employees.view" or "documents.medical.view" => role is RoleCode.Driver or RoleCode.Hr or RoleCode.Owner,
         "documents.view" or "documents.people.lookup" => role is RoleCode.Hr or RoleCode.Owner,
         "readiness.summary" => role is RoleCode.Dispatcher or RoleCode.Hr or RoleCode.Owner,

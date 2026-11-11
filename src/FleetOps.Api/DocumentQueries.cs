@@ -167,7 +167,7 @@ public sealed class SearchDocumentsQueryHandler(IConfiguration configuration) : 
         var vehicles = await db.Vehicles.Where(x => vehicleIds.Contains(x.Id)).ToDictionaryAsync(x => x.Id, cancellationToken);
         var docs = rows.Select(x => new DocumentSearchItem(x.Id, x.Type, x.Number, x.OwnerType == DocumentOwnerType.Employee ? employees.GetValueOrDefault(x.OwnerId, "") : vehicles.GetValueOrDefault(x.OwnerId)?.Plate ?? "")).ToList();
         var vehicleRows = await db.Vehicles.AsNoTracking().Where(x => EF.Functions.ILike(x.Plate, $"%{search}%", "\\") || EF.Functions.ILike(x.Make, $"%{search}%", "\\") || EF.Functions.ILike(x.Model, $"%{search}%", "\\")).OrderBy(x => x.Plate).Take(5).Select(x => new VehicleSearchItem(x.Id, x.Plate, x.Make, x.Model)).ToListAsync(cancellationToken);
-        var people = actor.Roles.Contains(RoleCode.Dispatcher) ? [] : await db.Set<Employee>().AsNoTracking().Where(x => x.Status != EmployeeStatus.Left && EF.Functions.ILike(x.FirstName + " " + x.LastName, $"%{search}%", "\\")).OrderBy(x => x.LastName).Take(5).Select(x => new PeopleSearchItem(x.Id, x.FirstName + " " + x.LastName)).ToListAsync(cancellationToken);
+        var people = await db.Set<Employee>().AsNoTracking().Where(x => (EF.Functions.ILike(x.FirstName + " " + x.LastName, $"%{search}%", "\\") || EF.Functions.ILike(x.PersonnelNumber ?? "", $"%{search}%", "\\"))).OrderBy(x => x.LastName).Take(5).Select(x => new PeopleSearchItem(x.Id, x.FirstName + " " + x.LastName)).ToListAsync(cancellationToken);
         return new(docs, vehicleRows, people);
     }
 }
