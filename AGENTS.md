@@ -54,6 +54,8 @@ A test is real only if breaking the behaviour it names makes it fail. People wil
 - One statement per line. Descriptive names, not `a`, `r`, `s`. One concept per file.
 - Web code passes `npm run format:check`.
 - No debug output left behind.
+- Never wrap a `<select>` (or any control with option text) inside its `<label>`: the option text becomes part of
+  the accessible name and `getByLabel(..., { exact: true })` fails. Use `<label htmlFor>` with an `id`.
 - Never `.GetAwaiter().GetResult()`, never `.Result` on a task.
 - Never type non-ASCII characters into source files: your file writes on this machine turn them into ` - `, `?` or
   U+FFFD. In TypeScript and C# strings use escapes: `·` (·), `→` (→), `–` (–), `—` (—),

@@ -93,12 +93,12 @@ export function Absences({ employeeId }: { employeeId?: string }) {
       {!employeeId && (
         <>
           <h1>People</h1>
-          <nav className="directory-tabs" aria-label="People">
+          <div className="directory-tabs" role="group" aria-label="People views">
             <Link to="/people">People</Link>
             <Link to="/people/absences" aria-current="page">
               Absences
             </Link>
-          </nav>
+          </div>
         </>
       )}
       <header className="page-title">

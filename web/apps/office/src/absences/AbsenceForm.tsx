@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router";
-import { useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { components } from "@fleetops/api-client";
 import { Banner, Drawer } from "@fleetops/ui";
@@ -20,6 +20,7 @@ export function AbsenceForm({
   onSaved: () => void;
 }) {
   const navigate = useNavigate();
+  const personControlId = useId();
   const session = useSession();
   const hr = session.data?.roles.includes("hr") === true;
   const online = useOnline();
@@ -89,9 +90,14 @@ export function AbsenceForm({
       >
         <form className="people-form" onSubmit={submit} onChange={() => setError(undefined)}>
           {!employeeId && !detail && (
-            <label>
-              Person
-              <select required value={personId} onChange={(event) => setPersonId(event.target.value)}>
+            <div>
+              <label htmlFor={personControlId}>Person</label>
+              <select
+                id={personControlId}
+                required
+                value={personId}
+                onChange={(event) => setPersonId(event.target.value)}
+              >
                 <option value="">Choose person</option>
                 {people.data?.map((person) => (
                   <option key={person.id} value={person.id}>
@@ -99,7 +105,7 @@ export function AbsenceForm({
                   </option>
                 ))}
               </select>
-            </label>
+            </div>
           )}
           {people.isError && (
             <Banner
@@ -111,9 +117,10 @@ export function AbsenceForm({
               Could not load people.
             </Banner>
           )}
-          <label>
-            Type
+          <div>
+            <label htmlFor="absence-type">Type</label>
             <select
+              id="absence-type"
               value={type}
               onChange={(event) => {
                 const value = event.target.value;
@@ -129,7 +136,7 @@ export function AbsenceForm({
                   </option>
                 ))}
             </select>
-          </label>
+          </div>
           <label>
             From
             <input
