@@ -14,6 +14,8 @@ import { fleetApi } from "../fleet/api";
 import { scheduleApi, type ScheduleCycle } from "./api";
 import "./schedule.css";
 import { FleetTabs } from "../fleet/FleetTabs";
+import { absencesApi, absenceLabels } from "../absences/api";
+import "../absences/absences.css";
 
 const dateValue = (date: Date) => date.toISOString().slice(0, 10);
 function addDays(value: string, days: number) {
@@ -58,6 +60,11 @@ export function Schedule() {
   const online = useOnline();
   const canEdit = session.data?.roles.some((role) => role === "dispatcher" || role === "owner") === true;
   const query = useQuery({ queryKey: ["schedule", start, end], queryFn: () => scheduleApi.list(start, end) });
+  const absences = useQuery({
+    queryKey: ["absences", start, end],
+    queryFn: () => absencesApi.list(start, end),
+    enabled: view === "driver",
+  });
   const focusedCycle = params.get("cycleId");
   useEffect(() => {
     const cycle = query.data?.items.find((item) => item.id === focusedCycle);
@@ -83,8 +90,14 @@ export function Schedule() {
       if (!result.has(id)) result.set(id, { title, cycles: [], swaps: [] });
       result.get(id)!.swaps.push(swap);
     }
+    if (view === "driver")
+      for (const item of absences.data?.items ?? []) {
+        if (item.absence.status !== "approved") continue;
+        if (!result.has(item.absence.employeeId))
+          result.set(item.absence.employeeId, { title: item.employeeName, cycles: [], swaps: [] });
+      }
     return [...result.entries()].sort(([, left], [, right]) => left.title.localeCompare(right.title));
-  }, [query.data, view]);
+  }, [query.data, view, absences.data]);
   const update = (name: string, value: string) =>
     setParams((previous) => {
       previous.set(name, value);
@@ -114,6 +127,16 @@ export function Schedule() {
           </div>
         )}
       </div>
+      {view === "driver" && absences.isError && (
+        <Banner
+          kind="error"
+          label="Absences could not be loaded"
+          retryLabel="Try again"
+          onRetry={() => void absences.refetch()}
+        >
+          The schedule may be missing absences. Check the connection and try again.
+        </Banner>
+      )}
       <FleetTabs />
       {!online && (
         <Banner kind="offline" label="Offline">
@@ -197,6 +220,31 @@ export function Schedule() {
                     {view === "truck" ? <Plate>{group.title}</Plate> : <strong>{group.title}</strong>}
                   </div>
                   <div className="schedule-cycles">
+                    {view === "driver" &&
+                      absences.data?.items
+                        .filter(
+                          (item) => item.absence.employeeId === id && item.absence.status === "approved",
+                        )
+                        .map((item) => {
+                          const offset = Math.max(0, dayDifference(start, item.absence.from));
+                          const length = Math.max(
+                            1,
+                            Math.min(28, dayDifference(start, item.absence.to) + 1) - offset,
+                          );
+                          return (
+                            <div
+                              key={item.absence.id}
+                              className="schedule-absence"
+                              style={{ gridColumn: `${offset + 1} / span ${length}` }}
+                            >
+                              {absenceLabels[item.absence.type]}
+                              <small>
+                                {" "}
+                                {dateLabel(item.absence.from)} to {dateLabel(item.absence.to)}
+                              </small>
+                            </div>
+                          );
+                        })}
                     {group.swaps.map((item) => {
                       const offset = Math.max(0, dayDifference(start, item.from));
                       const length = Math.max(

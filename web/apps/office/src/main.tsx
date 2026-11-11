@@ -17,6 +17,7 @@ import { Settings } from "./settings/Settings";
 import { Attention } from "./attention/Attention";
 import { Schedule } from "./schedule/Schedule";
 import { Timesheets } from "./timesheets/Timesheets";
+import { Absences } from "./absences/Absences";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -58,6 +59,7 @@ createRoot(document.getElementById("app")!).render(
             <Route path="/fleet/maintenance" element={<Maintenance />} />
             <Route path="/fleet/:id" element={<FleetRecordRoute />} />
             <Route path="/people" element={<People />} />
+            <Route path="/people/absences" element={<Absences />} />
             <Route path="/people/:id" element={<PersonProfile />} />
             <Route path="/documents" element={<Documents />} />
             <Route path="/payroll" element={page("payroll")} />

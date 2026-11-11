@@ -1,0 +1,53 @@
+.absence-toolbar {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-block: 16px;
+}
+.absence-calendar-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.absence-calendar {
+  min-width: 1200px;
+  width: 100%;
+  border-collapse: collapse;
+}
+.absence-calendar th,
+.absence-calendar td {
+  border: 1px solid var(--line);
+  padding: 4px;
+  height: 38px;
+}
+.absence-calendar [data-holiday="true"] {
+  background: var(--idle-bg);
+}
+.absence-day {
+  color: var(--ink);
+  background: var(--accent-soft);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px;
+  font-size: 12px;
+}
+.absence-day[data-status="requested"] {
+  background: var(--warn-bg);
+}
+.absence-requests {
+  padding: 16px;
+  margin-block: 16px;
+}
+.absence-requests article + article {
+  border-top: 1px solid var(--line);
+  margin-top: 16px;
+  padding-top: 16px;
+}
+.schedule-absence {
+  background: var(--idle-bg);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  padding: 8px;
+  border-radius: 6px;
+}

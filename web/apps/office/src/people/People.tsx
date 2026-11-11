@@ -41,6 +41,12 @@ export function People() {
         <h1 tabIndex={-1}>People</h1>
         {addButton}
       </header>
+      <nav className="directory-tabs" aria-label="People">
+        <Link to="/people" aria-current="page">
+          People
+        </Link>
+        <Link to="/people/absences">Absences</Link>
+      </nav>
       {!online && <Banner label="Offline">Cached people are read-only until the connection returns.</Banner>}
       {saved && <Banner label="Saved">{saved}</Banner>}
       <section className="ui-panel directory-panel" aria-label="People">

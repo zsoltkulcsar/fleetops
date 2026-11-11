@@ -331,6 +331,16 @@ main:has(.driver-nav) .driver-screen {
   display: grid;
   gap: var(--space-4);
 }
+.driver-sheet textarea {
+  width: 100%;
+  min-height: 6rem;
+  padding: var(--space-3);
+  font: inherit;
+  color: var(--ink);
+  background: var(--surface);
+  border: 2px solid var(--line);
+  border-radius: var(--radius-control);
+}
 .driver-sheet label,
 .driver-sheet .driver-edit-field {
   display: grid;

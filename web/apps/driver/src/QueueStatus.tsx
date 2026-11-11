@@ -3,6 +3,7 @@ import { commandQueue, type QueuedCommand } from "./storage/commandQueue";
 import { readVault } from "./storage/pinVault";
 import { flushDefects } from "./defectSync";
 import { flushDocuments } from "./documentSync";
+import { syncPlanning } from "./planningSync";
 
 export function QueueStatus({ online }: { online: boolean }) {
   const [commands, setCommands] = useState<QueuedCommand[]>([]);
@@ -13,6 +14,7 @@ export function QueueStatus({ online }: { online: boolean }) {
     try {
       await flushDocuments();
       await flushDefects();
+      await syncPlanning();
       setSyncError("");
     } catch {
       setSyncError(
@@ -99,7 +101,16 @@ export function QueueStatus({ online }: { online: boolean }) {
           <ul>
             {commands.map((command) => (
               <li key={command.commandId}>
-                {command.type === "document.upload" ? "Document photo" : command.type.replaceAll(".", " ")} ·{" "}
+                {command.type === "absence.request"
+                  ? "Vacation request"
+                  : command.type === "absence.cancel"
+                    ? "Vacation cancellation"
+                    : command.type === "schedule.request_change"
+                      ? "Schedule change request"
+                      : command.type === "document.upload"
+                        ? "Document photo"
+                        : command.type.replaceAll(".", " ")}{" "}
+                ·{" "}
                 {command.state === "waiting"
                   ? "Waiting to sync"
                   : command.state === "conflict"

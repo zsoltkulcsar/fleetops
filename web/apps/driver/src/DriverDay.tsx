@@ -6,6 +6,7 @@ import type { DriverSnapshot } from "./storage/snapshot";
 import { companyDate, shiftHours, resolveSuggestedTruck } from "./storage/shiftProjection";
 import { companyInstant, displayTime, wallTime } from "./shiftTime";
 import { DriverReleaseNotice } from "./DriverReleaseNotice";
+import { absenceLabels } from "./planningLabels";
 
 const activities = [
   { type: "driving", label: "Driving", icon: Truck },
@@ -38,6 +39,10 @@ export function DriverDay({
   const [formError, setFormError] = useState("");
   const running = state.shifts.find((shift) => shift.status === "running");
   const zone = state.snapshot?.companyTimeZone ?? "Europe/Berlin";
+  const today = companyDate(new Date(now).toISOString(), zone);
+  const absenceToday = driver?.absences?.find(
+    (absence) => absence.status === "approved" && absence.from <= today && absence.to >= today,
+  );
   const oldShift = !!running && running.date < companyDate(new Date(now).toISOString(), zone);
   const cycleEnd =
     !!running &&
@@ -62,6 +67,7 @@ export function DriverDay({
   const start = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    if (absenceToday && form.get("absence-confirmed") !== "on") return;
     const odometer = String(form.get("odometer") ?? "");
     if (
       await state.record("shift.start", crypto.randomUUID(), 0, {
@@ -221,6 +227,15 @@ export function DriverDay({
       ) : (
         <>
           <p>No shift is running.</p>
+          {absenceToday && (
+            <p className="driver-callout">
+              {absenceLabels[absenceToday.type]} until{" "}
+              {new Intl.DateTimeFormat("de-DE", { timeZone: "UTC" }).format(
+                new Date(`${absenceToday.to}T12:00:00Z`),
+              )}
+              . Confirm before starting work.
+            </p>
+          )}
           {driver && !driver.canDrive && !suspended && !onboarding && (
             <div className="driver-callout">
               <p>Work without a vehicle is available. Call HR about your driving documents.</p>
@@ -270,6 +285,12 @@ export function DriverDay({
           }}
         >
           <form className="driver-sheet" onSubmit={start}>
+            {absenceToday && (
+              <label className="driver-callout">
+                {`You're on ${absenceToday.type === "vacation" ? "vacation" : absenceLabels[absenceToday.type].toLowerCase()} today. Start anyway?`}
+                <input type="checkbox" name="absence-confirmed" required /> Start anyway
+              </label>
+            )}
             <label htmlFor="start-truck">
               Truck
               <select

@@ -24,13 +24,22 @@ export function DriverNotifications({ online }: { online: boolean }) {
         <div className="driver-callout" key={item.id}>
           <p>{item.text}</p>
           <Link
-            to={item.templateCode === "document_rejected" ? "/me" : "/week"}
+            to={
+              item.templateCode === "document_rejected" || item.templateCode === "vacation_decided"
+                ? "/me"
+                : "/week"
+            }
             onClick={async () => {
               await apiClient.POST("/api/v1/notifications/{id}/read", { params: { path: { id: item.id } } });
               void notifications.refetch();
             }}
           >
-            Open {item.templateCode === "document_rejected" ? "document" : "schedule"}
+            Open{" "}
+            {item.templateCode === "document_rejected"
+              ? "document"
+              : item.templateCode === "vacation_decided"
+                ? "vacation requests"
+                : "schedule"}
           </Link>
         </div>
       ))}

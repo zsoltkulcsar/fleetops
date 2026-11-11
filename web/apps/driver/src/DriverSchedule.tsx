@@ -1,5 +1,7 @@
 import { CalendarDays, Truck } from "lucide-react";
 import type { DriverSnapshot } from "./storage/snapshot";
+import { CycleChange } from "./CycleChange";
+import { cycleStatusLabels } from "./planningLabels";
 
 export function driverDate(value: string) {
   return new Intl.DateTimeFormat("de-DE", {
@@ -139,9 +141,10 @@ export function DriverSchedule({
                     </strong>
                     <span>{cycle.vehiclePlate}</span>
                     <small>
-                      {cycle.status}
+                      {cycleStatusLabels[cycle.status]}
                       {cycle.source === "manual" ? " · Changed by dispatch" : ""}
                     </small>
+                    <CycleChange cycle={cycle} snapshot={snapshot} />
                   </div>
                   <button
                     aria-label={`Open truck ${cycle.vehiclePlate}`}

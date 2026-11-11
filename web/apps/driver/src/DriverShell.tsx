@@ -12,6 +12,7 @@ import { DriverTruck } from "./DriverTruck";
 import { QueueStatus } from "./QueueStatus";
 import { DriverDefect } from "./DriverDefect";
 import { DriverNotifications } from "./DriverNotifications";
+import { DriverAbsences } from "./DriverAbsences";
 
 export function DriverShell({
   name,
@@ -64,13 +65,16 @@ export function DriverShell({
         <Route
           path="me"
           element={
-            <DriverDocuments
-              snapshot={state.snapshot}
-              online={state.online}
-              onRefresh={state.refresh}
-              onSignOut={onSignOut}
-              busy={busy}
-            />
+            <>
+              <DriverDocuments
+                snapshot={state.snapshot}
+                online={state.online}
+                onRefresh={state.refresh}
+                onSignOut={onSignOut}
+                busy={busy}
+              />
+              <DriverAbsences snapshot={state.snapshot} online={state.online} />
+            </>
           }
         />
         <Route
@@ -78,6 +82,7 @@ export function DriverShell({
           element={<DriverDefect snapshot={state.snapshot} shifts={shifts} officePhone={officePhone} />}
         />
         <Route path="*" element={<Navigate to="/shift" replace />} />
+        <Route path="schedule" element={<Navigate to="/week" replace />} />
       </Routes>
       {truck && <DriverTruck id={truck} online={state.online} onClose={() => setTruck(undefined)} />}
       <nav className="driver-nav" aria-label={en.navigation}>

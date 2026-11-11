@@ -13,6 +13,7 @@ import { PersonForm } from "./PersonForm";
 import { PersonActionDialog, type PersonAction } from "./PersonActionDialog";
 import { SendEnrolment } from "./SendEnrolment";
 import { historyLabel, historyValue } from "./historyLabels";
+import { Absences } from "../absences/Absences";
 import "../fleet/fleet.css";
 import "./people.css";
 
@@ -24,7 +25,7 @@ export function PersonProfile() {
   const client = useQueryClient();
   const canManage = session.data?.roles.some((role) => ["hr", "owner"].includes(role)) === true;
   const canAccess = session.data?.roles.some((role) => ["hr", "owner", "dispatcher"].includes(role)) === true;
-  const [tab, setTab] = useState("documents");
+  const [tab, setTab] = useState(params.get("tab") === "absences" ? "absences" : "documents");
   const [editing, setEditing] = useState(false);
   const [action, setAction] = useState<PersonAction | null>(null);
   const [sessionId, setSessionId] = useState<string>();
@@ -129,7 +130,7 @@ export function PersonProfile() {
       )}
       {saved && <Banner label="Saved">{saved}</Banner>}
       <div className="directory-tabs" role="tablist" aria-label="Person profile">
-        {["documents", "access", "history"].map((value) => (
+        {["documents", "absences", "access", "history"].map((value) => (
           <button
             key={value}
             type="button"
@@ -139,7 +140,13 @@ export function PersonProfile() {
             aria-selected={tab === value}
             onClick={() => setTab(value)}
           >
-            {value === "documents" ? "Documents" : value === "access" ? "Access" : "History"}
+            {value === "documents"
+              ? "Documents"
+              : value === "absences"
+                ? "Absences"
+                : value === "access"
+                  ? "Access"
+                  : "History"}
           </button>
         ))}
       </div>
@@ -149,6 +156,7 @@ export function PersonProfile() {
         aria-labelledby={`person-tab-${tab}`}
         className="ui-panel people-profile-panel"
       >
+        {tab === "absences" && <Absences employeeId={id} />}
         {tab === "documents" && (
           <>
             <div className="page-title">

@@ -238,6 +238,25 @@ export function PersonForm({
             />
             {fieldError("vacationEntitlementDays", "Vacation entitlement")}
           </div>
+          {session.data?.roles.includes("hr") && (
+            <div className="people-field">
+              <label htmlFor={`${prefix}-opening`}>Vacation opening balance (go-live year)</label>
+              <input
+                id={`${prefix}-opening`}
+                type="number"
+                step="0.5"
+                {...validation("vacationOpeningBalance")}
+                value={fields.vacationOpeningBalance ?? ""}
+                onChange={(event) =>
+                  setFields({
+                    ...fields,
+                    vacationOpeningBalance: event.target.value === "" ? null : Number(event.target.value),
+                  })
+                }
+              />
+              {fieldError("vacationOpeningBalance", "Vacation opening balance")}
+            </div>
+          )}
           {roles.includes("driver") && (
             <div className="people-check">
               <input

@@ -4,6 +4,7 @@ import { apiClient } from "@fleetops/api-client";
 import { documentLabel } from "../people/labels";
 import { checked } from "../people/api";
 import { ReleaseReview } from "./ReleaseReview";
+import { PlanningActions } from "./PlanningActions";
 import "../people/people.css";
 import { Banner, Plate, SegmentedControl, Skeleton, Toast } from "@fleetops/ui";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -23,6 +24,8 @@ function itemTitle(item: AttentionItem) {
   if (item.ruleId === "A-07") return "Critical defect: vehicle off road";
   if (item.ruleId === "A-08") return "Major defect awaiting repair";
   if (item.ruleId === "A-21") return "Schedule clash";
+  if (item.ruleId === "A-18") return "Worked during absence";
+  if (item.ruleId === "A-19") return "Schedule change requested";
   // Titles from the alert catalogue (design/domain.md section 13), never the bare code.
   if (item.ruleId === "A-09") return "Missing timesheet";
   if (item.ruleId === "A-10") return "Shift waiting for approval";
@@ -384,7 +387,9 @@ function AttentionCard({
                   </p>
                 </div>
                 <div className="attention-item-actions">
-                  {item.ruleId === "A-13" && canManagePeople ? (
+                  {item.ruleId === "A-18" || item.ruleId === "A-19" ? (
+                    <PlanningActions item={item} group={group} />
+                  ) : item.ruleId === "A-13" && canManagePeople ? (
                     <button
                       type="button"
                       className="ui-button primary"
