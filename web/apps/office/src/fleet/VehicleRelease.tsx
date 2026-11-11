@@ -4,9 +4,14 @@ import { apiClient, type components } from "@fleetops/api-client";
 import { Banner, Drawer } from "@fleetops/ui";
 import { useSession } from "../auth/AuthGate";
 import { checked, PeopleError } from "../people/api";
+import { documentLabel } from "../people/labels";
 import { fleetApi } from "./api";
 
-export function ReleaseNotice({ release }: { release?: components["schemas"]["ReleaseBanner"] | null }) {
+export function ReleaseNotice({
+  release,
+}: {
+  release?: components["schemas"]["ActiveVehicleRelease"] | null;
+}) {
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
     if (!release) return;
@@ -24,7 +29,7 @@ export function ReleaseNotice({ release }: { release?: components["schemas"]["Re
   }).format(new Date(release.validUntil));
   return (
     <Banner label="Released">
-      Released by {release.releasedBy} until {date}
+      Released by {release.byName} until {date}
     </Banner>
   );
 }
@@ -55,27 +60,29 @@ export function VehicleRelease({ id }: { id: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const allowed = session.data?.roles.some((role) => role === "dispatcher" || role === "owner");
-  const owner = session.data?.roles.includes("owner") === true;
-  const settings = useQuery({
-    queryKey: ["company-settings"],
-    queryFn: () => apiClient.GET("/api/v1/settings").then(checked),
-    enabled: owner,
-  });
   const detail = useQuery({ queryKey: ["fleet", "vehicle", id], queryFn: () => fleetApi.detail(id) });
   const data = detail.data;
-  const eligible =
-    data?.kind === "truck" &&
-    data.status === "active" &&
-    data.shownStatus === "off_road" &&
-    data.causes.length > 0 &&
-    data.causes.every(
-      (cause) =>
-        cause.code === "document_expired" &&
-        settings.data?.releasableDocTypes.includes(cause.documentType ?? ""),
-    );
+  const eligible = data?.release?.allowed === true;
+  const blockedTypes = [
+    ...new Set([
+      ...(data?.release?.expiredTypes.filter((type) => !data.release?.releasableTypes.includes(type)) ?? []),
+      ...(data?.causes
+        .filter((cause) => cause.code === "document_missing")
+        .flatMap((cause) => (cause.documentType ? [cause.documentType] : [])) ?? []),
+    ]),
+  ];
+  const blockedCondition = data?.causes.some((cause) => cause.code === "critical_defect")
+    ? "critical defect"
+    : "vehicle condition";
   return (
     <div onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
-      <ReleaseNotice release={data?.release} />
+      <ReleaseNotice release={data?.release?.activeOverride} />
+      {allowed && data?.release?.enabled && !eligible && (
+        <p>
+          Release blocked by:{" "}
+          {blockedTypes.length ? blockedTypes.map(documentLabel).join(", ") : blockedCondition}.
+        </p>
+      )}
       {allowed && eligible && (
         <button className="ui-button" disabled={!navigator.onLine} onClick={() => setOpen(true)}>
           Release

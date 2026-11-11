@@ -390,14 +390,21 @@ public sealed record DocumentDeleteRequest(int Version, string Reason);
 public sealed record DocumentSightCheckRequest(int Version, DateOnly CheckedAt);
 public sealed record SnoozeAlertRequest(int Version, DateTimeOffset Until, string Reason);
 public sealed record UnsnoozeAlertRequest(int Version);
-public sealed class VehicleQueryHandler(IConfiguration configuration, IReadiness readiness, ICompanyTimeService companyTime, TimeProvider time, QueryDispatcher queries, FleetOpsDbContext db) : IQueryHandler<GetVehicleQuery, VehicleDetail>
+public sealed class VehicleQueryHandler(IConfiguration configuration, IReadiness readiness, ICompanyTimeService companyTime, TimeProvider time, QueryDispatcher queries, FleetOpsDbContext db, FleetOps.Modules.Setup.IReleaseSettings releaseSettings) : IQueryHandler<GetVehicleQuery, VehicleDetail>
 {
     public async Task<VehicleDetail> HandleAsync(GetVehicleQuery query, AccessContext actor, CancellationToken cancellationToken)
     {
         var result = await (await EfVehicleStore.ReadByConnectionAsync(DatabaseConnectionString.Resolve(configuration) ?? throw new InvalidOperationException("Database is not configured."), query.SubjectId ?? throw new VehicleValidationException(["id"]), cancellationToken)).ComposeAsync(readiness, companyTime, time, cancellationToken);
         if (actor.Roles.Contains(RoleCode.Dispatcher) || actor.Roles.Contains(RoleCode.Owner))
             result = result with { Defects = await queries.DispatchAsync<ListDefectsQuery, DefectListResult>(new(VehicleId: result.Id), cancellationToken) };
-        return result with { Release = await ReleaseBanners.ReadAsync(db, result.Id, time.GetUtcNow(), cancellationToken) };
+        if (actor.Roles.Contains(RoleCode.Dispatcher) || actor.Roles.Contains(RoleCode.Owner))
+        {
+            var facts = await new EfReadinessStore(db).ForVehiclesWithoutOverridesAsync([result.Id], companyTime.ToCompanyDate(time.GetUtcNow()), cancellationToken);
+            var types = await releaseSettings.GetReleasableDocTypesAsync(null, cancellationToken);
+            var banner = await ReleaseBanners.ReadAsync(db, result.Id, time.GetUtcNow(), cancellationToken);
+            result = result with { Release = VehicleReleaseEligibilityPolicy.Evaluate(result, facts[result.Id].Causes, types, banner) };
+        }
+        return result;
     }
 }
 
@@ -453,8 +460,13 @@ internal static class VehicleJsonException
 
     public static string? FieldName(string? path)
     {
-        if (string.IsNullOrWhiteSpace(path) || !path.StartsWith("$.", StringComparison.Ordinal))
-            return null;
+        if (string.IsNullOrWhiteSpace(path)) return null;
+        if (path.StartsWith("$['", StringComparison.Ordinal))
+        {
+            var closingBracket = path.IndexOf("']", StringComparison.Ordinal);
+            return closingBracket > 3 ? path[3..closingBracket] : null;
+        }
+        if (!path.StartsWith("$.", StringComparison.Ordinal)) return null;
 
         var field = path[2..].Split('.', '[', StringSplitOptions.RemoveEmptyEntries)[0];
         return string.IsNullOrWhiteSpace(field) ? null : field;

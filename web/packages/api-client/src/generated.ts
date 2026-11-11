@@ -873,7 +873,7 @@ export interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": components["schemas"]["UpdateSettingsRequest"];
                 };
             };
             responses: {
@@ -3727,7 +3727,9 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["AuthSessionResponse"];
+                    };
                 };
             };
         };
@@ -3790,7 +3792,7 @@ export interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["SecondFactorRequest"];
+                    "application/json": components["schemas"]["StepUpRequest"];
                 };
             };
             responses: {
@@ -4314,6 +4316,11 @@ export interface components {
             /** @default false */
             acceptWarning: boolean;
         };
+        ActiveVehicleRelease: {
+            byName: string;
+            /** Format: date-time */
+            validUntil: string;
+        };
         /** @enum {unknown} */
         ActivityType: "driving" | "other_work" | "availability" | "break";
         ActivityView: {
@@ -4394,6 +4401,12 @@ export interface components {
             open: number;
             /** Format: int32 */
             critical: number;
+        };
+        AuthSessionResponse: {
+            /** Format: uuid */
+            employeeId: string;
+            roles: string[];
+            stepUpMethod: string;
         };
         BulkApprovalItem: {
             /** Format: uuid */
@@ -5682,6 +5695,10 @@ export interface components {
             until: string;
             reason: string;
         };
+        StepUpRequest: {
+            code?: null | string;
+            password?: null | string;
+        };
         SwapOption: {
             /** Format: uuid */
             vehicleId: string;
@@ -5713,6 +5730,45 @@ export interface components {
         UnsnoozeAlertRequest: {
             /** Format: int32 */
             version: number;
+        };
+        UpdateSettingsRequest: {
+            /** Format: int32 */
+            "company.payroll_cutoff_day"?: null | number;
+            /** Format: int32 */
+            "company.max_shift_hours"?: null | number;
+            /** Format: int32 */
+            "alerts.escalation_minutes"?: null | number;
+            /** Format: int32 */
+            "alerts.a03.blocked_hours"?: null | number;
+            /** Format: int32 */
+            "alerts.a03.queue_days"?: null | number;
+            /** Format: int32 */
+            "alerts.a08.days"?: null | number;
+            /** Format: int32 */
+            "vehicles.lease_lead_days"?: null | number;
+            /** Format: int32 */
+            "documents.lead_days.licence_c_ce"?: null | number;
+            /** Format: int32 */
+            "documents.lead_days.driver_card"?: null | number;
+            /** Format: int32 */
+            "documents.lead_days.code95"?: null | number;
+            /** Format: int32 */
+            "documents.lead_days.medical"?: null | number;
+            /** Format: int32 */
+            "documents.lead_days.adr_certificate"?: null | number;
+            /** Format: int32 */
+            "documents.lead_days.id_card"?: null | number;
+            /** Format: int32 */
+            "documents.lead_days.hu_report"?: null | number;
+            /** Format: int32 */
+            "documents.lead_days.sp_report"?: null | number;
+            /** Format: int32 */
+            "documents.lead_days.tacho_calibration"?: null | number;
+            /** Format: int32 */
+            "documents.lead_days.insurance"?: null | number;
+            /** Format: int32 */
+            "documents.lead_days.community_licence"?: null | number;
+            "company.releasable_doc_types"?: null | string[];
         };
         UploadLinkResult: {
             /** Format: uuid */
@@ -5763,7 +5819,7 @@ export interface components {
             shownStatus: components["schemas"]["ReadinessShownStatus"];
             usable: boolean;
             causes: components["schemas"]["ReadinessCause"][];
-            release?: null | components["schemas"]["ReleaseBanner"];
+            release?: null | components["schemas"]["VehicleReleaseEligibility"];
             defects?: null | components["schemas"]["DefectListResult"];
         };
         /** @enum {unknown} */
@@ -5792,6 +5848,13 @@ export interface components {
         };
         /** @enum {unknown} */
         VehicleOwnership: "owned" | "leased" | "rented_in";
+        VehicleReleaseEligibility: {
+            enabled: boolean;
+            allowed: boolean;
+            expiredTypes: string[];
+            releasableTypes: string[];
+            activeOverride: null | components["schemas"]["ActiveVehicleRelease"];
+        };
         VehicleReleaseResult: {
             /** Format: uuid */
             overrideId: string;

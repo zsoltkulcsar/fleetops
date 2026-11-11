@@ -25,13 +25,16 @@ public static class AuthEndpoints
         group.MapPost("/privacy-notice", Privacy);
         group.MapPost("/forgot-password", Forgot);
         group.MapPost("/reset-password", Reset);
-        group.MapGet("/session", ([FromServices] IAccessContextAccessor accessor) => accessor.Current is null
-            ? Results.Unauthorized()
-            : Results.Ok(new
-            {
-                employeeId = accessor.Current.EmployeeId,
-                roles = accessor.Current.Roles.Select(role => role.Code()).ToArray()
-            }));
+        group.MapGet("/session", async ([FromServices] IAccessContextAccessor accessor, [FromServices] UserManager<OfficeUser> users) =>
+        {
+            if (accessor.Current is null) return Results.Unauthorized();
+            var user = await users.Users.SingleOrDefaultAsync(user => user.EmployeeId == accessor.Current.EmployeeId);
+            if (user is null) return Results.Unauthorized();
+            var key = await users.GetAuthenticatorKeyAsync(user);
+            return Results.Ok(new AuthSessionResponse(accessor.Current.EmployeeId,
+                accessor.Current.Roles.Select(role => role.Code()).ToArray(),
+                string.IsNullOrWhiteSpace(key) ? "password" : "code"));
+        }).Produces<AuthSessionResponse>();
         group.MapPost("/sign-out", SignOut);
         group.MapPost("/step-up", StepUp);
     }
@@ -310,20 +313,33 @@ public static class AuthEndpoints
     }
 
     private static async Task<IResult> StepUp(
-        [FromBody] SecondFactorRequest input,
+        [FromBody] StepUpRequest input,
         [FromServices] FleetOpsDbContext db,
         [FromServices] UserManager<OfficeUser> users,
         [FromServices] IHttpContextAccessor http,
         [FromServices] TimeProvider time,
         [FromServices] IOptions<AuthOptions> options)
     {
-        var invalidFields = Validate(("code", input?.Code));
+        var invalidFields = string.IsNullOrWhiteSpace(input?.Code) && string.IsNullOrWhiteSpace(input?.Password)
+            ? Validate(("code", input?.Code), ("password", input?.Password)) : null;
         if (invalidFields is not null) return invalidFields;
         var session = await FindValidSession(db, http, time, options, SessionStage.Full);
         var user = session is null ? null : await users.FindByIdAsync(session.UserId.ToString());
         var accepted = session is not null && session.Stage == SessionStage.Full && user is not null && !IsLockedOut(user, time);
-        var matched = user is null ? null : Totp.MatchedStep(await users.GetAuthenticatorKeyAsync(user) ?? "", input.Code, time.GetUtcNow());
-        accepted = accepted && matched.HasValue && (!user!.LastAcceptedTotpStep.HasValue || user.LastAcceptedTotpStep.Value < matched.Value);
+        var authenticatorKey = user is null ? null : await users.GetAuthenticatorKeyAsync(user);
+        var requiresCode = !string.IsNullOrWhiteSpace(authenticatorKey);
+        long? matched = null;
+        if (requiresCode && string.IsNullOrWhiteSpace(input!.Code))
+            return Results.Json(new { code = "second_factor_required" }, statusCode: StatusCodes.Status401Unauthorized);
+        if (accepted && requiresCode)
+        {
+            matched = Totp.MatchedStep(authenticatorKey!, input!.Code!, time.GetUtcNow());
+            accepted = matched.HasValue && (!user!.LastAcceptedTotpStep.HasValue || user.LastAcceptedTotpStep.Value < matched.Value);
+        }
+        else
+        {
+            accepted = accepted && !string.IsNullOrWhiteSpace(input!.Password) && await users.CheckPasswordAsync(user!, input.Password);
+        }
         if (!accepted)
         {
             if (session is not null && user is not null)
@@ -335,7 +351,7 @@ public static class AuthEndpoints
             }
             return Results.Json(new { code = "second_factor_failed" }, statusCode: StatusCodes.Status401Unauthorized);
         }
-        user!.LastAcceptedTotpStep = matched;
+        if (requiresCode) user!.LastAcceptedTotpStep = matched;
         session!.StepUpAt = time.GetUtcNow();
         await db.SaveChangesAsync();
         return Results.Ok();
@@ -397,6 +413,8 @@ public static class AuthEndpoints
     internal static void SetCookie(HttpContext http, string raw, TimeSpan? maxAge = null) => http.Response.Cookies.Append(CookieName, raw, new CookieOptions { Path = "/", HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict, MaxAge = maxAge });
     public sealed record SignInRequest(string Email, string Password);
     public sealed record SecondFactorRequest(string Code);
+    public sealed record StepUpRequest(string? Code = null, string? Password = null);
+    public sealed record AuthSessionResponse(Guid EmployeeId, string[] Roles, string StepUpMethod);
     public sealed record PrivacyRequest(string Version);
     public sealed record ForgotRequest(string Email);
     public sealed record ResetRequest(string Token, string Password);

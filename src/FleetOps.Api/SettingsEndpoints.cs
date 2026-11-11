@@ -1,4 +1,3 @@
-using System.Text.Json;
 using FleetOps.Api.Pipeline;
 using FleetOps.Kernel.Authorization;
 using FleetOps.Modules.Setup;
@@ -19,8 +18,8 @@ public static class SettingsEndpoints
     {
         app.MapGet("/api/v1/settings", async (QueryDispatcher queries, CancellationToken cancellationToken) =>
             Results.Ok(await queries.DispatchAsync<GetSettingsQuery, SettingsView>(new(), cancellationToken))).Produces<SettingsView>();
-        app.MapPut("/api/v1/settings", async (Dictionary<string, JsonElement> changes, CommandDispatcher commands, CancellationToken cancellationToken) =>
-            Results.Ok(await commands.DispatchAsync<UpdateSettingsCommand, SettingsView>(new(changes), cancellationToken))).Produces<SettingsView>();
+        app.MapPut("/api/v1/settings", async (UpdateSettingsRequest changes, CommandDispatcher commands, CancellationToken cancellationToken) =>
+            Results.Ok(await commands.DispatchAsync<UpdateSettingsCommand, SettingsView>(new(changes.ToChanges()), cancellationToken))).Produces<SettingsView>();
         app.MapPost("/api/v1/settings/holidays", async (AddHolidayCommand command, CommandDispatcher commands, CancellationToken cancellationToken) =>
             Results.Ok(await commands.DispatchAsync<AddHolidayCommand, SettingsView>(command, cancellationToken))).Produces<SettingsView>();
         app.MapDelete("/api/v1/settings/holidays/{date}", async (DateOnly date, CommandDispatcher commands, CancellationToken cancellationToken) =>

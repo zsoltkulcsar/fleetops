@@ -86,17 +86,11 @@ export function CompanySettings() {
             owner &&
             JSON.stringify(form.getAll("release").sort()) !==
               JSON.stringify([...data.releasableDocTypes].sort());
-          const changes = {
+          const changes: components["schemas"]["UpdateSettingsRequest"] = {
             ...values,
             ...(releaseChanged ? { "company.releasable_doc_types": form.getAll("release").map(String) } : {}),
           };
-          // The generated PUT schema currently omits the dictionary values. Keep the
-          // actual setting values typed from SettingsView while serializing the map.
-          void perform(() =>
-            apiClient
-              .PUT("/api/v1/settings", { body: {}, bodySerializer: () => JSON.stringify(changes) })
-              .then(checked),
-          );
+          void perform(() => apiClient.PUT("/api/v1/settings", { body: changes }).then(checked));
         }}
       >
         {owner && (
@@ -240,10 +234,12 @@ function OfficeUser({
     setBusy(true);
     try {
       if (stepUp) {
-        const result = await apiClient.POST("/api/v1/auth/step-up", { body: { code } });
+        const result = await apiClient.POST("/api/v1/auth/step-up", {
+          body: session.data?.stepUpMethod === "password" ? { password: code } : { code },
+        });
         setCode("");
         if (!result.response.ok) {
-          setMessage("Verification failed. Enter a fresh authenticator code.");
+          setMessage("Verification failed. Try again.");
           return;
         }
         setStepUp(false);
@@ -331,13 +327,18 @@ function OfficeUser({
           />
           {stepUp && (
             <>
-              <label htmlFor={`code-${person.id}`}>Authenticator code</label>
+              <label htmlFor={`code-${person.id}`}>
+                {session.data?.stepUpMethod === "password" ? "Password" : "Authenticator code"}
+              </label>
               <input
                 id={`code-${person.id}`}
                 value={code}
                 onChange={(event) => setCode(event.target.value)}
-                autoComplete="one-time-code"
-                inputMode="numeric"
+                type={session.data?.stepUpMethod === "password" ? "password" : "text"}
+                autoComplete={
+                  session.data?.stepUpMethod === "password" ? "current-password" : "one-time-code"
+                }
+                inputMode={session.data?.stepUpMethod === "password" ? "text" : "numeric"}
                 required
               />
             </>

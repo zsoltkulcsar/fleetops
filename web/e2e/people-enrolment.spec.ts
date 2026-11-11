@@ -12,7 +12,7 @@ const success: components["schemas"]["SendEnrolmentResult"] = {
 
 test.beforeEach(async ({ page }) => {
   // The generated session endpoint currently declares no response body.
-  const session: Session = { employeeId: "hr-user", roles: ["hr"] };
+  const session: Session = { employeeId: "hr-user", roles: ["hr"], stepUpMethod: "password" };
   const drivers: components["schemas"]["DriverReadinessList"] = {
     items: [{ id: driverId, name: "Dana Driver", canDrive: true, enrolled: false, causes: [] }],
     nextCursor: null,

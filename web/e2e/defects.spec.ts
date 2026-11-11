@@ -38,7 +38,7 @@ const repair: Schema["RepairDetail"] = {
 };
 async function setup(page: Page) {
   await page.route("**/api/v1/auth/session", (route) =>
-    route.fulfill({ json: { employeeId, roles: ["dispatcher"] } satisfies Session }),
+    route.fulfill({ json: { employeeId, roles: ["dispatcher"], stepUpMethod: "password" } satisfies Session }),
   );
   await page.clock.setFixedTime(new Date("2026-11-10T10:00:00Z"));
   const state = {

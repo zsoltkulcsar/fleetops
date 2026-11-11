@@ -1,5 +1,5 @@
 export type NextStep = "done" | "second_factor" | "enrol_second_factor" | "privacy_notice";
-export type Session = { employeeId: string; roles: string[] };
+export type Session = { employeeId: string; roles: string[]; stepUpMethod: "code" | "password" };
 export type Problem = {
   code?: string;
   detail?: string;
