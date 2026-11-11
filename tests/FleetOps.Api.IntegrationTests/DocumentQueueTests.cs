@@ -109,7 +109,10 @@ public sealed class DocumentQueueTests : IAsyncLifetime
         using var response = await factory.AsDispatcher().GetAsync("/api/v1/search?q=Alice");
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Empty(body.GetProperty("documents").EnumerateArray());
-        Assert.Empty(body.GetProperty("people").EnumerateArray());
+        // Story 7.1: dispatchers find people in search, without document or medical data.
+        var person = Assert.Single(body.GetProperty("people").EnumerateArray());
+        Assert.Equal("Alice Driver", person.GetProperty("name").GetString());
+        Assert.DoesNotContain("medical", person.GetRawText(), StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
