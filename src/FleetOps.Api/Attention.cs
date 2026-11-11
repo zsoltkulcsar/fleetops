@@ -54,7 +54,7 @@ public static class AlertVisibility
     {
         RoleCode.Owner => true,
         RoleCode.Hr => HrRules.Contains(ruleId) && (ruleId != "A-03" || subjectType == "employee"),
-        RoleCode.Dispatcher => (ruleId == "A-07" && subjectType == "defect") || (ruleId == "A-05" && subjectType == "vehicle") || (ruleId == "A-03" && subjectType == "vehicle") || ((ruleId is "A-09" or "A-15") && subjectType == "employee") || ((ruleId is "A-10" or "A-16") && subjectType == "shift") || ((ruleId is "A-20" or "A-21") && subjectType == "cycle"),
+        RoleCode.Dispatcher => ((ruleId is "A-07" or "A-08") && subjectType == "defect") || (ruleId == "A-05" && subjectType == "vehicle") || (ruleId == "A-03" && subjectType == "vehicle") || ((ruleId is "A-09" or "A-15") && subjectType == "employee") || ((ruleId is "A-10" or "A-16") && subjectType == "shift") || ((ruleId is "A-20" or "A-21") && subjectType == "cycle"),
         _ => false,
     };
 }
@@ -74,7 +74,7 @@ public sealed class AttentionQueryHandler(IConfiguration configuration, TimeProv
             var dispatcher = roles.Contains(RoleCode.Dispatcher);
             visible = visible.Where(x =>
                 (hr && ((x.RuleId == "A-01") || (x.RuleId == "A-02") || (x.RuleId == "A-03" && db.Documents.Where(d => d.Id == x.SubjectId).Select(d => d.OwnerType).FirstOrDefault() == DocumentOwnerType.Employee) || x.RuleId == "A-13" || x.RuleId == "A-14" || x.RuleId == "A-17" || x.RuleId == "A-18")) ||
-                (dispatcher && (((x.RuleId == "A-10" || x.RuleId == "A-16") && x.SubjectType == "shift") || x.RuleId == "A-07" || x.RuleId == "A-05" || x.RuleId == "A-09" || x.RuleId == "A-15" || ((x.RuleId == "A-20" || x.RuleId == "A-21") && x.SubjectType == "cycle") || (x.RuleId == "A-03" && db.Documents.Where(d => d.Id == x.SubjectId).Select(d => d.OwnerType).FirstOrDefault() == DocumentOwnerType.Vehicle))));
+                (dispatcher && (((x.RuleId == "A-10" || x.RuleId == "A-16") && x.SubjectType == "shift") || x.RuleId == "A-07" || x.RuleId == "A-08" || x.RuleId == "A-05" || x.RuleId == "A-09" || x.RuleId == "A-15" || ((x.RuleId == "A-20" || x.RuleId == "A-21") && x.SubjectType == "cycle") || (x.RuleId == "A-03" && db.Documents.Where(d => d.Id == x.SubjectId).Select(d => d.OwnerType).FirstOrDefault() == DocumentOwnerType.Vehicle))));
         }
         var rows = await visible.Select(x => new
         {

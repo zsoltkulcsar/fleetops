@@ -26,4 +26,5 @@ public sealed class DefectReport
     [NotAudited] public DateTimeOffset DeviceTime { get; set; }
     [NotAudited] public DateTimeOffset ServerReceivedAt { get; set; }
     [NotAudited] public Guid? CommandId { get; set; }
+    [AuditField(AuditFieldClasses.Plain)] public Guid? RepairId { get; set; }
 }

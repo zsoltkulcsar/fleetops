@@ -119,7 +119,7 @@ public sealed class AuthorizationTests
     [Fact]
     public void Matrix_contains_all_permission_rows()
     {
-        Assert.Equal(38, PermissionMatrix.Entries.Count);
+        Assert.Equal(39, PermissionMatrix.Entries.Count);
         Assert.Contains(PermissionMatrix.Entries, x => x.ActionKey == "shifts.approve_reject" && x.AllowedRoles.SetEquals([RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner]));
         Assert.Contains(PermissionMatrix.Entries, x => x.ActionKey == "documents.medical.view" && x.OwnRoles.SetEquals([RoleCode.Driver]));
     }
@@ -162,6 +162,7 @@ public sealed class AuthorizationTests
             ["alerts.view"] = [RoleCode.Dispatcher, RoleCode.Hr],
             ["alerts.snooze"] = [RoleCode.Dispatcher, RoleCode.Hr],
             ["defects.report"] = [RoleCode.Driver],
+            ["defects.manage"] = [RoleCode.Dispatcher],
             ["driver.config"] = [RoleCode.Driver],
             ["schedule.edit"] = [RoleCode.Dispatcher, RoleCode.Owner],
             ["settings.payroll"] = [RoleCode.Hr, RoleCode.Owner],
@@ -210,6 +211,7 @@ public sealed class AuthorizationTests
             ["employees.phone.change"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full),
             ["audit.export"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full),
             ["defects.report"] = (PermissionMatrix.Cell.Own, PermissionMatrix.Cell.None, PermissionMatrix.Cell.None, PermissionMatrix.Cell.None),
+            ["defects.manage"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.None, PermissionMatrix.Cell.View),
             ["driver.config"] = (PermissionMatrix.Cell.Own, PermissionMatrix.Cell.None, PermissionMatrix.Cell.None, PermissionMatrix.Cell.None),
             ["schedule.edit"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.View, PermissionMatrix.Cell.Full),
             ["settings.payroll"] = (PermissionMatrix.Cell.None, PermissionMatrix.Cell.None, PermissionMatrix.Cell.Full, PermissionMatrix.Cell.Full),
@@ -278,7 +280,7 @@ public sealed class AuthorizationTests
         "schedule.view" or "schedule.request_change" => role is RoleCode.Driver or RoleCode.Dispatcher or RoleCode.Owner,
         "absences.vacation.request" => role is RoleCode.Driver or RoleCode.Hr,
         "documents.driver.verify" or "documents.driver.delete" or "absences.vacation.decide" => role == RoleCode.Hr,
-        "documents.vehicle.manage" or "fleet.manage" => role == RoleCode.Dispatcher,
+        "documents.vehicle.manage" or "fleet.manage" or "defects.manage" => role == RoleCode.Dispatcher,
         "vehicles.retire.undo" => role == RoleCode.Owner,
         "vehicles.manage" => role is RoleCode.Dispatcher or RoleCode.Owner,
         "vehicles.view" => role is RoleCode.Dispatcher,

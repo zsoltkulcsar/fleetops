@@ -33,7 +33,10 @@ public sealed record VehicleDetail(
     IReadOnlyList<RequiredDocument> RequiredDocuments,
     ReadinessShownStatus ShownStatus,
     bool Usable,
-    IReadOnlyList<ReadinessCause> Causes) : IReadModel;
+    IReadOnlyList<ReadinessCause> Causes) : IReadModel
+{
+    public DefectListResult? Defects { get; init; }
+}
 
 [VisibleTo(RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner)]
 public sealed record VehicleListItem(

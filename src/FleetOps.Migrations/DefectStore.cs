@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FleetOps.Migrations;
 
-public sealed class EfDefectStore(IObjectStore objects, ICompanyTimeService companyTime, TimeProvider time) : IDefectStore
+public sealed class EfDefectStore(IObjectStore objects, ICompanyTimeService companyTime, TimeProvider time) : IDefectStore, IOfficeDefectStore
 {
     public async Task LockVehicleAsync(Guid vehicleId, CommandContext context, CancellationToken cancellationToken)
     {
@@ -20,12 +20,13 @@ public sealed class EfDefectStore(IObjectStore objects, ICompanyTimeService comp
         return await db.DefectReports.AsNoTracking().SingleOrDefaultAsync(defect => defect.Id == id, cancellationToken);
     }
 
-    public async Task ValidateReportAsync(DefectReport report, CommandContext context, CancellationToken cancellationToken)
+    public Task ValidateReportAsync(DefectReport report, CommandContext context, CancellationToken cancellationToken) => ValidatePhotosAsync(report, report.ReportedBy, context, cancellationToken);
+    public async Task ValidatePhotosAsync(DefectReport report, Guid actorId, CommandContext context, CancellationToken cancellationToken)
     {
         await using var db = Create(context);
         foreach (var key in new[] { $"defect-id:{report.Id}", $"defect-command:{report.CommandId}" })
             await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({key}, 0))", cancellationToken);
-        if (await db.DefectReports.AnyAsync(defect => defect.Id == report.Id || defect.CommandId == report.CommandId, cancellationToken))
+        if (await db.DefectReports.AnyAsync(defect => defect.Id == report.Id || (report.CommandId != null && defect.CommandId == report.CommandId), cancellationToken))
             throw new VehicleConflictException("command_id_reused");
         if (!await db.Vehicles.AnyAsync(vehicle => vehicle.Id == report.VehicleId, cancellationToken))
             throw new VehicleValidationException(["vehicleId"]);
@@ -38,7 +39,7 @@ public sealed class EfDefectStore(IObjectStore objects, ICompanyTimeService comp
         if (files.Count != report.Photos.Length) throw new VehicleValidationException(["photos"]);
         foreach (var file in files)
         {
-            if (file.ActorId != report.ReportedBy || file.ConfirmedAt != null || file.ExpiresAt <= time.GetUtcNow() || file.Purpose != "defect_photo")
+            if (file.ActorId != actorId || file.ConfirmedAt != null || file.ExpiresAt <= time.GetUtcNow() || file.Purpose != "defect_photo")
                 throw new VehicleValidationException(["photos"]);
             var info = await objects.GetInfoAsync(file.ObjectKey, cancellationToken);
             if (info is null || info.ContentType != file.ContentType || info.SizeBytes < 1 || info.SizeBytes > file.MaxSizeBytes)
@@ -46,11 +47,12 @@ public sealed class EfDefectStore(IObjectStore objects, ICompanyTimeService comp
         }
     }
 
-    public async Task SaveAsync(DefectReport report, Guid actorId, CommandContext context, CancellationToken cancellationToken)
+    public Task SaveAsync(DefectReport report, Guid actorId, CommandContext context, CancellationToken cancellationToken) => SaveAsync(report, actorId, report.Status == DefectStatus.Cancelled ? "Cancelled by driver within 60 s" : "driver_defect_report", context, cancellationToken);
+    public async Task SaveAsync(DefectReport report, Guid actorId, string reason, CommandContext context, CancellationToken cancellationToken)
     {
         await using var db = Create(context);
         db.AuditActorId = actorId;
-        db.AuditReason = report.Status == DefectStatus.Cancelled ? "Cancelled by driver within 60 s" : "driver_defect_report";
+        db.AuditReason = reason;
         var existing = await db.DefectReports.SingleOrDefaultAsync(defect => defect.Id == report.Id, cancellationToken);
         if (existing is null)
         {
@@ -72,6 +74,13 @@ public sealed class EfDefectStore(IObjectStore objects, ICompanyTimeService comp
         await using var db = Create(context);
         var readiness = await new EfReadinessStore(db).ForVehiclesAsync([vehicleId], companyTime.ToCompanyDate(time.GetUtcNow()), cancellationToken);
         return !readiness.TryGetValue(vehicleId, out var vehicle) || vehicle.ShownStatus is ReadinessShownStatus.OffRoad or ReadinessShownStatus.Retired;
+    }
+
+    public async Task ValidateReporterAsync(Guid reporterId, Guid actorId, CommandContext context, CancellationToken cancellationToken)
+    {
+        await using var db = Create(context);
+        if (!await db.Employees.AnyAsync(employee => employee.Id == reporterId && employee.Status == FleetOps.People.EmployeeStatus.Active && (employee.Id == actorId || employee.Roles.Contains("\"driver\"")), cancellationToken))
+            throw new VehicleValidationException(["reportedBy"]);
     }
 
     private static FleetOpsDbContext Create(CommandContext context)

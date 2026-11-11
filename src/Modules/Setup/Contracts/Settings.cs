@@ -24,6 +24,7 @@ public static class SettingCatalog
         ["company.max_shift_hours"] = 0,
         ["timesheets.submit_reminder_hour"] = 7,
         ["alerts.a03.queue_days"] = 2,
+        ["alerts.a08.days"] = 3,
         ["alerts.a03.blocked_hours"] = 1,
         ["alerts.escalation_minutes"] = 15,
         ["documents.lead_days.licence_c_ce"] = 60,

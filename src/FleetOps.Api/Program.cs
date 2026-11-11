@@ -112,6 +112,17 @@ builder.Services.AddScoped<IShiftEvents, ShiftEvents>();
 builder.Services.AddScoped<ICommandHandler<ApplyDriverCommand, DriverCommandResult>, ApplyDriverCommandHandler>();
 builder.Services.AddScoped<IDriverDefectCommands, DriverDefectCommands>();
 builder.Services.AddScoped<IDefectStore, EfDefectStore>();
+builder.Services.AddScoped<IOfficeDefectStore, EfDefectStore>();
+builder.Services.AddScoped<IOfficeDefectReads, EfOfficeDefectReads>();
+builder.Services.AddScoped<IQueryHandler<ListDefectsQuery, DefectListResult>, OfficeDefectQueryHandler>();
+builder.Services.AddScoped<IQueryHandler<GetDefectQuery, DefectDetail>, OfficeDefectQueryHandler>();
+builder.Services.AddScoped<ICommandHandler<ConfirmDefectCommand, DefectActionResult>, OfficeDefectCommandHandler>();
+builder.Services.AddScoped<ICommandHandler<DowngradeDefectCommand, DefectActionResult>, OfficeDefectCommandHandler>();
+builder.Services.AddScoped<ICommandHandler<CloseDefectCommand, DefectActionResult>, OfficeDefectCommandHandler>();
+builder.Services.AddScoped<ICommandHandler<LogOfficeDefectCommand, DefectActionResult>, OfficeDefectCommandHandler>();
+builder.Services.AddScoped<ICommandHandler<RequestOfficeDefectPhotoUploadCommand, UploadLinkResult>, RequestOfficeDefectPhotoUploadHandler>();
+builder.Services.AddScoped<IMajorDefectFacts, EfMajorDefectFacts>();
+builder.Services.AddScoped<IAlertEvaluator, A08MajorDefectEvaluator>();
 builder.Services.AddScoped<IDefectEvents, DefectNotifications>();
 builder.Services.AddScoped<IDefectNotificationFacts, EfDefectNotificationFacts>();
 builder.Services.AddScoped<IDefectPhotoUploads, EfDefectPhotoUploads>();
@@ -292,6 +303,7 @@ app.MapGet("/api/v1/fleet/vehicles", async (string? cursor, int? limit, string? 
     var query = new ListVehiclesQuery(cursor, limit is null ? 50 : Math.Clamp(limit.Value, 1, 100), search, parsedKind?.ToString(), includeRetired == true);
     return Results.Ok(await dispatcher.DispatchAsync<ListVehiclesQuery, VehicleListResult>(query, cancellationToken));
 }).Produces<VehicleListResult>();
+app.MapOfficeDefects();
 app.MapGet("/api/v1/fleet/vehicles/{id:guid}", async (Guid id, QueryDispatcher dispatcher, CancellationToken cancellationToken) => Results.Ok(await dispatcher.DispatchAsync<GetVehicleQuery, VehicleDetail>(new(id), cancellationToken))).Produces<VehicleDetail>();
 app.MapPost("/api/v1/documents/upload-links", async (DocumentUploadRequest request, HttpContext context, CommandDispatcher dispatcher, CancellationToken cancellationToken) => { context.Response.Headers.CacheControl = "no-store"; if (request.OwnerType == DocumentOwnerType.Employee) return Results.Ok(await dispatcher.DispatchAsync<RequestEmployeeDocumentUploadCommand, UploadLinkResult>(new(request.OwnerId, request.Type, request.ContentType, request.SizeBytes), cancellationToken)); return Results.Ok(await dispatcher.DispatchAsync<RequestVehicleDocumentUploadCommand, UploadLinkResult>(new(request.OwnerId, request.Type, request.ContentType, request.SizeBytes), cancellationToken)); }).Produces<UploadLinkResult>();
 app.MapPost("/api/v1/documents", async (DocumentCreateRequest request, HttpContext context, CommandDispatcher dispatcher, CancellationToken cancellationToken) => { context.Response.Headers.CacheControl = "no-store"; DocumentDetail result; if (request.OwnerType == DocumentOwnerType.Employee) result = await dispatcher.DispatchAsync<ConfirmEmployeeDocumentCommand, DocumentDetail>(new(request.OwnerId, request.OwnerId, request.Type, request.Number, request.IssuedAt, request.ExpiresAt, request.Categories, request.Files), cancellationToken); else result = await dispatcher.DispatchAsync<ConfirmVehicleDocumentCommand, DocumentDetail>(new(request.OwnerId, request.OwnerId, request.Type, request.Number, request.IssuedAt, request.ExpiresAt, request.Categories, request.Files), cancellationToken); return Results.Created($"/api/v1/documents/{result.Id}", result); }).Produces<DocumentDetail>(StatusCodes.Status201Created);
@@ -345,8 +357,16 @@ public sealed record DocumentDeleteRequest(int Version, string Reason);
 public sealed record DocumentSightCheckRequest(int Version, DateOnly CheckedAt);
 public sealed record SnoozeAlertRequest(int Version, DateTimeOffset Until, string Reason);
 public sealed record UnsnoozeAlertRequest(int Version);
-public sealed class VehicleQueryHandler(IConfiguration configuration, IReadiness readiness, ICompanyTimeService companyTime, TimeProvider time) : IQueryHandler<GetVehicleQuery, VehicleDetail>
-{ public async Task<VehicleDetail> HandleAsync(GetVehicleQuery query, AccessContext actor, CancellationToken cancellationToken) => await (await EfVehicleStore.ReadByConnectionAsync(DatabaseConnectionString.Resolve(configuration) ?? throw new InvalidOperationException("Database is not configured."), query.SubjectId ?? throw new VehicleValidationException(["id"]), cancellationToken)).ComposeAsync(readiness, companyTime, time, cancellationToken); }
+public sealed class VehicleQueryHandler(IConfiguration configuration, IReadiness readiness, ICompanyTimeService companyTime, TimeProvider time, QueryDispatcher queries) : IQueryHandler<GetVehicleQuery, VehicleDetail>
+{
+    public async Task<VehicleDetail> HandleAsync(GetVehicleQuery query, AccessContext actor, CancellationToken cancellationToken)
+    {
+        var result = await (await EfVehicleStore.ReadByConnectionAsync(DatabaseConnectionString.Resolve(configuration) ?? throw new InvalidOperationException("Database is not configured."), query.SubjectId ?? throw new VehicleValidationException(["id"]), cancellationToken)).ComposeAsync(readiness, companyTime, time, cancellationToken);
+        if (actor.Roles.Contains(RoleCode.Dispatcher) || actor.Roles.Contains(RoleCode.Owner))
+            result = result with { Defects = await queries.DispatchAsync<ListDefectsQuery, DefectListResult>(new(VehicleId: result.Id), cancellationToken) };
+        return result;
+    }
+}
 
 public sealed class VehicleListQueryHandler(IConfiguration configuration, IDataProtectionProvider protectionProvider, IReadiness readiness, ICompanyTimeService companyTime, TimeProvider time) : IQueryHandler<ListVehiclesQuery, VehicleListResult>
 {
