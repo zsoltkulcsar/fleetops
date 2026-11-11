@@ -306,6 +306,7 @@ test("create a repair from a defect and mark it done", async ({ page }) => {
   await expect(dialog).toContainText("Linked repair: Central workshop");
   expect(state.requests.at(-1)?.body).toEqual({
     vehicleId,
+    type: "repair",
     workshop: "Central workshop",
     scheduledFor: "2026-11-11",
     defectReportIds: [defectId],
@@ -318,7 +319,7 @@ test("create a repair from a defect and mark it done", async ({ page }) => {
   await expect(page.locator("tbody tr")).toContainText("125000 km");
   expect(state.requests.at(-1)).toEqual({
     path: `/api/v1/fleet/maintenance/${repairId}/done`,
-    body: { doneAt: "2026-11-12", odometerAtDoneKm: 125000 },
+    body: { doneAt: "2026-11-12", odometerAtDoneKm: 125000, costEur: null, resultDocument: null },
   });
 });
 test("maintenance tab lists repairs with start, done and cancel", async ({ page }) => {

@@ -72,12 +72,13 @@ export function Maintenance({ vehicleId }: { vehicleId?: string }) {
     setError("");
     try {
       const result = await operation();
+      // Close the editing drawer before the next-service proposal opens: never two dialogs at once.
+      setEditing(undefined);
       if (result && typeof result === "object" && "nextService" in result && result.nextService) {
         setProposal(result.nextService as components["schemas"]["NextServiceProposal"]);
         setPlanning(true);
       }
       await client.invalidateQueries();
-      setEditing(undefined);
     } catch {
       setError("Repair could not be saved. Check the fields and try again.");
     } finally {

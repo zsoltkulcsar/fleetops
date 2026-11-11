@@ -102,6 +102,8 @@ export function MaintenancePlan({
         <fieldset disabled={busy} className="defect-form">
           <label htmlFor={id + "-vehicle"}>Vehicle</label>
           <select
+            // Remount once vehicles load, so the preselected vehicle sticks (defaultValue needs its option).
+            key={vehicles.data ? "vehicles-loaded" : "vehicles-loading"}
             id={id + "-vehicle"}
             name="vehicleId"
             required
