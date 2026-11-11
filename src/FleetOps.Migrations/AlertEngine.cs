@@ -50,7 +50,7 @@ public sealed class AlertEngine(IEnumerable<IAlertEvaluator> evaluators, ISettin
         command.Parameters.AddWithValue(subjectId);
         command.Parameters.AddWithValue(scopes);
         await command.ExecuteNonQueryAsync(cancellationToken);
-        var assignedRole = evaluator.RuleId is "A-07" or "A-08" or "A-05" or "A-09" or "A-10" or "A-15" or "A-16" or "A-20" or "A-21" ? "dispatcher" : "hr";
+        var assignedRole = evaluator.RuleId is "A-04" or "A-07" or "A-08" or "A-05" or "A-09" or "A-10" or "A-15" or "A-16" or "A-20" or "A-21" ? "dispatcher" : "hr";
         if (evaluator.RuleId == "A-03" && evaluator.SubjectType == "document")
         {
             await using var ownerTypeCommand = new NpgsqlCommand("select owner_type from fleetops.documents where id = $1", (NpgsqlConnection)context.DbConnection, (NpgsqlTransaction)context.DbTransaction);
@@ -75,7 +75,9 @@ public sealed class AlertEngine(IEnumerable<IAlertEvaluator> evaluators, ISettin
             if (inserted is Guid openedId)
                 foreach (var observer in openedObservers)
                     await observer.HandleAsync(evaluator.RuleId, evaluator.SubjectType, subjectId, openedId, context, cancellationToken);
-            if (inserted is Guid insertedAlertId && condition.Severity == AlertSeverity.Critical)
+            if (inserted is Guid driverAlertId && evaluator.RuleId == "A-01")
+                await notifications.AddAsync(subjectId, "doc_expiring", new { alertId = driverAlertId, documentType = condition.ScopeKey == "medical" ? "Document" : condition.ScopeKey, dueAt = condition.DueAt }, driverAlertId, context, cancellationToken);
+            if (inserted is Guid insertedAlertId && (condition.Severity == AlertSeverity.Critical || evaluator.RuleId is "A-01" or "A-04"))
             {
                 await using var employees = new NpgsqlCommand("select id from fleetops.employees where status = 'Active' and roles::jsonb @> $1::jsonb", (NpgsqlConnection)context.DbConnection, (NpgsqlTransaction)context.DbTransaction);
                 employees.Parameters.AddWithValue(JsonSerializer.Serialize(new[] { assignedRole }));
@@ -84,7 +86,7 @@ public sealed class AlertEngine(IEnumerable<IAlertEvaluator> evaluators, ISettin
                 while (await reader.ReadAsync(cancellationToken)) employeeIds.Add(reader.GetGuid(0));
                 await reader.CloseAsync();
                 foreach (var employeeId in employeeIds)
-                    await notifications.AddAsync(employeeId, "critical_alert", new { alertId = insertedAlertId, ruleId = evaluator.RuleId, subjectType = evaluator.SubjectType, subjectId, documentType = evaluator.RuleId == "A-02" ? condition.ScopeKey : null }, insertedAlertId, context, cancellationToken);
+                    await notifications.AddAsync(employeeId, condition.Severity == AlertSeverity.Critical ? "critical_alert" : "expiry_warning", new { alertId = insertedAlertId, ruleId = evaluator.RuleId, subjectType = evaluator.SubjectType, subjectId, documentType = evaluator.RuleId == "A-02" ? condition.ScopeKey : null }, insertedAlertId, context, cancellationToken);
             }
             await using var update = new NpgsqlCommand("update fleetops.alerts set severity = $1, due_at = $2, version = version + 1 where rule_id = $3 and subject_type = $4 and subject_id = $5 and scope_key = $6 and status <> 'Resolved' and (severity <> $1 or due_at is distinct from $2)", (NpgsqlConnection)context.DbConnection, (NpgsqlTransaction)context.DbTransaction);
             update.Parameters.AddWithValue(condition.Severity.ToString()); update.Parameters.AddWithValue(condition.DueAt is null ? DBNull.Value : condition.DueAt.Value); update.Parameters.AddWithValue(evaluator.RuleId); update.Parameters.AddWithValue(evaluator.SubjectType); update.Parameters.AddWithValue(subjectId); update.Parameters.AddWithValue(condition.ScopeKey);

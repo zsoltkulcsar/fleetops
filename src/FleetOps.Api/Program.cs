@@ -87,6 +87,9 @@ builder.Services.AddScoped<INotificationIds, NotificationIds>();
 builder.Services.AddScoped<InAppSender>();
 builder.Services.AddScoped<INotificationSender>(services => services.GetRequiredService<InAppSender>());
 builder.Services.AddScoped<IPostCommitNotifications>(services => services.GetRequiredService<InAppSender>());
+builder.Services.AddScoped<IExpiryFacts, EfExpiryFacts>();
+builder.Services.AddScoped<IAlertEvaluator, A01ExpiryEvaluator>();
+builder.Services.AddScoped<IAlertEvaluator, A04ExpiryEvaluator>();
 builder.Services.AddScoped<A02EmployeeEvaluator>();
 builder.Services.AddScoped<IAlertEvaluator>(services => new ShiftAwareEmployeeEvaluator(services.GetRequiredService<A02EmployeeEvaluator>(), services.GetRequiredService<IShiftAlertFacts>()));
 builder.Services.AddScoped<IAlertEvaluator, A17ShiftConflictEvaluator>();
@@ -247,7 +250,7 @@ app.UseExceptionHandler(new ExceptionHandlerOptions
         if (exception is InvalidOperationException { Message: "mailbox_unavailable" }) { await Results.Json(new { code = "mailbox_unavailable" }, statusCode: 503).ExecuteAsync(context); return; }
         if (exception is ScheduleValidationException scheduleValidation) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "validation_error", ["fields"] = scheduleValidation.Fields }).ExecuteAsync(context); return; }
         if (exception is ScheduleConflictException scheduleConflict) { await Results.Problem(statusCode: 409, extensions: new Dictionary<string, object?> { ["code"] = scheduleConflict.Code }).ExecuteAsync(context); return; }
-        if (exception is FleetOps.People.PersonValidationException personValidation) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "validation_error", ["fields"] = personValidation.Fields }).ExecuteAsync(context); return; }
+        if (exception is FleetOps.People.PersonValidationException personValidation) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = personValidation.Fields.Contains("reason") ? "reason" : "validation_error", ["fields"] = personValidation.Fields }).ExecuteAsync(context); return; }
         if (exception is FleetOps.People.PersonConflictException personConflict) { await Results.Problem(statusCode: personConflict.Code == "not_found" ? 404 : 409, extensions: new Dictionary<string, object?> { ["code"] = personConflict.Code, ["types"] = personConflict.Types }).ExecuteAsync(context); return; }
         if (exception is VehicleValidationException validation) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "validation_error", ["fields"] = validation.Fields }).ExecuteAsync(context); return; }
         if (exception is StorageUnavailableException) { await Results.Problem(statusCode: 503, extensions: new Dictionary<string, object?> { ["code"] = "storage_unavailable" }).ExecuteAsync(context); return; }

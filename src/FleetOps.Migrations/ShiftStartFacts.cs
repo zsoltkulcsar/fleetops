@@ -31,7 +31,10 @@ public sealed class EfShiftStartFacts(ICompanyTimeService companyTime) : IShiftS
         return new(employee is { Status: EmployeeStatus.Active } && employee.StartDate <= date && (employee.EndDate is null || employee.EndDate >= date),
             driver?.CanDrive == true, suggested,
             chosen is null || (truck?.Kind == VehicleKind.Truck && vehicles.GetValueOrDefault(chosen.Value)?.Usable == true),
-            trailerId is null || (trailer?.Kind == VehicleKind.Trailer && vehicles.GetValueOrDefault(trailerId.Value)?.Usable == true));
+            trailerId is null || (trailer?.Kind == VehicleKind.Trailer && vehicles.GetValueOrDefault(trailerId.Value)?.Usable == true))
+        {
+            EmployeeStatus = employee?.Status.ToString().ToLowerInvariant() ?? "missing"
+        };
     }
 
     public static async Task<Guid?> ResolveTruckForShift(FleetOpsDbContext db, Guid employeeId, DateOnly date, CancellationToken cancellationToken)

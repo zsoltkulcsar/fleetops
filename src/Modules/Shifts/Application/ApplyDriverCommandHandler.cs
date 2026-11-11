@@ -77,7 +77,7 @@ public sealed class ApplyDriverCommandHandler(IShiftCommandStore store, IShiftSt
                     if (await store.HasRunningShiftAsync(actor.EmployeeId, context, cancellationToken)) throw new ShiftRuleException("running_shift_exists");
                     var payload = command.Payload.Deserialize<StartShiftPayload>(JsonOptions) ?? throw new ShiftRuleException("invalid_payload");
                     var startFacts = await facts.ReadAsync(actor.EmployeeId, payload.WorkWithoutVehicle ? null : payload.TruckId, payload.TrailerId, command.DeviceTime, context, cancellationToken);
-                    if (!startFacts.Active) throw new ShiftRuleException("employee_not_active");
+                    if (!startFacts.Active) throw new ShiftRuleException(startFacts.EmployeeStatus == "suspended" ? "account_suspended" : "account_not_active");
                     var truckId = payload.WorkWithoutVehicle ? null : payload.TruckId ?? startFacts.SuggestedTruckId;
                     var blocked = truckId is not null && (!startFacts.DriverCanDrive || !startFacts.TruckUsable);
                     if (blocked && !payload.StartedOffline) throw new ShiftRuleException(startFacts.DriverCanDrive ? "truck_unusable" : "driver_blocked");

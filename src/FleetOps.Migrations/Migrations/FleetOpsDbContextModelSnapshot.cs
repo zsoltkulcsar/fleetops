@@ -1698,6 +1698,24 @@ namespace FleetOps.Migrations.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("last_name");
 
+                    b.Property<Guid?>("LeaveActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("leave_actor_id");
+
+                    b.Property<string>("LeaveReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("leave_reason");
+
+                    b.Property<DateTimeOffset?>("LeaveShiftEnd")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("leave_shift_end");
+
+                    b.Property<string>("LeaveShiftReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("leave_shift_reason");
+
                     b.Property<string>("PersonnelNumber")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")

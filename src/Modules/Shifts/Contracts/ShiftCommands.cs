@@ -54,7 +54,10 @@ public interface IShiftCommandStore
     Task SaveAsync(Shift? shift, CommandReceipt receipt, ConflictRecord? conflict, CommandContext context, CancellationToken cancellationToken);
 }
 
-public sealed record ShiftStartFacts(bool Active, bool DriverCanDrive, Guid? SuggestedTruckId, bool TruckUsable, bool TrailerUsable);
+public sealed record ShiftStartFacts(bool Active, bool DriverCanDrive, Guid? SuggestedTruckId, bool TruckUsable, bool TrailerUsable)
+{
+    public string EmployeeStatus { get; init; } = Active ? "active" : "inactive";
+}
 public interface IShiftStartFacts
 {
     Task<ShiftStartFacts> ReadAsync(Guid employeeId, Guid? truckId, Guid? trailerId, DateTimeOffset startAt, CommandContext context, CancellationToken cancellationToken);

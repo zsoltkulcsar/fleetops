@@ -20,7 +20,7 @@ public sealed class EfEnrolmentStore(IConfiguration configuration) : IEnrolmentS
             db.Database.UseTransaction(context.DbTransaction);
         return db;
     }
-    private static EnrolmentEmployee Project(Employee employee) => new(employee.Id, employee.PersonnelNumber, employee.Phone, employee.Status is EmployeeStatus.Active or EmployeeStatus.Onboarding, employee.EndDate, employee.Roles, employee.FirstName);
+    private static EnrolmentEmployee Project(Employee employee) => new(employee.Id, employee.PersonnelNumber, employee.Phone, employee.Status is EmployeeStatus.Active or EmployeeStatus.Onboarding, employee.EndDate, employee.Roles, employee.FirstName) { EmployeeStatus = employee.Status.ToString().ToLowerInvariant() };
     public async Task<EnrolmentEmployee?> LockEmployeeAsync(Guid id, CommandContext context, CancellationToken ct)
     {
         await using var db = CreateDb(context);

@@ -13,6 +13,6 @@ public sealed class DriverConfigHandler(IEnrolmentStore store, ISettings setting
             await EnrolmentRules.PositiveSetting(settings, "driver.max_pin_tries", null, cancellationToken),
             await EnrolmentRules.PositiveSetting(settings, "driver.max_offline_days", null, cancellationToken),
             options.Value.OfficePhone ?? throw new InvalidOperationException("Office phone is not configured."),
-            employee.FirstName);
+            employee.FirstName) { EmployeeStatus = employee.EmployeeStatus };
     }
 }

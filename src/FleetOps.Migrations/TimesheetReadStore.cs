@@ -16,7 +16,7 @@ public sealed class EfTimesheetReadStore(FleetOpsDbContext db, IConfiguration co
     {
         var end = week.AddDays(6);
         var employees = db.Employees.AsNoTracking().Where(employee => employee.Roles.Contains("\"driver\"") && employee.StartDate <= end &&
-            ((employee.Status == EmployeeStatus.Active && (employee.EndDate == null || employee.EndDate >= week)) || employee.EndDate >= week));
+            (((employee.Status == EmployeeStatus.Active || employee.Status == EmployeeStatus.Suspended) && (employee.EndDate == null || employee.EndDate >= week)) || employee.EndDate >= week));
         if (!string.IsNullOrWhiteSpace(search))
         {
             var term = search.ToLowerInvariant();

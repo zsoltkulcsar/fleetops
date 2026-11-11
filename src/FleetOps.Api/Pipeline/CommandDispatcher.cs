@@ -58,6 +58,12 @@ public sealed class CommandDispatcher(IAccessContextAccessor accessor, ICommandP
         catch { try { await transaction.RollbackAsync(CancellationToken.None); } catch { } throw; }
     }
 
+    internal async Task ApplyScheduledLeaveAsync(Guid employeeId, DateOnly today, CommandContext context, CancellationToken cancellationToken)
+    {
+        var handler = services.GetRequiredService<ICommandHandler<FleetOps.People.ApplyScheduledLeaveCommand, FleetOps.People.PersonSaveResult>>();
+        await handler.HandleAsync(new(employeeId, today), AccessContext.For(Guid.Empty, RoleCode.Hr), context, cancellationToken);
+    }
+
     // Only the driver authentication command can enter without an existing session.
     public async Task<FleetOps.Identity.EnrolDriverResult?> DispatchAsync(FleetOps.Identity.EnrolDriverCommand command, CancellationToken cancellationToken = default)
     {

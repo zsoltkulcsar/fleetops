@@ -12,6 +12,7 @@ public sealed class EfShiftReminderFacts : IShiftReminderFacts
     public async Task<ShiftReminderFacts> ReadAsync(Guid employeeId, DateOnly today, CommandContext context, CancellationToken cancellationToken)
     {
         await using var db = AlertEvaluatorDb.CreateDb(context);
+        if (!await db.Employees.AnyAsync(employee => employee.Id == employeeId && employee.Status != FleetOps.People.EmployeeStatus.Left, cancellationToken)) return new(false, [], false, today);
         IsInCycle membership = new EfIsInCycle(db);
         var from = today.AddDays(-28);
         var candidates = Enumerable.Range(0, 28).Select(offset => from.AddDays(offset)).ToArray();

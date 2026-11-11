@@ -36,10 +36,11 @@ public sealed class SessionAccessor(FleetOpsDbContext db, ICompanyTimeService cl
         var lifetimeExpired = session.Device == "driver"
             ? now - session.CreatedAt > TimeSpan.FromDays(await EnrolmentRules.PositiveSetting(settings, "driver.session_days", null, httpContext.RequestAborted))
             : now - session.LastSeenAt > _options.IdleSessionLifetime || now - session.CreatedAt > _options.AbsoluteSessionLifetime;
-        if (employee is null || employee.Status != EmployeeStatus.Active || ended || pendingExpired || lifetimeExpired)
+        var allowedDriver = session.Device == "driver" && employee is not null && AuthTokens.ParseRoles(employee.Roles).Contains(RoleCode.Driver) && employee.Status is EmployeeStatus.Onboarding or EmployeeStatus.Suspended;
+        if (employee is null || (employee.Status != EmployeeStatus.Active && !allowedDriver) || ended || pendingExpired || lifetimeExpired)
         {
             session.RevokedAt = now;
-            httpContext.Items["ProblemCode"] = "session_expired";
+            httpContext.Items["ProblemCode"] = employee?.Status == EmployeeStatus.Suspended ? "account_suspended" : "session_expired";
             await db.SaveChangesAsync(httpContext.RequestAborted);
             httpContext.Response.Cookies.Delete(AuthEndpoints.CookieName, new CookieOptions { Path = "/", Secure = true, HttpOnly = true, SameSite = SameSiteMode.Strict });
             return;

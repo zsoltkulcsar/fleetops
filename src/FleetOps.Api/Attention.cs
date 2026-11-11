@@ -10,7 +10,11 @@ using Microsoft.EntityFrameworkCore;
 namespace FleetOps.Api;
 
 [VisibleTo(RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner)]
-public sealed record AttentionItem(Guid Id, string RuleId, AlertSeverity Severity, string ScopeKey, DateOnly? DueAt, AlertStatus Status, bool Snoozable, int Version);
+public sealed record AttentionItem(Guid Id, string RuleId, AlertSeverity Severity, string ScopeKey, DateOnly? DueAt, AlertStatus Status, bool Snoozable, int Version)
+{
+    public IReadOnlyList<string> Actions { get; init; } = [];
+    public bool ReadOnly { get; init; }
+}
 [VisibleTo(RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner)]
 public sealed record AttentionGroup(string SubjectType, Guid SubjectId, string SubjectName, AlertSeverity WorstSeverity, IReadOnlyList<AttentionItem> Items);
 [VisibleTo(RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner)]
@@ -54,12 +58,12 @@ public static class AlertVisibility
     {
         RoleCode.Owner => true,
         RoleCode.Hr => HrRules.Contains(ruleId) && (ruleId != "A-03" || subjectType == "employee"),
-        RoleCode.Dispatcher => ((ruleId is "A-07" or "A-08") && subjectType == "defect") || (ruleId == "A-05" && subjectType == "vehicle") || (ruleId == "A-03" && subjectType == "vehicle") || ((ruleId is "A-09" or "A-15") && subjectType == "employee") || ((ruleId is "A-10" or "A-16") && subjectType == "shift") || ((ruleId is "A-20" or "A-21") && subjectType == "cycle"),
+        RoleCode.Dispatcher => ((ruleId is "A-07" or "A-08") && subjectType == "defect") || ((ruleId is "A-04" or "A-05") && subjectType == "vehicle") || (ruleId == "A-03" && subjectType == "vehicle") || ((ruleId is "A-09" or "A-15") && subjectType == "employee") || ((ruleId is "A-10" or "A-16") && subjectType == "shift") || ((ruleId is "A-20" or "A-21") && subjectType == "cycle"),
         _ => false,
     };
 }
 
-public sealed class AttentionQueryHandler(IConfiguration configuration, TimeProvider time) : IQueryHandler<GetAttentionQuery, AttentionResult>
+public sealed class AttentionQueryHandler(IConfiguration configuration, TimeProvider time, ICompanyTimeService companyTime) : IQueryHandler<GetAttentionQuery, AttentionResult>
 {
     public async Task<AttentionResult> HandleAsync(GetAttentionQuery query, AccessContext actor, CancellationToken cancellationToken)
     {
@@ -67,6 +71,8 @@ public sealed class AttentionQueryHandler(IConfiguration configuration, TimeProv
         await using var db = new FleetOpsDbContext(options);
         var roles = actor.Roles.ToArray();
         var now = time.GetUtcNow();
+        var dispatcherLimit = companyTime.ToCompanyDate(now).AddDays(7);
+        var hrAccess = roles.Contains(RoleCode.Hr) || roles.Contains(RoleCode.Owner);
         var visible = db.Alerts.AsNoTracking().Where(x => x.Status != AlertStatus.Resolved && (x.Status != AlertStatus.Snoozed || x.SnoozedUntil <= now || x.SnoozedUntil == null));
         if (!roles.Contains(RoleCode.Owner))
         {
@@ -74,7 +80,7 @@ public sealed class AttentionQueryHandler(IConfiguration configuration, TimeProv
             var dispatcher = roles.Contains(RoleCode.Dispatcher);
             visible = visible.Where(x =>
                 (hr && ((x.RuleId == "A-01") || (x.RuleId == "A-02") || (x.RuleId == "A-03" && db.Documents.Where(d => d.Id == x.SubjectId).Select(d => d.OwnerType).FirstOrDefault() == DocumentOwnerType.Employee) || x.RuleId == "A-13" || x.RuleId == "A-14" || x.RuleId == "A-17" || x.RuleId == "A-18")) ||
-                (dispatcher && (((x.RuleId == "A-10" || x.RuleId == "A-16") && x.SubjectType == "shift") || x.RuleId == "A-07" || x.RuleId == "A-08" || x.RuleId == "A-05" || x.RuleId == "A-09" || x.RuleId == "A-15" || ((x.RuleId == "A-20" || x.RuleId == "A-21") && x.SubjectType == "cycle") || (x.RuleId == "A-03" && db.Documents.Where(d => d.Id == x.SubjectId).Select(d => d.OwnerType).FirstOrDefault() == DocumentOwnerType.Vehicle))));
+                (dispatcher && ((x.RuleId == "A-01" && x.DueAt != null && x.DueAt <= dispatcherLimit) || x.RuleId == "A-04" || ((x.RuleId == "A-10" || x.RuleId == "A-16") && x.SubjectType == "shift") || x.RuleId == "A-07" || x.RuleId == "A-08" || x.RuleId == "A-05" || x.RuleId == "A-09" || x.RuleId == "A-15" || ((x.RuleId == "A-20" || x.RuleId == "A-21") && x.SubjectType == "cycle") || (x.RuleId == "A-03" && db.Documents.Where(d => d.Id == x.SubjectId).Select(d => d.OwnerType).FirstOrDefault() == DocumentOwnerType.Vehicle))));
         }
         var rows = await visible.Select(x => new
         {
@@ -86,7 +92,7 @@ public sealed class AttentionQueryHandler(IConfiguration configuration, TimeProv
                 : x.SubjectType == "cycle" ? db.Cycles.Where(cycle => cycle.Id == x.SubjectId).Select(cycle => db.Vehicles.Where(vehicle => vehicle.Id == cycle.VehicleId).Select(vehicle => vehicle.Plate).FirstOrDefault() + " / " + db.Employees.Where(employee => employee.Id == cycle.EmployeeId).Select(employee => employee.FirstName + " " + employee.LastName).FirstOrDefault()).FirstOrDefault()
                 : x.SubjectType == "shift" ? db.Shifts.Where(shift => shift.Id == x.SubjectId).Select(shift => db.Employees.Where(employee => employee.Id == shift.EmployeeId).Select(employee => employee.FirstName + " " + employee.LastName).FirstOrDefault()).FirstOrDefault() : x.SubjectType == "employee" ? db.Employees.Where(e => e.Id == x.SubjectId).Select(e => e.FirstName + " " + e.LastName).FirstOrDefault() : db.Vehicles.Where(v => v.Id == x.SubjectId).Select(v => v.Plate).FirstOrDefault(),
         }).ToListAsync(cancellationToken);
-        var groups = rows.Where(x => x.SubjectId.HasValue && x.SubjectName != null).GroupBy(x => new { x.SubjectType, Id = x.SubjectId!.Value, Name = x.SubjectName! }).Select(group => new AttentionGroup(group.Key.SubjectType!, group.Key.Id, group.Key.Name, group.Max(x => x.Alert.Severity), group.OrderByDescending(x => x.Alert.Severity).ThenBy(x => x.Alert.DueAt).Select(x => new AttentionItem(x.Alert.Id, x.Alert.RuleId, x.Alert.Severity, x.Alert.ScopeKey, x.Alert.DueAt, x.Alert.Status, x.Alert.Severity != AlertSeverity.Critical, x.Alert.Version)).ToList())).OrderByDescending(x => x.WorstSeverity).ThenBy(x => x.Items.Min(y => y.DueAt)).ThenBy(x => x.SubjectName).ToList();
+        var groups = rows.Where(x => x.SubjectId.HasValue && x.SubjectName != null).GroupBy(x => new { x.SubjectType, Id = x.SubjectId!.Value, Name = x.SubjectName! }).Select(group => new AttentionGroup(group.Key.SubjectType!, group.Key.Id, group.Key.Name, group.Max(x => x.Alert.Severity), group.OrderByDescending(x => x.Alert.Severity).ThenBy(x => x.Alert.DueAt).Select(x => new AttentionItem(x.Alert.Id, x.Alert.RuleId, x.Alert.Severity, !hrAccess && x.Alert.RuleId == "A-01" && x.Alert.ScopeKey == "medical" ? "Document" : x.Alert.ScopeKey, x.Alert.DueAt, x.Alert.Status, x.Alert.Severity != AlertSeverity.Critical && (hrAccess || x.Alert.RuleId != "A-01"), x.Alert.Version) { ReadOnly = !hrAccess && x.Alert.RuleId == "A-01", Actions = hrAccess && x.Alert.RuleId == "A-02" ? ["Suspend driver"] : x.Alert.RuleId == "A-04" ? [x.Alert.ScopeKey == "lease_end" ? "Open vehicle" : "Upload renewal"] : [] }).ToList())).OrderByDescending(x => x.WorstSeverity).ThenBy(x => x.Items.Min(y => y.DueAt)).ThenBy(x => x.SubjectName).ToList();
         var employeeExists = await db.Employees.AnyAsync(x => x.Roles.Contains("driver"), cancellationToken);
         var vehicleExists = await db.Vehicles.AnyAsync(cancellationToken);
         return new(groups, new(rows.Count, rows.Count(x => x.Alert.Severity == AlertSeverity.Critical)), !employeeExists && !vehicleExists);

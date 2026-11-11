@@ -585,7 +585,7 @@ public sealed partial class SignInTests : IClassFixture<AuthApiFactory>
         var outcome = await RefuseSessionAfterStatusChange(EmployeeStatus.Suspended);
 
         Assert.Equal(HttpStatusCode.Unauthorized, outcome.SessionStatus);
-        Assert.Equal("session_expired", outcome.SessionCode);
+        Assert.Equal("account_suspended", outcome.SessionCode);
         Assert.NotNull(outcome.RevokedAt);
         Assert.Equal(HttpStatusCode.Unauthorized, outcome.SignInStatus);
         Assert.Equal("sign_in_failed", outcome.SignInCode);

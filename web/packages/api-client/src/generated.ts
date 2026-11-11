@@ -76,6 +76,209 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/people/{id}/leave-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    endDate?: string;
+                };
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LeavePreview"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/people/{id}/leave": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["LeavePersonRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PersonSaveResult"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/people/{id}/rehire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PersonReasonRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PersonSaveResult"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/people/{id}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PersonReasonRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PersonSaveResult"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/people/{id}/suspend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PersonReasonRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PersonSaveResult"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/people": {
         parameters: {
             query?: never;
@@ -3647,6 +3850,8 @@ export interface components {
             snoozable: boolean;
             /** Format: int32 */
             version: number;
+            actions?: string[];
+            readOnly?: boolean;
         };
         AttentionResult: {
             groups: components["schemas"]["AttentionGroup"][];
@@ -4088,6 +4293,7 @@ export interface components {
             maxOfflineDays: number;
             officePhone: string;
             name: string;
+            employeeStatus?: string;
         };
         DriverCycle: {
             /** Format: uuid */
@@ -4216,6 +4422,7 @@ export interface components {
             documents: components["schemas"]["DriverDocument"][];
             canDrive: boolean;
             readinessCauses: components["schemas"]["ReadinessCause"][];
+            employeeStatus?: string;
             swaps?: components["schemas"]["DriverSwap"][];
             defects?: components["schemas"]["DriverOwnDefect"][];
         };
@@ -4410,6 +4617,31 @@ export interface components {
             errorType?: null | string;
         };
         JsonElement: unknown;
+        LeavePersonRequest: {
+            /** Format: date */
+            endDate: null | string;
+            reason: null | string;
+            /** Format: date-time */
+            runningShiftEnd?: null | string;
+            runningShiftReason?: null | string;
+        };
+        LeavePreview: {
+            /** Format: uuid */
+            employeeId: string;
+            /** Format: date */
+            endDate: string;
+            sessionsToRevoke: string[];
+            assignmentsToEnd: string[];
+            assignmentsToRemove: string[];
+            cyclesToEnd: string[];
+            cyclesToRemove: string[];
+            alertsToResolve: string[];
+            /** Format: uuid */
+            runningShiftId: null | string;
+            /** Format: int32 */
+            runningShiftVersion: null | number;
+            shiftsToApprove: string[];
+        };
         LogOfficeDefectCommand: {
             /** Format: uuid */
             vehicleId: string;
@@ -4587,6 +4819,9 @@ export interface components {
             adrRequired: boolean;
             /** Format: double */
             vacationEntitlementDays?: null | number;
+        };
+        PersonReasonRequest: {
+            reason: null | string;
         };
         PersonRow: {
             /** Format: uuid */

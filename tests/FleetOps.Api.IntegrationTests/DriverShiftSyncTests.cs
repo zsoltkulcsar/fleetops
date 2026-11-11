@@ -189,7 +189,7 @@ public sealed class DriverShiftSyncTests : IAsyncLifetime
         using var client = factory.AsDriver(employeeId);
         var result = Assert.Single((await Batch(client, Command("shift.start", Guid.NewGuid(), 0, new { workWithoutVehicle = true }))).Results);
         Assert.Equal("failed", result.Status);
-        Assert.Equal("employee_not_active", result.Code);
+        Assert.Equal("account_suspended", result.Code);
         await using var db = Database();
         Assert.False(await db.Shifts.AnyAsync(Cancellation));
         Assert.Equal("failed", Assert.Single(await db.CommandReceipts.ToListAsync(Cancellation)).Outcome);

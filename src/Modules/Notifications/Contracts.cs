@@ -65,6 +65,14 @@ public static class NotificationTemplates
     {
         if (templateCode == "assignment_changed") return string.Equals(language, "de", StringComparison.OrdinalIgnoreCase) ? "Ihre Fahrzeugzuordnung wurde ge\u00e4ndert. Bitte pr\u00fcfen Sie Ihren Dienstplan." : "Your truck assignment has changed. Please check your schedule.";
         var german = string.Equals(language, "de", StringComparison.OrdinalIgnoreCase);
+        if (templateCode == "doc_expiring")
+        {
+            var type = parameters.TryGetValue("documentType", out var documentType) ? documentType.GetString() : null;
+            if (type is "Document" or "medical") return german ? "Bitte Dokumente pr\u00fcfen" : "Please check your documents";
+            var label = DocumentTypeLabel(type, german);
+            return german ? $"Dokument {label} l\u00e4uft bald ab" : $"Your {label} document expires soon";
+        }
+        if (templateCode == "expiry_warning") return german ? "Ein Ablaufhinweis erfordert Ihre Aufmerksamkeit" : "An expiry warning needs your attention";
         if (templateCode == "vehicle_unusable") return german ? "Ihr Fahrzeug ist nicht einsatzbereit. Bitte kontaktieren Sie die Disposition." : "Your vehicle is off road. Please contact dispatch.";
         if (templateCode == "defect_cancelled") return german ? "Die kritische Mangelmeldung wurde vom Fahrer storniert." : "The critical defect report was cancelled by the driver.";
         if (templateCode == "shift_rejected") return german ? "Ihre Schicht wurde abgelehnt. Bitte korrigieren und erneut einreichen." : "Your shift was rejected. Fix it and resubmit.";

@@ -539,7 +539,9 @@ public sealed partial class SignInTests
             .Single(part => part.StartsWith("expires=", StringComparison.OrdinalIgnoreCase))[8..];
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        Assert.Equal("session_expired", CodeOf(await BodyOf(response)));
+        // Story 7.4: a suspended office user is refused with its own code; every other case is an expiry.
+        var expectedCode = expirationCase == "suspended employee" ? "account_suspended" : "session_expired";
+        Assert.Equal(expectedCode, CodeOf(await BodyOf(response)));
         Assert.True(DateTimeOffset.TryParse(expiryText, out var expiry));
         Assert.True(expiry < factory.Clock.GetUtcNow());
     }

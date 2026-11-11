@@ -261,16 +261,18 @@ public sealed class DriverEnrolmentTests
     }
 
     [Fact]
-    public async Task Driver_session_ends_when_employee_is_suspended()
+    public async Task Driver_session_stays_when_employee_is_suspended()
     {
+        // Story 7.4: a suspended driver keeps the phone session so the app can say "Account suspended".
         await using var scenario = await DriverEnrolmentScenario.Create();
         using var client = await scenario.FullDriver();
         using var before = await client.GetAsync("/api/v1/driver/config");
         Assert.Equal(HttpStatusCode.OK, before.StatusCode);
         await scenario.EditDriver(employee => employee.Status = EmployeeStatus.Suspended);
         using var after = await client.GetAsync("/api/v1/driver/config");
-        await Refused(after, HttpStatusCode.Unauthorized, "session_expired");
-        Assert.NotNull(Assert.Single(await scenario.Sessions()).RevokedAt);
+        Assert.Equal(HttpStatusCode.OK, after.StatusCode);
+        Assert.Contains("suspended", await after.Content.ReadAsStringAsync(), StringComparison.OrdinalIgnoreCase);
+        Assert.Null(Assert.Single(await scenario.Sessions()).RevokedAt);
     }
 
     [Fact]

@@ -19,6 +19,10 @@ public sealed class Employee
     public decimal? VacationEntitlementDays { get; set; }
     public DateOnly StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
+    public string? LeaveReason { get; set; }
+    public Guid? LeaveActorId { get; set; }
+    public DateTimeOffset? LeaveShiftEnd { get; set; }
+    public string? LeaveShiftReason { get; set; }
     public CyclePattern? CyclePattern { get; set; }
     public int CyclePatternVersion { get; set; }
 }

@@ -171,7 +171,7 @@ public sealed class JobRunner(IConfiguration configuration, IEnumerable<IJob> jo
     }
 }
 
-public sealed class AlertsSweepJob(IConfiguration configuration, IAlertEngine engine, TimeProvider time) : IJob
+public sealed class AlertsSweepJob(IConfiguration configuration, IAlertEngine engine, TimeProvider time, FleetOps.Kernel.ICompanyTimeService companyTime, CommandDispatcher dispatcher) : IJob
 {
     public string Name => "alerts-sweep";
 
@@ -180,15 +180,18 @@ public sealed class AlertsSweepJob(IConfiguration configuration, IAlertEngine en
         var connectionString = DatabaseConnectionString.Resolve(configuration) ?? throw new InvalidOperationException("Database is not configured.");
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync(cancellationToken);
-        await using var select = new NpgsqlCommand("select subject_type, subject_id from (select 'employee' subject_type, id subject_id from fleetops.employees where roles::jsonb @> '[\"driver\"]' and status = 'Active' union select 'defect', id from fleetops.defect_reports where severity in ('critical', 'major') and status in ('open', 'acknowledged', 'in_repair') union select 'vehicle', id from fleetops.vehicles where status = 'Active' union select 'document', id from fleetops.documents where status = 'Uploaded' union select 'cycle', id from fleetops.cycles where status in ('Planned', 'Active', 'Overrun') union select 'shift', id from fleetops.shifts where status in ('Submitted', 'Running') union select subject_type, subject_id from fleetops.alerts where status <> 'Resolved') subjects where ($1::text is null or subject_type || ':' || subject_id::text > $1) order by subject_type, subject_id limit 100", connection);
+        await using var select = new NpgsqlCommand("select subject_type, subject_id from (select 'employee' subject_type, id subject_id from fleetops.employees where roles::jsonb @> '[\"driver\"]' and status <> 'Left' union select 'employee', id from fleetops.employees where status in ('Active', 'Suspended') and leave_reason is not null and end_date <= $2 union select 'defect', id from fleetops.defect_reports where severity in ('critical', 'major') and status in ('open', 'acknowledged', 'in_repair') union select 'vehicle', id from fleetops.vehicles where status = 'Active' union select 'document', id from fleetops.documents where status = 'Uploaded' union select 'cycle', id from fleetops.cycles where status in ('Planned', 'Active', 'Overrun') union select 'shift', id from fleetops.shifts where status in ('Submitted', 'Running') union select subject_type, subject_id from fleetops.alerts where status <> 'Resolved') subjects where ($1::text is null or subject_type || ':' || subject_id::text > $1) order by subject_type, subject_id limit 100", connection);
         select.Parameters.AddWithValue(context.Cursor is null ? DBNull.Value : context.Cursor);
+        select.Parameters.AddWithValue(companyTime.ToCompanyDate(time.GetUtcNow()));
         var subjects = new List<(string Type, Guid Id)>();
         await using (var reader = await select.ExecuteReaderAsync(cancellationToken))
             while (await reader.ReadAsync(cancellationToken)) subjects.Add((reader.GetString(0), reader.GetGuid(1)));
         foreach (var subject in subjects)
         {
             await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
-            await engine.ApplyAsync(subject.Type, subject.Id, new CommandContext(connection, transaction), cancellationToken);
+            var commandContext = new CommandContext(connection, transaction);
+            if (subject.Type == "employee") await dispatcher.ApplyScheduledLeaveAsync(subject.Id, companyTime.ToCompanyDate(time.GetUtcNow()), commandContext, cancellationToken);
+            await engine.ApplyAsync(subject.Type, subject.Id, commandContext, cancellationToken);
             await transaction.CommitAsync(cancellationToken);
         }
         var cursor = subjects.Count == 0 ? context.Cursor : $"{subjects[^1].Type}:{subjects[^1].Id}";

@@ -1,3 +1,4 @@
+using FleetOps.Kernel;
 using FleetOps.Kernel.Authorization;
 using FleetOps.Modules.Audit;
 using FleetOps.Modules.Documents;
@@ -7,7 +8,7 @@ using Npgsql;
 
 namespace FleetOps.Migrations;
 
-public sealed class EfPeopleStore(IConfiguration configuration, TimeProvider time) : IPeopleStore
+public sealed class EfPeopleStore(IConfiguration configuration, TimeProvider time, IChangedSubjects? changedSubjects = null) : IPeopleStore
 {
     private FleetOpsDbContext Open(CommandContext? context)
     {
@@ -55,13 +56,14 @@ public sealed class EfPeopleStore(IConfiguration configuration, TimeProvider tim
                 OldValue = change.OldValue,
                 NewValue = change.NewValue,
                 ActorId = actor.EmployeeId.ToString(),
-                Reason = create ? "person_created" : "person_updated",
+                Reason = change.Reason ?? (create ? "person_created" : "person_updated"),
                 CreatedAt = time.GetUtcNow()
             });
         }
         try
         {
             await db.SaveChangesAsync(cancellationToken);
+            changedSubjects?.Add("employee", employee.Id);
         }
         catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "IX_employees_personnel_number" })
         {

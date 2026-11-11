@@ -26,6 +26,7 @@ public sealed class DriverSnapshotQueryHandler(FleetOpsDbContext db, ICompanyTim
         var defects = await db.DefectReports.AsNoTracking().Where(defect => defect.ReportedBy == actor.EmployeeId).OrderByDescending(defect => defect.ReportedAt).ToListAsync(cancellationToken);
         return new(actor.EmployeeId, generatedAt, cycles, documents, own.CanDrive, own.Causes)
         {
+            EmployeeStatus = (await db.Employees.Where(employee => employee.Id == actor.EmployeeId).Select(employee => employee.Status).SingleAsync(cancellationToken)).ToString().ToLowerInvariant(),
             Swaps = await db.Assignments.AsNoTracking().Where(assignment => assignment.EmployeeId == actor.EmployeeId &&
                 assignment.From < horizon && (assignment.To == null || assignment.To >= today.AddDays(-28)))
                 .OrderBy(assignment => assignment.From).Select(assignment => new DriverSwap(assignment.Id, assignment.VehicleId,
