@@ -1,6 +1,9 @@
 import { apiClient } from "@fleetops/api-client";
 
 let revoked = false;
+export function isSessionRevoked() {
+  return revoked;
+}
 function notify(code: unknown) {
   if (code === "session_revoked" && !revoked) {
     revoked = true;

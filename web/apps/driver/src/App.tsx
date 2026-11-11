@@ -7,7 +7,7 @@ import { PinForm } from "./PinForm";
 import { en } from "./i18n/en";
 import { localStore } from "./storage/localStore";
 import { commandQueue } from "./storage/commandQueue";
-import { resetSessionState } from "./sessionEvents";
+import { isSessionRevoked, resetSessionState } from "./sessionEvents";
 import { resetVaultPin } from "./storage/resetVaultPin";
 import {
   createVault,
@@ -98,17 +98,23 @@ export function App() {
   }, []);
 
   const checkSession = useCallback(async () => {
-    if (!navigator.onLine) return;
+    if (!navigator.onLine) return true;
     let status: number;
     try {
       status = await driverApi.session();
     } catch {
-      return;
+      return true;
     }
     if (status === 401) {
       if ((await localStore.get<string>("revoked")) === undefined) setStage("expired");
+      return false;
     } else if (status === 200) {
-      const fresh = await driverApi.config();
+      let fresh;
+      try {
+        fresh = await driverApi.config();
+      } catch {
+        return !isSessionRevoked();
+      }
       setEmployeeStatus(fresh.employeeStatus);
       if (fresh.pinResetRequired) {
         client.setQueryData(["driver-config"], fresh);
@@ -121,6 +127,7 @@ export function App() {
       if (current && !current.locked) setStage(isUnlocked() ? "shell" : "unlock");
       return true;
     }
+    return true;
   }, [officePhone, client]);
 
   useEffect(() => {
@@ -362,7 +369,7 @@ export function App() {
               const current = await readVault();
               setVault(current);
               if (result === "unlocked") {
-                if ((await checkSession()) && isUnlocked()) setStage("shell");
+                if ((await checkSession()) && !isSessionRevoked() && isUnlocked()) setStage("shell");
               } else if (result === "wrong" && current) {
                 setError(en.triesLeft(current.config.maxPinTries - current.failedTries));
               } else setStage(result === "missing" ? "enrol" : result === "expired" ? "expired" : "locked");
@@ -389,16 +396,14 @@ export function App() {
               onClick={() =>
                 void run(async () => {
                   lockVault();
-                  await Promise.allSettled([
-                    eraseVault(),
-                    localStore.clear(),
-                    (async () => {
-                      if ("caches" in window) {
-                        for (const key of await caches.keys())
-                          if (key.includes("fleetops") || key.includes("workbox")) await caches.delete(key);
-                      }
-                    })(),
-                  ]);
+                  await eraseVault();
+                  await localStore.clear();
+                  await localStore.set("install-dismissed", true);
+                  setInstall(false);
+                  if ("caches" in window) {
+                    for (const key of await caches.keys())
+                      if (key.includes("fleetops") || key.includes("workbox")) await caches.delete(key);
+                  }
                   sessionStorage.removeItem("driver-onboarding");
                   client.clear();
                   setVault(undefined);

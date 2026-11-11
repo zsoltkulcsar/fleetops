@@ -149,6 +149,7 @@ test("release is hidden when no type is enabled", async ({ page }) => {
 });
 
 test("release shows the banner until valid until", async ({ page }) => {
+  // The clock runs from 12:00 so the page can load; the override ends at 12:05.
   await page.clock.install({ time: new Date("2026-11-11T12:00:00Z") });
   const vehicle = releaseVehicle();
   vehicle.release = {
@@ -156,7 +157,7 @@ test("release shows the banner until valid until", async ({ page }) => {
     allowed: false,
     expiredTypes: ["hu_report"],
     releasableTypes: ["hu_report"],
-    activeOverride: { byName: "Olivia Owner", validUntil: "2026-11-11T12:01:00Z" },
+    activeOverride: { byName: "Olivia Owner", validUntil: "2026-11-11T12:05:00Z" },
   };
   const list: components["schemas"]["VehicleListResult"] = { items: [vehicle], nextCursor: null };
   await page.route("**/api/v1/fleet/vehicles?*", (route) => route.fulfill({ json: list }));
@@ -164,9 +165,9 @@ test("release shows the banner until valid until", async ({ page }) => {
   await page.goto("/fleet");
   const banner = page.getByText("Released by Olivia Owner until 11.11.", { exact: true });
   await expect(banner).toBeVisible();
-  await page.clock.runFor(59_000);
+  await page.clock.runFor(3 * 60_000);
   await expect(banner).toBeVisible();
-  await page.clock.runFor(1_001);
+  await page.clock.runFor(3 * 60_000);
   await expect(banner).toHaveCount(0);
   await expect(page.getByText("B-X 1001", { exact: true })).toBeVisible();
 });

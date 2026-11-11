@@ -46,6 +46,7 @@ export function PersonForm({
   const [withPattern, setWithPattern] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
+  const [invalidFields, setInvalidFields] = useState<string[]>([]);
   const [stepUp, setStepUp] = useState(false);
   const [code, setCode] = useState("");
   const trucks = useQuery({
@@ -53,6 +54,16 @@ export function PersonForm({
     queryFn: () => fleetApi.list({ kind: "truck" }),
     enabled: !person && roles.includes("driver") && withPattern,
   });
+  const validation = (key: string) => ({
+    "aria-invalid": invalidFields.includes(key) || undefined,
+    "aria-describedby": invalidFields.includes(key) ? `${prefix}-${key}-error` : undefined,
+  });
+  const fieldError = (key: string, label: string) =>
+    invalidFields.includes(key) && (
+      <p id={`${prefix}-${key}-error`} role="alert">
+        Check {label.toLowerCase()}.
+      </p>
+    );
   const field = (key: keyof PersonFields, label: string, type = "text", required = false) => (
     <div className="people-field">
       <label htmlFor={`${prefix}-${key}`}>{label}</label>
@@ -64,14 +75,24 @@ export function PersonForm({
         maxLength={key === "email" ? 320 : 100}
         value={String(fields[key] ?? "")}
         readOnly={key === "phone" && Boolean(person)}
-        aria-describedby={key === "phone" && person ? `${prefix}-phone-note` : undefined}
+        aria-invalid={invalidFields.includes(key) || undefined}
+        aria-describedby={
+          [
+            key === "phone" && person ? `${prefix}-phone-note` : "",
+            invalidFields.includes(key) ? `${prefix}-${key}-error` : "",
+          ]
+            .filter(Boolean)
+            .join(" ") || undefined
+        }
         onChange={(event) => setFields({ ...fields, [key]: event.target.value })}
       />
+      {fieldError(key, label)}
     </div>
   );
   async function save() {
     setPending(true);
     setError("");
+    setInvalidFields([]);
     try {
       if (stepUp) {
         const result = await apiClient.POST("/api/v1/auth/step-up", { body: { code } });
@@ -96,6 +117,7 @@ export function PersonForm({
       }
       onSaved(result, patternFailed);
     } catch (failure) {
+      if (failure instanceof PeopleError && failure.status === 400) setInvalidFields(failure.fields);
       if (failure instanceof PeopleError && failure.code === "step_up_required") {
         setStepUp(true);
         setError("Enter your authenticator code to add an owner.");
@@ -151,6 +173,7 @@ export function PersonForm({
                   <input
                     id={`${prefix}-role-${role}`}
                     type="checkbox"
+                    {...validation("roles")}
                     checked={roles.includes(role)}
                     onChange={(event) =>
                       setRoles(
@@ -161,6 +184,7 @@ export function PersonForm({
                   <label htmlFor={`${prefix}-role-${role}`}>{label}</label>
                 </div>
               ))}
+            {fieldError("roles", "Roles")}
           </fieldset>
         )}
         <fieldset disabled={pending || !online}>
@@ -170,6 +194,7 @@ export function PersonForm({
             <label htmlFor={`${prefix}-employment`}>Employment type</label>
             <select
               id={`${prefix}-employment`}
+              {...validation("employmentType")}
               required
               value={fields.employmentType ?? ""}
               onChange={(event) => setFields({ ...fields, employmentType: event.target.value })}
@@ -179,22 +204,26 @@ export function PersonForm({
               <option value="minijob">Minijob</option>
               <option value="other">Other</option>
             </select>
+            {fieldError("employmentType", "Employment type")}
           </div>
           <div className="people-field">
             <label htmlFor={`${prefix}-language`}>Language</label>
             <select
               id={`${prefix}-language`}
+              {...validation("languagePref")}
               value={fields.languagePref ?? "de"}
               onChange={(event) => setFields({ ...fields, languagePref: event.target.value })}
             >
               <option value="de">German</option>
               <option value="en">English</option>
             </select>
+            {fieldError("languagePref", "Language")}
           </div>
           <div className="people-field">
             <label htmlFor={`${prefix}-vacation`}>Vacation entitlement (days per year)</label>
             <input
               id={`${prefix}-vacation`}
+              {...validation("vacationEntitlementDays")}
               type="number"
               min="0"
               max="366"
@@ -207,16 +236,19 @@ export function PersonForm({
                 })
               }
             />
+            {fieldError("vacationEntitlementDays", "Vacation entitlement")}
           </div>
           {roles.includes("driver") && (
             <div className="people-check">
               <input
                 id={`${prefix}-adr`}
+                {...validation("adrRequired")}
                 type="checkbox"
                 checked={fields.adrRequired}
                 onChange={(event) => setFields({ ...fields, adrRequired: event.target.checked })}
               />
               <label htmlFor={`${prefix}-adr`}>ADR certificate required</label>
+              {fieldError("adrRequired", "ADR certificate required")}
             </div>
           )}
         </fieldset>
