@@ -806,6 +806,8 @@ namespace FleetOps.Migrations.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("MaintenanceId");
+
                     b.HasIndex("VehicleId");
 
                     b.HasIndex("EmployeeId", "From");
@@ -939,6 +941,8 @@ namespace FleetOps.Migrations.Migrations
 
                     b.HasIndex("CommandId")
                         .IsUnique();
+
+                    b.HasIndex("RepairId");
 
                     b.HasIndex("VehicleId", "Status");
 
@@ -1100,6 +1104,67 @@ namespace FleetOps.Migrations.Migrations
                         .HasDatabaseName("IX_vehicles_list_plate_id");
 
                     b.ToTable("vehicles", "fleetops");
+                });
+
+            modelBuilder.Entity("FleetOps.Modules.Maintenance.Maintenance", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("CancelReason")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("cancel_reason");
+
+                    b.PrimitiveCollection<Guid[]>("DefectReportIds")
+                        .IsRequired()
+                        .HasColumnType("uuid[]")
+                        .HasColumnName("defect_report_ids");
+
+                    b.Property<DateOnly?>("DoneAt")
+                        .HasColumnType("date")
+                        .HasColumnName("done_at");
+
+                    b.Property<int?>("OdometerAtDoneKm")
+                        .HasColumnType("integer")
+                        .HasColumnName("odometer_at_done_km");
+
+                    b.Property<DateOnly>("ScheduledFor")
+                        .HasColumnType("date")
+                        .HasColumnName("scheduled_for");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("type");
+
+                    b.Property<Guid>("VehicleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("vehicle_id");
+
+                    b.Property<string>("Workshop")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("workshop");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("VehicleId", "ScheduledFor");
+
+                    b.ToTable("maintenance", "fleetops", t =>
+                        {
+                            t.HasCheckConstraint("ck_maintenance_odometer", "odometer_at_done_km IS NULL OR odometer_at_done_km >= 0");
+
+                            t.HasCheckConstraint("ck_maintenance_type", "type = 'repair'");
+                        });
                 });
 
             modelBuilder.Entity("FleetOps.Modules.Notifications.Notification", b =>
@@ -1865,6 +1930,11 @@ namespace FleetOps.Migrations.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("FleetOps.Modules.Maintenance.Maintenance", null)
+                        .WithMany()
+                        .HasForeignKey("MaintenanceId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("FleetOps.Modules.Fleet.Vehicle", null)
                         .WithMany()
                         .HasForeignKey("VehicleId")
@@ -1882,6 +1952,20 @@ namespace FleetOps.Migrations.Migrations
                 });
 
             modelBuilder.Entity("FleetOps.Modules.Fleet.DefectReport", b =>
+                {
+                    b.HasOne("FleetOps.Modules.Maintenance.Maintenance", null)
+                        .WithMany()
+                        .HasForeignKey("RepairId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("FleetOps.Modules.Fleet.Vehicle", null)
+                        .WithMany()
+                        .HasForeignKey("VehicleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FleetOps.Modules.Maintenance.Maintenance", b =>
                 {
                     b.HasOne("FleetOps.Modules.Fleet.Vehicle", null)
                         .WithMany()
