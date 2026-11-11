@@ -816,6 +816,131 @@ namespace FleetOps.Migrations.Migrations
                         });
                 });
 
+            modelBuilder.Entity("FleetOps.Modules.Fleet.DefectPhoto", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("content_type");
+
+                    b.Property<Guid>("DefectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("defect_id");
+
+                    b.Property<string>("ObjectKey")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("object_key");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint")
+                        .HasColumnName("size_bytes");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ObjectKey")
+                        .IsUnique();
+
+                    b.HasIndex("DefectId", "SortOrder")
+                        .IsUnique();
+
+                    b.ToTable("defect_photos", "fleetops");
+                });
+
+            modelBuilder.Entity("FleetOps.Modules.Fleet.DefectReport", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("category");
+
+                    b.Property<string>("CloseReason")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("close_reason");
+
+                    b.Property<DateTimeOffset?>("ClosedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("closed_at");
+
+                    b.Property<Guid?>("ClosedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("closed_by");
+
+                    b.Property<Guid?>("CommandId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("command_id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("description");
+
+                    b.Property<DateTimeOffset>("DeviceTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("device_time");
+
+                    b.Property<string>("Origin")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("origin");
+
+                    b.PrimitiveCollection<Guid[]>("Photos")
+                        .IsRequired()
+                        .HasColumnType("uuid[]")
+                        .HasColumnName("photos");
+
+                    b.Property<DateTimeOffset>("ReportedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reported_at");
+
+                    b.Property<Guid>("ReportedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reported_by");
+
+                    b.Property<DateTimeOffset>("ServerReceivedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("server_received_at");
+
+                    b.Property<string>("Severity")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("severity");
+
+                    b.Property<string>("Status")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("VehicleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("vehicle_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CommandId")
+                        .IsUnique();
+
+                    b.HasIndex("VehicleId", "Status");
+
+                    b.ToTable("defect_reports", "fleetops");
+                });
+
             modelBuilder.Entity("FleetOps.Modules.Fleet.PlateHistory", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1736,6 +1861,24 @@ namespace FleetOps.Migrations.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("FleetOps.Modules.Fleet.Vehicle", null)
+                        .WithMany()
+                        .HasForeignKey("VehicleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FleetOps.Modules.Fleet.DefectPhoto", b =>
+                {
+                    b.HasOne("FleetOps.Modules.Fleet.DefectReport", null)
+                        .WithMany()
+                        .HasForeignKey("DefectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FleetOps.Modules.Fleet.DefectReport", b =>
+                {
                     b.HasOne("FleetOps.Modules.Fleet.Vehicle", null)
                         .WithMany()
                         .HasForeignKey("VehicleId")
