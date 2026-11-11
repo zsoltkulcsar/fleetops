@@ -11,7 +11,9 @@ test("bottom nav has four tabs", async ({ page }) => {
   for (const name of ["Shift", "Week", "Defect", "Me"]) {
     const tab = navigation.getByRole("link", { name, exact: true });
     await tab.click();
-    await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: name === "Defect" ? "Report defect" : name, exact: true }),
+    ).toBeVisible();
     await expect(tab).toHaveAttribute("aria-current", "page");
   }
   const bounds = await navigation.boundingBox();
@@ -116,7 +118,9 @@ test("driver pages have no accessibility violations", async ({ page }) => {
   await setPin(page);
   for (const name of ["Shift", "Week", "Defect", "Me"]) {
     await page.getByRole("navigation").getByRole("link", { name, exact: true }).click();
-    await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: name === "Defect" ? "Report defect" : name, exact: true }),
+    ).toBeVisible();
     await audit();
   }
   await page.reload();
