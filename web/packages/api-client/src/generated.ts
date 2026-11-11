@@ -475,6 +475,83 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/driver/defects/upload-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DriverDefectUploadLinkRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UploadLinkResult"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/driver/defects/{id}/photos/{fileId}/link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                    fileId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DriverFileLinkResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/driver/documents/upload-links": {
         parameters: {
             query?: never;
@@ -1002,6 +1079,685 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["VehicleDetail"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fleet/defects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    page?: number;
+                    pageSize?: number;
+                    statusGroup?: string;
+                    severity?: components["schemas"]["DefectSeverity"];
+                    vehicleId?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DefectListResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["LogOfficeDefectCommand"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DefectActionResult"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fleet/defects/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DefectDetail"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fleet/vehicles/{id}/defects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    page?: number;
+                    pageSize?: number;
+                    statusGroup?: string;
+                    severity?: components["schemas"]["DefectSeverity"];
+                };
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DefectListResult"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fleet/defects/{id}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DefectActionResult"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fleet/defects/{id}/downgrade": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DowngradeDefectRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DefectActionResult"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fleet/defects/{id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CloseDefectRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DefectActionResult"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fleet/defects/upload-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RequestOfficeDefectPhotoUploadCommand"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UploadLinkResult"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fleet/maintenance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    vehicleId?: string;
+                    status?: components["schemas"]["MaintenanceStatus"];
+                    from?: string;
+                    to?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MaintenanceList"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateRepairCommand"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RepairDetail"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fleet/maintenance/{id}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RepairDetail"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fleet/maintenance/{id}/done": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DoneRepairRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RepairDetail"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fleet/maintenance/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CancelRepairRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RepairDetail"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fleet/vehicles/{id}/maintenance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    status?: components["schemas"]["MaintenanceStatus"];
+                    from?: string;
+                    to?: string;
+                };
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MaintenanceList"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fleet/swap-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query: {
+                    employeeId: string;
+                    date: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SwapOptions"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fleet/assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateAssignmentCommand"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AssignmentDetail"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fleet/assignments/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["EditAssignmentRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AssignmentDetail"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fleet/assignments/{id}/end": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AssignmentDetail"];
                     };
                 };
             };
@@ -2684,6 +3440,20 @@ export interface components {
         AlertSeverity: "info" | "warning" | "critical";
         /** @enum {unknown} */
         AlertStatus: "open" | "snoozed" | "resolved";
+        AssignmentDetail: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            employeeId: string;
+            /** Format: uuid */
+            vehicleId: string;
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: null | string;
+            /** Format: uuid */
+            maintenanceId: null | string;
+        };
         AttentionGroup: {
             subjectType: string;
             /** Format: uuid */
@@ -2739,10 +3509,34 @@ export interface components {
             /** Format: int32 */
             failed: number;
         };
+        CancelRepairRequest: {
+            reason: null | string;
+        };
+        CloseDefectRequest: {
+            reason: null | string;
+        };
         ConfirmFileInput: {
             /** Format: uuid */
             fileId: string;
             page: components["schemas"]["DocumentFilePage"];
+        };
+        CreateAssignmentCommand: {
+            /** Format: uuid */
+            employeeId: string;
+            /** Format: uuid */
+            vehicleId: string;
+            /** Format: date */
+            to?: null | string;
+            /** Format: uuid */
+            maintenanceId?: null | string;
+        };
+        CreateRepairCommand: {
+            /** Format: uuid */
+            vehicleId: string;
+            workshop: null | string;
+            /** Format: date */
+            scheduledFor: string;
+            defectReportIds: null | string[];
         };
         CreateVehicleCommand: {
             kind: components["schemas"]["VehicleKind"];
@@ -2828,6 +3622,83 @@ export interface components {
         CycleSource: "generated" | "manual";
         /** @enum {unknown} */
         CycleStatus: "planned" | "active" | "overrun" | "done" | "cancelled";
+        DefectActionResult: {
+            /** Format: uuid */
+            id: string;
+            status: components["schemas"]["DefectStatus"];
+            severity: components["schemas"]["DefectSeverity"];
+        };
+        /** @enum {unknown} */
+        DefectCategory: "brakes" | "lights" | "tyres" | "engine" | "body" | "tacho" | "load_securing" | "other";
+        DefectDetail: {
+            report: components["schemas"]["DefectRow"];
+            description: null | string;
+            /** Format: uuid */
+            repairId: null | string;
+            /** Format: uuid */
+            closedBy: null | string;
+            /** Format: date-time */
+            closedAt: null | string;
+            closeReason: null | string;
+            photos: components["schemas"]["DefectPhotoLink"][];
+            history: components["schemas"]["DefectHistoryItem"][];
+        };
+        DefectHistoryItem: {
+            fieldName: string;
+            oldValue: null | string;
+            newValue: null | string;
+            actorId: string;
+            reason: string;
+            /** Format: date-time */
+            at: string;
+        };
+        DefectListResult: {
+            items: components["schemas"]["DefectRow"][];
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            pageSize: number;
+            /** Format: int32 */
+            total: number;
+            openByOrigin: components["schemas"]["DefectOriginCounts"];
+        };
+        /** @enum {unknown} */
+        DefectOrigin: "app" | "office_from_chat";
+        DefectOriginCounts: {
+            /** Format: int32 */
+            app: number;
+            /** Format: int32 */
+            officeFromChat: number;
+        };
+        DefectPhotoLink: {
+            /** Format: uuid */
+            id: string;
+            link: components["schemas"]["ObjectLink"];
+        };
+        DefectRow: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            vehicleId: string;
+            plate: string;
+            category: components["schemas"]["DefectCategory"];
+            severity: components["schemas"]["DefectSeverity"];
+            /** Format: uuid */
+            reportedBy: string;
+            reportedByName: string;
+            /** Format: date-time */
+            reportedAt: string;
+            /** Format: int32 */
+            photosCount: number;
+            status: components["schemas"]["DefectStatus"];
+            /** Format: double */
+            ageDays: number;
+            origin: components["schemas"]["DefectOrigin"];
+        };
+        /** @enum {unknown} */
+        DefectSeverity: "minor" | "major" | "critical";
+        /** @enum {unknown} */
+        DefectStatus: "open" | "acknowledged" | "in_repair" | "fixed" | "closed" | "cancelled";
         DocumentCounts: {
             /** Format: int32 */
             queue: number;
@@ -2974,6 +3845,16 @@ export interface components {
             number?: null | string;
             categories?: null | string[];
         };
+        DoneRepairRequest: {
+            /** Format: date */
+            doneAt?: null | string;
+            /** Format: int32 */
+            odometerAtDoneKm?: null | number;
+        };
+        DowngradeDefectRequest: {
+            severity: components["schemas"]["DefectSeverity"];
+            reason: null | string;
+        };
         DriverCommand: {
             /** Format: uuid */
             commandId: string;
@@ -3025,6 +3906,16 @@ export interface components {
             source: components["schemas"]["CycleSource"];
             /** Format: int32 */
             version: number;
+        };
+        DriverDefectPhoto: {
+            /** Format: uuid */
+            id: string;
+            link: string;
+        };
+        DriverDefectUploadLinkRequest: {
+            contentType: string;
+            /** Format: int64 */
+            sizeBytes: number;
         };
         DriverDocument: {
             /** Format: uuid */
@@ -3080,6 +3971,17 @@ export interface components {
             /** Format: date-time */
             expiresAt: string;
         };
+        DriverOwnDefect: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            vehicleId: string;
+            category: string;
+            severity: string;
+            status: string;
+            /** Format: date-time */
+            reportedAt: string;
+        };
         DriverReadinessItem: {
             /** Format: uuid */
             id: string;
@@ -3117,6 +4019,19 @@ export interface components {
             documents: components["schemas"]["DriverDocument"][];
             canDrive: boolean;
             readinessCauses: components["schemas"]["ReadinessCause"][];
+            swaps?: components["schemas"]["DriverSwap"][];
+            defects?: components["schemas"]["DriverOwnDefect"][];
+        };
+        DriverSwap: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            vehicleId: string;
+            vehiclePlate: string;
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: null | string;
         };
         DriverTruckAssignment: {
             /** Format: uuid */
@@ -3132,12 +4047,22 @@ export interface components {
             /** Format: int64 */
             sizeBytes: number;
         };
+        DriverVehicleDefect: {
+            /** Format: uuid */
+            id: string;
+            category: string;
+            severity: string;
+            /** Format: date */
+            date: string;
+            photos: components["schemas"]["DriverDefectPhoto"][];
+        };
         DriverVehicleDetail: {
             /** Format: uuid */
             id: string;
             plate: string;
             items: components["schemas"]["DriverVehicleItem"][];
             documents: components["schemas"]["DriverVehicleDocument"][];
+            defects?: components["schemas"]["DriverVehicleDefect"][];
         };
         DriverVehicleDocument: {
             /** Format: uuid */
@@ -3159,6 +4084,12 @@ export interface components {
             documentId: null | string;
             /** Format: uuid */
             fileId: null | string;
+        };
+        EditAssignmentRequest: {
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: null | string;
         };
         EditCycleRequest: {
             /** Format: int32 */
@@ -3266,6 +4197,21 @@ export interface components {
             errorType?: null | string;
         };
         JsonElement: unknown;
+        LogOfficeDefectCommand: {
+            /** Format: uuid */
+            vehicleId: string;
+            category: components["schemas"]["DefectCategory"];
+            severity: components["schemas"]["DefectSeverity"];
+            description: null | string;
+            /** Format: uuid */
+            reportedBy?: null | string;
+            photos?: null | string[];
+        };
+        MaintenanceList: {
+            items: components["schemas"]["RepairDetail"][];
+        };
+        /** @enum {unknown} */
+        MaintenanceStatus: "scheduled" | "in_progress" | "done" | "cancelled";
         ManualCycleRequest: {
             /** Format: uuid */
             employeeId: string;
@@ -3409,7 +4355,7 @@ export interface components {
             documentType: null | string;
         };
         /** @enum {unknown} */
-        ReadinessCauseCode: "document_expired" | "document_missing" | "manual_off_road" | "retired" | "suspended" | "left" | "not_a_driver";
+        ReadinessCauseCode: "document_expired" | "document_missing" | "manual_off_road" | "critical_defect" | "retired" | "suspended" | "left" | "not_a_driver" | "in_workshop";
         /** @enum {unknown} */
         ReadinessShownStatus: "active" | "off_road" | "in_maintenance" | "retired";
         ReadinessSummary: {
@@ -3426,6 +4372,29 @@ export interface components {
             /** Format: int32 */
             version: number;
             reason: string;
+        };
+        RepairDetail: {
+            /** Format: uuid */
+            id: string;
+            type: string;
+            /** Format: uuid */
+            vehicleId: string;
+            workshop: string;
+            /** Format: date */
+            scheduledFor: string;
+            defectReportIds: string[];
+            status: components["schemas"]["MaintenanceStatus"];
+            cancelReason: null | string;
+            /** Format: date */
+            doneAt: null | string;
+            /** Format: int32 */
+            odometerAtDoneKm: null | number;
+            inWorkshop: boolean;
+        };
+        RequestOfficeDefectPhotoUploadCommand: {
+            contentType: string;
+            /** Format: int64 */
+            sizeBytes: number;
         };
         RequiredDocument: {
             type: string;
@@ -3451,6 +4420,25 @@ export interface components {
             /** Format: date-time */
             generatedAt: string;
             items: components["schemas"]["CycleDetail"][];
+            swaps?: components["schemas"]["ScheduleSwap"][];
+        };
+        ScheduleSwap: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            employeeId: string;
+            employeeName: string;
+            /** Format: uuid */
+            vehicleId: string;
+            vehiclePlate: string;
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: null | string;
+            /** Format: uuid */
+            maintenanceId: null | string;
+            /** @default Swap */
+            label: string;
         };
         SecondFactorRequest: {
             code: string;
@@ -3567,6 +4555,18 @@ export interface components {
             until: string;
             reason: string;
         };
+        SwapOption: {
+            /** Format: uuid */
+            vehicleId: string;
+            plate: string;
+            belongsTo: null | string;
+            runningShiftUserName: null | string;
+            /** Format: date-time */
+            runningShiftStartAt: null | string;
+        };
+        SwapOptions: {
+            items: components["schemas"]["SwapOption"][];
+        };
         TimesheetDriver: {
             /** Format: uuid */
             id: string;
@@ -3636,6 +4636,7 @@ export interface components {
             shownStatus: components["schemas"]["ReadinessShownStatus"];
             usable: boolean;
             causes: components["schemas"]["ReadinessCause"][];
+            defects?: null | components["schemas"]["DefectListResult"];
         };
         /** @enum {unknown} */
         VehicleKind: "truck" | "trailer";
