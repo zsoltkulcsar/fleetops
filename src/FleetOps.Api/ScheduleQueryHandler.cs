@@ -13,7 +13,17 @@ public sealed class ScheduleQueryHandler(FleetOpsDbContext db, TimeProvider time
         var cycles = db.Cycles.Where(cycle => cycle.From <= query.To && cycle.To >= query.From);
         if (query.EmployeeId.HasValue) cycles = cycles.Where(cycle => cycle.EmployeeId == query.EmployeeId);
         if (query.VehicleId.HasValue) cycles = cycles.Where(cycle => cycle.VehicleId == query.VehicleId);
-        return new(time.GetUtcNow(), await ScheduleProjection.ReadAsync(db, cycles, cancellationToken));
+        var swaps = db.Assignments.AsNoTracking().Where(assignment => assignment.From <= query.To && (assignment.To == null || assignment.To >= query.From));
+        if (query.EmployeeId.HasValue) swaps = swaps.Where(assignment => assignment.EmployeeId == query.EmployeeId);
+        if (query.VehicleId.HasValue) swaps = swaps.Where(assignment => assignment.VehicleId == query.VehicleId);
+        var swapRows = actor.Roles.Any(role => role is RoleCode.Dispatcher or RoleCode.Owner)
+            ? await swaps.OrderBy(assignment => assignment.From).ThenBy(assignment => assignment.Id)
+                .Select(assignment => new ScheduleSwap(assignment.Id, assignment.EmployeeId,
+                    db.Employees.Where(employee => employee.Id == assignment.EmployeeId).Select(employee => employee.FirstName + " " + employee.LastName).First(),
+                    assignment.VehicleId, db.Vehicles.Where(vehicle => vehicle.Id == assignment.VehicleId).Select(vehicle => vehicle.Plate).First(),
+                    assignment.From, assignment.To, assignment.MaintenanceId, "Swap")).ToListAsync(cancellationToken)
+            : [];
+        return new(time.GetUtcNow(), await ScheduleProjection.ReadAsync(db, cycles, cancellationToken)) { Swaps = swapRows };
     }
 }
 

@@ -37,6 +37,7 @@ public sealed partial class FleetOpsDbContext(DbContextOptions<FleetOpsDbContext
         ConfigureSchedule(modelBuilder);
         ConfigureShifts(modelBuilder);
         ConfigureAssignments(modelBuilder);
+        ConfigureMaintenance(modelBuilder);
         ConfigureAbsences(modelBuilder);
         modelBuilder.HasDefaultSchema("fleetops");
         modelBuilder.Ignore<IdentityPasskeyData>();

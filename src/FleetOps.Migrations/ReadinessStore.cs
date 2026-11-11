@@ -2,6 +2,7 @@ using System.Text.Json;
 using FleetOps.Kernel;
 using FleetOps.Modules.Documents;
 using FleetOps.Modules.Fleet;
+using FleetOps.Modules.Maintenance;
 using FleetOps.Modules.Readiness;
 using FleetOps.People;
 using Microsoft.EntityFrameworkCore;
@@ -29,7 +30,9 @@ public sealed class EfReadinessStore(FleetOpsDbContext db) : IReadiness
         var documents = await db.Documents.AsNoTracking().Where(x => x.OwnerType == DocumentOwnerType.Vehicle && ids.Contains(x.OwnerId) && x.Status != DocumentStatus.Replaced).ToListAsync(cancellationToken);
         var blockedVehicles = await db.DefectReports.AsNoTracking().Where(defect => ids.Contains(defect.VehicleId) && defect.Severity == DefectSeverity.Critical &&
             (defect.Status == DefectStatus.Open || defect.Status == DefectStatus.Acknowledged || defect.Status == DefectStatus.InRepair)).Select(defect => defect.VehicleId).Distinct().ToListAsync(cancellationToken);
-        return vehicles.ToDictionary(x => x.Id, x => Vehicle(x, documents.Where(d => d.OwnerId == x.Id), date, blockedVehicles.Contains(x.Id)));
+        var inWorkshop = await db.Maintenance.AsNoTracking().Where(repair => ids.Contains(repair.VehicleId) && repair.Status == MaintenanceStatus.InProgress)
+            .Select(repair => repair.VehicleId).Distinct().ToListAsync(cancellationToken);
+        return vehicles.ToDictionary(x => x.Id, x => Vehicle(x, documents.Where(d => d.OwnerId == x.Id), date, blockedVehicles.Contains(x.Id), inWorkshop.Contains(x.Id)));
     }
 
     public async Task<IReadOnlyDictionary<Guid, DriverReadiness>> ForDriversAsync(IReadOnlyCollection<Guid> ids, DateOnly date, CancellationToken cancellationToken)
@@ -40,13 +43,14 @@ public sealed class EfReadinessStore(FleetOpsDbContext db) : IReadiness
         return employees.ToDictionary(x => x.Id, x => Driver(x, documents.Where(d => d.OwnerId == x.Id), date));
     }
 
-    private static VehicleReadiness Vehicle(Vehicle vehicle, IEnumerable<Document> documents, DateOnly date, bool criticalDefect)
+    private static VehicleReadiness Vehicle(Vehicle vehicle, IEnumerable<Document> documents, DateOnly date, bool criticalDefect, bool inWorkshop)
     {
         var causes = RequiredVehicleTypes(vehicle).Select(type => CauseFor(type, documents, date)).Where(x => x is not null).Cast<ReadinessCause>().ToList();
+        if (inWorkshop) causes.Add(new(ReadinessCauseCode.InWorkshop, null));
         if (criticalDefect) causes.Add(new(ReadinessCauseCode.CriticalDefect, null));
         if (vehicle.ManualOffRoad) causes.Insert(0, new(ReadinessCauseCode.ManualOffRoad, null));
         if (vehicle.Status == VehicleStatus.Retired) causes.Add(new(ReadinessCauseCode.Retired, null));
-        var shown = vehicle.Status == VehicleStatus.Retired ? ReadinessShownStatus.Retired : causes.Any(x => x.Code == ReadinessCauseCode.CriticalDefect || x.Code == ReadinessCauseCode.ManualOffRoad || x.Code == ReadinessCauseCode.DocumentExpired) ? ReadinessShownStatus.OffRoad : ReadinessShownStatus.Active;
+        var shown = vehicle.Status == VehicleStatus.Retired ? ReadinessShownStatus.Retired : inWorkshop ? ReadinessShownStatus.InMaintenance : causes.Any(x => x.Code == ReadinessCauseCode.CriticalDefect || x.Code == ReadinessCauseCode.ManualOffRoad || x.Code == ReadinessCauseCode.DocumentExpired) ? ReadinessShownStatus.OffRoad : ReadinessShownStatus.Active;
         return new(vehicle.Status == VehicleStatus.Active && causes.Count == 0, shown, causes);
     }
 

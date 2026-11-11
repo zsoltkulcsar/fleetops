@@ -63,6 +63,7 @@ public static class NotificationTemplates
 {
     public static string Render(string templateCode, IReadOnlyDictionary<string, JsonElement> parameters, string? language)
     {
+        if (templateCode == "assignment_changed") return string.Equals(language, "de", StringComparison.OrdinalIgnoreCase) ? "Ihre Fahrzeugzuordnung wurde ge\u00e4ndert. Bitte pr\u00fcfen Sie Ihren Dienstplan." : "Your truck assignment has changed. Please check your schedule.";
         var german = string.Equals(language, "de", StringComparison.OrdinalIgnoreCase);
         if (templateCode == "vehicle_unusable") return german ? "Ihr Fahrzeug ist nicht einsatzbereit. Bitte kontaktieren Sie die Disposition." : "Your vehicle is off road. Please contact dispatch.";
         if (templateCode == "defect_cancelled") return german ? "Die kritische Mangelmeldung wurde vom Fahrer storniert." : "The critical defect report was cancelled by the driver.";

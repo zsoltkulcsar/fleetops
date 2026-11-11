@@ -10,6 +10,7 @@ namespace FleetOps.Modules.Views;
 [VisibleTo(RoleCode.Driver)]
 public sealed record DriverSnapshot(Guid EmployeeId, DateTimeOffset GeneratedAt, IReadOnlyList<DriverCycle> Cycles, IReadOnlyList<DriverDocument> Documents, bool CanDrive, IReadOnlyList<ReadinessCause> ReadinessCauses) : IReadModel
 {
+    public IReadOnlyList<DriverSwap> Swaps { get; init; } = [];
     public IReadOnlyList<DriverOwnDefect> Defects { get; init; } = [];
 }
 public sealed record DriverCycle(Guid Id, Guid VehicleId, string VehiclePlate, DateOnly From, DateOnly To, CycleStatus Status, CycleSource Source, int Version);

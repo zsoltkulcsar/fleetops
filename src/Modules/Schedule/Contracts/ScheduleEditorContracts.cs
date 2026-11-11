@@ -8,7 +8,10 @@ namespace FleetOps.Modules.Schedule;
 public sealed record CycleDetail(Guid Id, Guid EmployeeId, string EmployeeName, Guid VehicleId, string VehiclePlate, DateOnly From, DateOnly To, CycleStatus Status, CycleSource Source, int? PatternSlot, int Version, bool HasClash = false) : IReadModel;
 
 [VisibleTo(RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner)]
-public sealed record ScheduleResult(DateTimeOffset GeneratedAt, IReadOnlyList<CycleDetail> Items) : IReadModel;
+public sealed record ScheduleResult(DateTimeOffset GeneratedAt, IReadOnlyList<CycleDetail> Items) : IReadModel
+{
+    public IReadOnlyList<ScheduleSwap> Swaps { get; init; } = [];
+}
 
 [VisibleTo(RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner)]
 public sealed record CyclePatternView(Guid EmployeeId, int Version, CyclePattern? Pattern) : IReadModel;

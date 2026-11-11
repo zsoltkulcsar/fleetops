@@ -3,7 +3,7 @@ using FleetOps.Kernel.Authorization;
 namespace FleetOps.Kernel;
 
 public enum ReadinessShownStatus { Active, OffRoad, InMaintenance, Retired }
-public enum ReadinessCauseCode { DocumentExpired, DocumentMissing, ManualOffRoad, CriticalDefect, Retired, Suspended, Left, NotADriver }
+public enum ReadinessCauseCode { DocumentExpired, DocumentMissing, ManualOffRoad, CriticalDefect, Retired, Suspended, Left, NotADriver, InWorkshop }
 
 [VisibleTo(RoleCode.Driver, RoleCode.Dispatcher, RoleCode.Hr, RoleCode.Owner)]
 public sealed record ReadinessCause(ReadinessCauseCode Code, string? DocumentType);
