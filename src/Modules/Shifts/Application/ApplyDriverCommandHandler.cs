@@ -6,7 +6,7 @@ using FleetOps.Modules.Setup;
 
 namespace FleetOps.Modules.Shifts;
 
-public sealed class ApplyDriverCommandHandler(IShiftCommandStore store, IShiftStartFacts facts, IShiftEvents events, ICompanyTimeService companyTime, ISettings settings, TimeProvider clock)
+public sealed class ApplyDriverCommandHandler(IShiftCommandStore store, IShiftStartFacts facts, IShiftEvents events, ICompanyTimeService companyTime, ISettings settings, TimeProvider clock, IDriverDefectCommands defects)
     : ICommandHandler<ApplyDriverCommand, DriverCommandResult>
 {
     public static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
@@ -28,6 +28,26 @@ public sealed class ApplyDriverCommandHandler(IShiftCommandStore store, IShiftSt
             return prior.Type != command.Type ? new(command.CommandId, "failed", "command_id_reused", null)
                 : JsonSerializer.Deserialize<DriverCommandResult>(prior.Result, JsonOptions) ?? throw new InvalidOperationException("invalid_command_receipt");
         var receivedAt = clock.GetUtcNow();
+        if (command.Type is "defect.report" or "defect.cancel")
+        {
+            DriverCommandResult defectResult;
+            try
+            {
+                defectResult = command.SchemaVersion != 1
+                    ? new(command.CommandId, "failed", "unsupported_schema_version", null)
+                    : await defects.ApplyAsync(command, actor, context, receivedAt, cancellationToken);
+            }
+            catch (JsonException) { defectResult = new(command.CommandId, "failed", "invalid_payload", null); }
+            var defectReceipt = new CommandReceipt
+            {
+                EmployeeId = actor.EmployeeId, CommandId = command.CommandId, AggregateId = command.AggregateId,
+                Type = command.Type, SchemaVersion = command.SchemaVersion, BaseVersion = command.BaseVersion,
+                DeviceTime = command.DeviceTime, ServerReceivedAt = receivedAt, Payload = command.Payload.GetRawText(),
+                Result = JsonSerializer.Serialize(defectResult, JsonOptions), Outcome = defectResult.Status
+            };
+            await store.SaveAsync(null, defectReceipt, null, context, cancellationToken);
+            return defectResult;
+        }
         var shift = await store.LoadAsync(actor.EmployeeId, command.AggregateId, context, cancellationToken);
         DriverCommandResult result;
         ConflictRecord? conflict = null;

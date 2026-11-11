@@ -59,8 +59,9 @@ public sealed class EfDocumentStore(IObjectStore objects, IConfiguration configu
             await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({lockKey}, 0))", cancellationToken);
             if (await db.Documents.AnyAsync(document => document.OwnerType == ownerType && document.OwnerId == ownerId && document.Type == type && document.Status == DocumentStatus.Uploaded, cancellationToken)) throw new DocumentConflictException("upload_pending");
         }
-        var pending = await db.PendingFiles.Where(x => files.Select(y => y.FileId).Contains(x.Id)).ToListAsync(cancellationToken);
-        if (pending.Count != files.Count || pending.Any(x => x.ConfirmedAt.HasValue)) throw new DocumentValidationException([], "file_not_found");
+        var fileIds = files.Select(file => file.FileId).ToArray();
+        var pending = await db.PendingFiles.FromSqlInterpolated($"SELECT * FROM fleetops.pending_files WHERE id = ANY({fileIds}) ORDER BY id FOR UPDATE").ToListAsync(cancellationToken);
+        if (pending.Count != files.Count || pending.Any(x => x.ConfirmedAt.HasValue || x.Purpose != "document")) throw new DocumentValidationException([], "file_not_found");
         foreach (var input in files)
         {
             var row = pending.Single(x => x.Id == input.FileId);

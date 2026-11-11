@@ -4,5 +4,5 @@
     <ProjectReference Include="../../Kernel/Kernel.csproj" />
     <ProjectReference Include="../Audit/Audit.csproj" />
     <ProjectReference Include="../Setup/Setup.csproj" />
-  </ItemGroup>
+  <ProjectReference Include="../Fleet/Fleet.csproj" /></ItemGroup>
 </Project>

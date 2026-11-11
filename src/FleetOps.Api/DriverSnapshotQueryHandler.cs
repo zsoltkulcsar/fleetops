@@ -23,7 +23,11 @@ public sealed class DriverSnapshotQueryHandler(FleetOpsDbContext db, ICompanyTim
             .OrderBy(document => document.Type).ThenByDescending(document => document.CreatedAt).Select(document => new DriverDocument(document.Id, document.Type, document.Status, document.ExpiresAt, document.RejectReason)).ToListAsync(cancellationToken);
         var readiness = await new EfReadinessStore(db).ForDriversAsync([actor.EmployeeId], today, cancellationToken);
         var own = readiness.GetValueOrDefault(actor.EmployeeId) ?? new DriverReadiness(false, []);
-        return new(actor.EmployeeId, generatedAt, cycles, documents, own.CanDrive, own.Causes);
+        var defects = await db.DefectReports.AsNoTracking().Where(defect => defect.ReportedBy == actor.EmployeeId).OrderByDescending(defect => defect.ReportedAt).ToListAsync(cancellationToken);
+        return new(actor.EmployeeId, generatedAt, cycles, documents, own.CanDrive, own.Causes)
+        {
+            Defects = defects.Select(defect => new DriverOwnDefect(defect.Id, defect.VehicleId, System.Text.Json.JsonNamingPolicy.SnakeCaseLower.ConvertName(defect.Category.ToString()), System.Text.Json.JsonNamingPolicy.SnakeCaseLower.ConvertName(defect.Severity.ToString()), System.Text.Json.JsonNamingPolicy.SnakeCaseLower.ConvertName(defect.Status.ToString()), defect.ReportedAt)).ToArray()
+        };
     }
 }
 

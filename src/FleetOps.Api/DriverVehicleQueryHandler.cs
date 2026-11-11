@@ -4,6 +4,7 @@ using FleetOps.Kernel.Files;
 using FleetOps.Migrations;
 using FleetOps.Modules.Alerts;
 using FleetOps.Modules.Documents;
+using FleetOps.Modules.Fleet;
 using FleetOps.Modules.Schedule;
 using FleetOps.Modules.Views;
 using Microsoft.EntityFrameworkCore;
@@ -30,6 +31,15 @@ public sealed class DriverVehicleQueryHandler(FleetOpsDbContext db, ICompanyTime
         var vehicleDocumentIds = documents.Select(document => document.Id).ToArray();
         var alerts = await db.Alerts.AsNoTracking().Where(alert => alert.Status != AlertStatus.Resolved && (alert.SubjectType == "vehicle" && alert.SubjectId == query.VehicleId || alert.SubjectType == "document" && vehicleDocumentIds.Contains(alert.SubjectId))).ToListAsync(cancellationToken);
         items.AddRange(alerts.Select(alert => new DriverVehicleItem(alert.Id, alert.RuleId, alert.Severity.ToString().ToLowerInvariant(), alert.DueAt ?? DateOnly.FromDateTime(alert.OpenedAt.DateTime), alert.SubjectType == "document" ? alert.SubjectId : null, null)));
-        return new(query.VehicleId, plate, items, resultDocuments);
+        var defects = await db.DefectReports.AsNoTracking().Where(defect => defect.VehicleId == query.VehicleId &&
+            (defect.Status == DefectStatus.Open || defect.Status == DefectStatus.Acknowledged || defect.Status == DefectStatus.InRepair)).OrderByDescending(defect => defect.ReportedAt).ToListAsync(cancellationToken);
+        var defectIds = defects.Select(defect => defect.Id).ToArray();
+        var photos = await db.DefectPhotos.AsNoTracking().Where(photo => defectIds.Contains(photo.DefectId)).OrderBy(photo => photo.SortOrder).Select(photo => new { photo.Id, photo.DefectId }).ToListAsync(cancellationToken);
+        return new(query.VehicleId, plate, items, resultDocuments)
+        {
+            Defects = defects.Select(defect => new DriverVehicleDefect(defect.Id,
+                System.Text.Json.JsonNamingPolicy.SnakeCaseLower.ConvertName(defect.Category.ToString()), defect.Severity.ToString().ToLowerInvariant(), companyTime.ToCompanyDate(defect.ReportedAt),
+                photos.Where(photo => photo.DefectId == defect.Id).Select(photo => new DriverDefectPhoto(photo.Id, $"/api/v1/driver/defects/{defect.Id}/photos/{photo.Id}/link")).ToArray())).ToArray()
+        };
     }
 }

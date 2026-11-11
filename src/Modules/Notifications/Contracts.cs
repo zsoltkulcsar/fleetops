@@ -64,6 +64,8 @@ public static class NotificationTemplates
     public static string Render(string templateCode, IReadOnlyDictionary<string, JsonElement> parameters, string? language)
     {
         var german = string.Equals(language, "de", StringComparison.OrdinalIgnoreCase);
+        if (templateCode == "vehicle_unusable") return german ? "Ihr Fahrzeug ist nicht einsatzbereit. Bitte kontaktieren Sie die Disposition." : "Your vehicle is off road. Please contact dispatch.";
+        if (templateCode == "defect_cancelled") return german ? "Die kritische Mangelmeldung wurde vom Fahrer storniert." : "The critical defect report was cancelled by the driver.";
         if (templateCode == "shift_rejected") return german ? "Ihre Schicht wurde abgelehnt. Bitte korrigieren und erneut einreichen." : "Your shift was rejected. Fix it and resubmit.";
         if (templateCode == "shift_edited_by_office") return german ? "Ihre Schicht wurde vom Büro geändert. Bitte prüfen Sie die Änderungen." : "Your shift was changed by the office. Please review the changes.";
         if (templateCode == "week_reminder") return german ? "Bitte reichen Sie Ihre Woche ein" : "Your week is ready to submit. Please review your saved shifts.";

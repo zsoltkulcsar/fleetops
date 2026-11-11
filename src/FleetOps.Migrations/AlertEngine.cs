@@ -50,7 +50,7 @@ public sealed class AlertEngine(IEnumerable<IAlertEvaluator> evaluators, ISettin
         command.Parameters.AddWithValue(subjectId);
         command.Parameters.AddWithValue(scopes);
         await command.ExecuteNonQueryAsync(cancellationToken);
-        var assignedRole = evaluator.RuleId is "A-05" or "A-09" or "A-10" or "A-15" or "A-16" or "A-20" or "A-21" ? "dispatcher" : "hr";
+        var assignedRole = evaluator.RuleId is "A-07" or "A-05" or "A-09" or "A-10" or "A-15" or "A-16" or "A-20" or "A-21" ? "dispatcher" : "hr";
         if (evaluator.RuleId == "A-03" && evaluator.SubjectType == "document")
         {
             await using var ownerTypeCommand = new NpgsqlCommand("select owner_type from fleetops.documents where id = $1", (NpgsqlConnection)context.DbConnection, (NpgsqlTransaction)context.DbTransaction);
@@ -177,6 +177,8 @@ public sealed class AlertPostCommandEvaluation(IAlertEngine engine, ILogger<Aler
                 var cycleIds = expanded.Where(subject => subject.SubjectType == "cycle").Select(subject => subject.Id).ToArray();
                 var cycleVehicles = await db.Cycles.AsNoTracking().Where(cycle => cycleIds.Contains(cycle.Id)).Select(cycle => cycle.VehicleId).ToListAsync(cancellationToken);
                 vehicleIds.UnionWith(cycleVehicles);
+                var affectedDefects = await db.DefectReports.AsNoTracking().Where(defect => vehicleIds.Contains(defect.VehicleId)).Select(defect => defect.Id).ToListAsync(cancellationToken);
+                foreach (var defectId in affectedDefects) expanded.Add(("defect", defectId));
                 var affectedCycles = await db.Cycles.AsNoTracking().Where(cycle => vehicleIds.Contains(cycle.VehicleId)).Select(cycle => cycle.Id).ToListAsync(cancellationToken);
                 foreach (var cycleId in affectedCycles) expanded.Add(("cycle", cycleId));
             }
