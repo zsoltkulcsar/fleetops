@@ -35,9 +35,10 @@ export function PinForm({
     >
       <h1>{setting ? en.setPin : en.unlock}</h1>
       {setting && <p id="pin-hint">{en.pinHint(length)}</p>}
-      <label>
+      <label htmlFor="driver-pin">
         {en.pin}
         <input
+          id="driver-pin"
           name="pin"
           type="password"
           inputMode="numeric"
@@ -53,9 +54,10 @@ export function PinForm({
         />
       </label>
       {setting && (
-        <label>
+        <label htmlFor="driver-confirm-pin">
           {en.confirmPin}
           <input
+            id="driver-confirm-pin"
             name="confirmPin"
             type="password"
             inputMode="numeric"

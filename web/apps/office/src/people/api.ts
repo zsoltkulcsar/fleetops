@@ -39,6 +39,8 @@ export async function checked<T>(result: { data?: T; error?: unknown; response: 
 }
 
 export const peopleApi = {
+  history: (id: string) =>
+    apiClient.GET("/api/v1/people/{id}/history", { params: { path: { id } } }).then(checked),
   list: (query: PeopleQuery) => apiClient.GET("/api/v1/people", { params: { query } }).then(checked),
   detail: (id: string) => apiClient.GET("/api/v1/people/{id}", { params: { path: { id } } }).then(checked),
   create: (body: PersonInput) => apiClient.POST("/api/v1/people", { body }).then(checked),

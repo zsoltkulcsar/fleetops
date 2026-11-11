@@ -15,11 +15,13 @@ import { DriverNotifications } from "./DriverNotifications";
 
 export function DriverShell({
   name,
+  employeeStatus,
   officePhone,
   busy,
   onSignOut,
 }: {
   name: string;
+  employeeStatus?: string;
   officePhone: string;
   busy: boolean;
   onSignOut: () => Promise<void>;
@@ -40,7 +42,15 @@ export function DriverShell({
       <Routes>
         <Route
           path="shift"
-          element={<DriverDay state={shifts} driver={state.snapshot} name={name} officePhone={officePhone} />}
+          element={
+            <DriverDay
+              state={shifts}
+              driver={state.snapshot}
+              name={name}
+              officePhone={officePhone}
+              employeeStatus={employeeStatus}
+            />
+          }
         />
         <Route
           path="week"

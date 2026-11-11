@@ -8,6 +8,8 @@ public static class PeopleEndpoints
 {
     public static void AddPeople(this IServiceCollection services)
     {
+        services.AddScoped<IPersonHistoryStore, FleetOps.Migrations.EfPersonHistoryStore>();
+        services.AddScoped<IQueryHandler<GetPersonHistoryQuery, PersonHistory>, GetPersonHistoryHandler>();
         services.AddScoped<IPeopleStore, FleetOps.Migrations.EfPeopleStore>();
         services.AddScoped<ICommandHandler<ApplyScheduledLeaveCommand, PersonSaveResult>, ApplyScheduledLeaveHandler>();
         services.AddScoped<ILeaveStore, FleetOps.Migrations.EfLeaveStore>();
@@ -28,6 +30,8 @@ public static class PeopleEndpoints
 
     public static void MapPeople(this WebApplication app)
     {
+        app.MapGet("/api/v1/people/{id:guid}/history", async (Guid id, QueryDispatcher dispatcher, CancellationToken cancellationToken) =>
+            Results.Ok(await dispatcher.DispatchAsync<GetPersonHistoryQuery, PersonHistory>(new(id), cancellationToken))).Produces<PersonHistory>();
         app.MapGet("/api/v1/people/{id:guid}/leave-preview", async (Guid id, DateOnly? endDate, QueryDispatcher dispatcher, CancellationToken cancellationToken) =>
             Results.Ok(await dispatcher.DispatchAsync<GetLeavePreviewQuery, LeavePreview>(new(id, endDate), cancellationToken))).Produces<LeavePreview>();
         app.MapPost("/api/v1/people/{id:guid}/leave", async (Guid id, LeavePersonRequest request, CommandDispatcher dispatcher, CancellationToken cancellationToken) =>

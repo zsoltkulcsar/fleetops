@@ -1,0 +1,33 @@
+.settings-sections,
+.settings-sections > form,
+.settings-sections .ui-panel,
+.settings-sections .ui-panel form {
+  display: grid;
+  gap: 16px;
+}
+.settings-sections .ui-panel {
+  padding: 16px;
+}
+.settings-sections .ui-panel form > div,
+.settings-sections .ui-panel > div {
+  display: grid;
+  gap: 4px;
+}
+.settings-sections input:not([type="checkbox"]),
+.settings-sections textarea {
+  width: min(100%, 360px);
+}
+.settings-sections fieldset {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 12px;
+}
+.settings-sections fieldset > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+}
+.settings-sections .ui-button {
+  justify-self: start;
+}

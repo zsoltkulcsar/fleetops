@@ -5,6 +5,7 @@ import type { DriverShiftState } from "./useShifts";
 import type { DriverSnapshot } from "./storage/snapshot";
 import { companyDate, shiftHours, resolveSuggestedTruck } from "./storage/shiftProjection";
 import { companyInstant, displayTime, wallTime } from "./shiftTime";
+import { DriverReleaseNotice } from "./DriverReleaseNotice";
 
 const activities = [
   { type: "driving", label: "Driving", icon: Truck },
@@ -18,11 +19,13 @@ export function DriverDay({
   driver,
   name,
   officePhone,
+  employeeStatus,
 }: {
   state: DriverShiftState;
   driver?: DriverSnapshot;
   name: string;
   officePhone: string;
+  employeeStatus?: string;
 }) {
   const [sheet, setSheet] = useState<"start" | "end">();
   const [truckId, setTruckId] = useState("");
@@ -41,9 +44,11 @@ export function DriverDay({
     driver?.cycles.some(
       (cycle) => cycle.from <= running.date && (cycle.to === running.date || cycle.status === "overrun"),
     );
-  const suspended = driver?.readinessCauses.some(
-    (cause) => cause.code === "suspended" || cause.code === "left",
-  );
+  const suspended =
+    employeeStatus === "suspended" ||
+    employeeStatus === "left" ||
+    driver?.readinessCauses.some((cause) => cause.code === "suspended" || cause.code === "left");
+  const onboarding = employeeStatus === "onboarding";
   const current = running?.activities.find((activity) => !activity.endAt);
   const selectedTruck = state.snapshot?.trucks.find((truck) => truck.id === truckId);
   const selectedTrailer = state.snapshot?.trucks.find((truck) => truck.id === trailerId);
@@ -111,19 +116,22 @@ export function DriverDay({
       <h1>Shift</h1>
       <p className="driver-greeting">Hello, {name.trim().split(/\s+/)[0]}.</p>
       <p className="driver-sync">
-        Company time · {zone}
-        {!navigator.onLine ? " · Offline" : ""}
+        Company time {"\u00b7"} {zone}
+        {!navigator.onLine ? " \u00b7 Offline" : ""}
       </p>
-      {state.loading && <p role="status">Loading saved shifts…</p>}
+      {state.loading && <p role="status">Loading saved shifts{"\u2026"}</p>}
       {state.error && (
         <div className="driver-error" role="alert">
           <p>{state.error}</p>
           <button onClick={() => void state.sync()}>Retry</button>
         </div>
       )}
-      {suspended && (
+      {(suspended || onboarding) && (
         <p className="driver-error" role="alert">
-          Your account cannot start a shift. Call HR.
+          {onboarding ? "Not active yet. Contact HR" : "Account suspended. Contact HR"}
+          <a className="driver-button" href={`tel:${officePhone}`}>
+            Call HR
+          </a>
         </p>
       )}
       {blocked && (
@@ -133,7 +141,9 @@ export function DriverDay({
       )}
       {running ? (
         <>
-          <p className="driver-badge">Running · started {displayTime(running.startAt, zone)}</p>
+          <p className="driver-badge">
+            Running {"\u00b7"} started {displayTime(running.startAt, zone)}
+          </p>
           <div className="driver-shift-hours">
             {shiftHours(running, now).toFixed(2)}
             <span>hours excluding breaks</span>
@@ -141,7 +151,7 @@ export function DriverDay({
           <h2>{activities.find((activity) => activity.type === current?.type)?.label ?? "Other work"}</h2>
           {oldShift ? (
             <p className="driver-callout">
-              Yesterday’s shift is still running. Set its end time before starting today.
+              Yesterday{"\u2019"}s shift is still running. Set its end time before starting today.
             </p>
           ) : (
             <div className="driver-activity-grid" aria-label="Activity">
@@ -187,7 +197,8 @@ export function DriverDay({
                       setRecentSwitch(undefined);
                   }}
                 >
-                  −{minutes} min
+                  {"\u2212"}
+                  {minutes} min
                 </button>
               ))}
             </div>
@@ -210,7 +221,7 @@ export function DriverDay({
       ) : (
         <>
           <p>No shift is running.</p>
-          {driver && !driver.canDrive && (
+          {driver && !driver.canDrive && !suspended && !onboarding && (
             <div className="driver-callout">
               <p>Work without a vehicle is available. Call HR about your driving documents.</p>
               <a className="driver-button" href={`tel:${officePhone}`}>
@@ -218,28 +229,30 @@ export function DriverDay({
               </a>
             </div>
           )}
-          <div className="driver-actions">
-            <button
-              className="primary"
-              disabled={state.loading || state.saving || !state.snapshot || !driver || suspended}
-              onClick={() => {
-                const suggestedId = state.snapshot
-                  ? resolveSuggestedTruck(
-                      state.snapshot,
-                      driver?.cycles ?? [],
-                      companyDate(new Date().toISOString(), zone),
-                    )
-                  : null;
-                const suggested = state.snapshot?.trucks.find(
-                  (truck) => truck.id === suggestedId && truck.usable,
-                );
-                setTruckId(driver?.canDrive ? (suggested?.id ?? "") : "");
-                setSheet("start");
-              }}
-            >
-              Start shift
-            </button>
-          </div>
+          {!suspended && !onboarding && (
+            <div className="driver-actions">
+              <button
+                className="primary"
+                disabled={state.loading || state.saving || !state.snapshot || !driver || suspended}
+                onClick={() => {
+                  const suggestedId = state.snapshot
+                    ? resolveSuggestedTruck(
+                        state.snapshot,
+                        driver?.cycles ?? [],
+                        companyDate(new Date().toISOString(), zone),
+                      )
+                    : null;
+                  const suggested = state.snapshot?.trucks.find(
+                    (truck) => truck.id === suggestedId && truck.usable,
+                  );
+                  setTruckId(driver?.canDrive ? (suggested?.id ?? "") : "");
+                  setSheet("start");
+                }}
+              >
+                Start shift
+              </button>
+            </div>
+          )}
         </>
       )}
       {formError && (
@@ -247,7 +260,7 @@ export function DriverDay({
           {formError}
         </p>
       )}
-      {sheet === "start" && (
+      {sheet === "start" && !suspended && !onboarding && (
         <Drawer
           open
           title="Start shift"
@@ -257,9 +270,10 @@ export function DriverDay({
           }}
         >
           <form className="driver-sheet" onSubmit={start}>
-            <label>
+            <label htmlFor="start-truck">
               Truck
               <select
+                id="start-truck"
                 value={truckId}
                 disabled={state.saving || !driver?.canDrive}
                 onChange={(event) => {
@@ -273,21 +287,26 @@ export function DriverDay({
                   .map((truck) => (
                     <option value={truck.id} key={truck.id} disabled={!truck.usable}>
                       {truck.plate}
-                      {!truck.usable ? ` — ${truck.reason}` : ""}
+                      {!truck.usable ? ` \u2014 ${truck.reason}` : ""}
                     </option>
                   ))}
               </select>
             </label>
+            <DriverReleaseNotice release={selectedTruck?.release} />
             {selectedTruck?.licenceClassWarning && (
               <p className="driver-callout">
-                Your recorded licence classes do not include this truck’s class. Check with dispatch.
+                Your recorded licence classes do not include this truck{"\u2019"}s class. Check with dispatch.
               </p>
             )}
             {truckId && (
               <>
-                <label>
+                <label htmlFor="start-trailer">
                   Trailer (optional)
-                  <select value={trailerId} onChange={(event) => setTrailerId(event.target.value)}>
+                  <select
+                    id="start-trailer"
+                    value={trailerId}
+                    onChange={(event) => setTrailerId(event.target.value)}
+                  >
                     <option value="">No trailer</option>
                     {state.snapshot?.trucks
                       .filter((truck) => truck.kind === "trailer")
@@ -303,13 +322,20 @@ export function DriverDay({
                     This trailer is unavailable. Check with dispatch before using it.
                   </p>
                 )}
-                <label>
-                  <input type="checkbox" name="departure" />
+                <label htmlFor="start-departure">
+                  <input id="start-departure" type="checkbox" name="departure" />
                   Departure check OK (optional)
                 </label>
-                <label>
+                <label htmlFor="start-odometer">
                   Odometer km (optional)
-                  <input name="odometer" inputMode="numeric" type="number" min={0} step={1} />
+                  <input
+                    id="start-odometer"
+                    name="odometer"
+                    inputMode="numeric"
+                    type="number"
+                    min={0}
+                    step={1}
+                  />
                 </label>
               </>
             )}
@@ -319,7 +345,7 @@ export function DriverDay({
               </p>
             )}
             <button className="primary" disabled={state.saving}>
-              {state.saving ? "Saving…" : "Confirm start"}
+              {state.saving ? "Saving\u2026" : "Confirm start"}
             </button>
           </form>
         </Drawer>
@@ -335,9 +361,10 @@ export function DriverDay({
         >
           <form className="driver-sheet" onSubmit={end}>
             {oldShift && (
-              <label>
-                End time · {zone}
+              <label htmlFor="end-time">
+                End time {"\u00b7"} {zone}
                 <input
+                  id="end-time"
                   type="datetime-local"
                   name="endAt"
                   required
@@ -346,9 +373,9 @@ export function DriverDay({
                 />
               </label>
             )}
-            <label>
+            <label htmlFor="end-odometer">
               Odometer km (optional)
-              <input name="odometer" inputMode="numeric" type="number" min={0} step={1} />
+              <input id="end-odometer" name="odometer" inputMode="numeric" type="number" min={0} step={1} />
             </label>
             {cycleEnd && (
               <fieldset>
@@ -391,9 +418,10 @@ export function DriverDay({
               </div>
             </fieldset>
             {night && (
-              <label>
+              <label htmlFor="night-country">
                 Country code
                 <input
+                  id="night-country"
                   value={country}
                   maxLength={2}
                   pattern="[A-Z]{2}"
@@ -417,7 +445,7 @@ export function DriverDay({
               </p>
             )}
             <button className="primary" disabled={state.saving}>
-              {state.saving ? "Saving…" : "Confirm end"}
+              {state.saving ? "Saving\u2026" : "Confirm end"}
             </button>
           </form>
         </Drawer>

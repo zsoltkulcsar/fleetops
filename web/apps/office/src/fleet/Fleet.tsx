@@ -10,6 +10,7 @@ import "./fleet.css";
 import { readinessApi, type VehicleReadiness } from "../readiness/api";
 import { fleetCauseText } from "../readiness/labels";
 import { FleetTabs } from "./FleetTabs";
+import { VehicleRelease } from "./VehicleRelease";
 
 type ReadinessVehicle = Vehicle & VehicleReadiness;
 const statusPillFor: Record<ReadinessVehicle["shownStatus"], "usable" | "off-road"> = {
@@ -36,7 +37,7 @@ export function Fleet() {
   const [formOpen, setFormOpen] = useState(false);
   const [toast, setToast] = useState(false);
   useEffect(() => {
-    document.title = `Fleet · ${en.appName}`;
+    document.title = `Fleet \u00b7 ${en.appName}`;
   }, []);
   useEffect(() => {
     const timer = window.setTimeout(() => setTerm(search.trim()), 300);
@@ -124,7 +125,7 @@ export function Fleet() {
                 </button>
               ))}
             </div>
-            <label className="search-field">
+            <label className="search-field" htmlFor="fleet-search">
               <Search size={16} aria-hidden />
               <span className="visually-hidden">Search fleet</span>
               <input
@@ -134,8 +135,9 @@ export function Fleet() {
                 onChange={(event) => setSearch(event.target.value)}
               />
             </label>
-            <label className="checkbox-field">
+            <label className="checkbox-field" htmlFor="fleet-include-retired">
               <input
+                id="fleet-include-retired"
                 type="checkbox"
                 checked={includeRetired}
                 onChange={(event) => setIncludeRetired(event.target.checked)}
@@ -145,7 +147,7 @@ export function Fleet() {
           </div>
         </header>
         {query.isLoading ? (
-          <div className="fleet-loading">Loading vehicles…</div>
+          <div className="fleet-loading">Loading vehicles{"\u2026"}</div>
         ) : !vehicles.length && !query.isError ? (
           <EmptyState
             heading="No vehicles yet."
@@ -199,6 +201,7 @@ export function Fleet() {
                             {vehicle.causes?.map((cause) => (
                               <div key={`${cause.code}-${cause.documentType}`}>{fleetCauseText(cause)}</div>
                             ))}
+                            <VehicleRelease id={vehicle.id} />
                           </>
                         );
                       })()}
@@ -213,14 +216,14 @@ export function Fleet() {
           </div>
         )}
         <footer className="directory-footer">
-          <span>{vehicles.length ? `1–${vehicles.length} vehicles` : "0 vehicles"}</span>
+          <span>{vehicles.length ? `1\u2013${vehicles.length} vehicles` : "0 vehicles"}</span>
           {query.hasNextPage && (
             <button
               className="ui-button load-more"
               onClick={() => void query.fetchNextPage()}
               disabled={query.isFetchingNextPage}
             >
-              {query.isFetchingNextPage ? "Loading…" : "Load more"}
+              {query.isFetchingNextPage ? "Loading\u2026" : "Load more"}
             </button>
           )}
         </footer>

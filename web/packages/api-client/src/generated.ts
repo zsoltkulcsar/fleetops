@@ -76,6 +76,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/people/{id}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PersonHistory"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/people/{id}/leave-preview": {
         parameters: {
             query?: never;
@@ -5320,6 +5357,21 @@ export interface components {
             adrRequired: boolean;
             /** Format: double */
             vacationEntitlementDays?: null | number;
+        };
+        PersonHistory: {
+            items: components["schemas"]["PersonHistoryEntry"][];
+        };
+        PersonHistoryEntry: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            createdAt: string;
+            actor: string;
+            field: string;
+            oldValue: null | string;
+            newValue: null | string;
+            reason: string;
+            masked: boolean;
         };
         PersonReasonRequest: {
             reason: null | string;

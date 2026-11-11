@@ -198,10 +198,11 @@ export async function storeEncryptedRecord(key: string, value: unknown): Promise
     await localStore.set(key, record);
   });
 }
-export const markOnline = () =>
+export const markOnline = (config?: VaultConfig) =>
   exclusive(async () => {
     const vault = await readVault();
     if (vault && !vault.locked) {
+      if (config) vault.config = config;
       vault.lastOnlineAt = Date.now();
       await localStore.set(vaultId, vault);
     }

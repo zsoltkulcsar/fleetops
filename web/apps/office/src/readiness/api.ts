@@ -1,25 +1,15 @@
 import { AuthRequestError } from "../auth/api";
 
-export type ReadinessCause = { code: string; documentType: string | null };
-export type VehicleReadiness = {
-  shownStatus: "active" | "off_road" | "in_maintenance" | "retired";
-  usable: boolean;
-  causes: ReadinessCause[];
-};
-export type ReadinessSummary = {
-  vehiclesUsable: number;
-  vehiclesTotal: number;
-  driversAbleToDrive: number;
-  driversTotal: number;
-};
-export type DriverReadinessItem = {
-  id: string;
-  name: string;
-  canDrive: boolean;
-  enrolled?: boolean;
-  causes: ReadinessCause[];
-};
-export type DriverReadinessList = { items: DriverReadinessItem[]; nextCursor: string | null };
+import type { components } from "@fleetops/api-client";
+
+export type ReadinessCause = components["schemas"]["ReadinessCause"];
+export type VehicleReadiness = Pick<
+  components["schemas"]["VehicleDetail"],
+  "shownStatus" | "usable" | "causes"
+>;
+export type ReadinessSummary = components["schemas"]["ReadinessSummary"];
+export type DriverReadinessItem = components["schemas"]["DriverReadinessItem"];
+export type DriverReadinessList = components["schemas"]["DriverReadinessList"];
 
 async function request<T>(path: string): Promise<T> {
   const response = await fetch(path);

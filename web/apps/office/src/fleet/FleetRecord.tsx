@@ -1,4 +1,5 @@
 import { Defects } from "./Defects";
+import { VehicleRelease } from "./VehicleRelease";
 import { Maintenance } from "./Maintenance";
 import { SwapPicker } from "./SwapPicker";
 import { useDefectAccess } from "./defectPresentation";
@@ -16,11 +17,7 @@ import "./fleet.css";
 import { readinessApi } from "../readiness/api";
 import { fleetCauseText } from "../readiness/labels";
 
-type ReadinessDetail = VehicleDetail & {
-  shownStatus?: "active" | "off_road" | "in_maintenance" | "retired";
-  usable?: boolean;
-  causes?: Array<{ code: string; documentType: string | null }>;
-};
+type ReadinessDetail = VehicleDetail;
 const statusPillFor: Record<NonNullable<ReadinessDetail["shownStatus"]>, "usable" | "off-road"> = {
   active: "usable",
   off_road: "off-road",
@@ -57,12 +54,12 @@ export function FleetRecord({ id }: { id: string }) {
   const canEdit = Boolean(session.data?.roles.some((role) => role === "dispatcher" || role === "owner"));
   const isOwner = Boolean(session.data?.roles.some((role) => role === "owner"));
   useEffect(() => {
-    if (query.data) document.title = `${query.data.plate} · ${en.appName}`;
+    if (query.data) document.title = `${query.data.plate} \u00b7 ${en.appName}`;
   }, [query.data]);
   if (query.isLoading)
     return (
       <div className="page fleet-page">
-        <div className="fleet-loading">Loading vehicle record…</div>
+        <div className="fleet-loading">Loading vehicle record{"\u2026"}</div>
       </div>
     );
   if (query.error && (query.error as { status?: number }).status === 404)
@@ -148,6 +145,7 @@ export function FleetRecord({ id }: { id: string }) {
       {readinessVehicle.causes?.length ? (
         <p className="ui-muted">{readinessVehicle.causes.map((cause) => fleetCauseText(cause)).join(", ")}</p>
       ) : null}
+      <VehicleRelease id={id} />
       {vehicle.status === "retired" &&
         isOwner &&
         vehicle.retiredAt &&
@@ -344,7 +342,7 @@ function RetireDrawer({
           <li>{en.fleet.retire.readOnly}</li>
           <li>{en.fleet.retire.historyStays}</li>
         </ul>
-        {impact.isPending && <p role="status">Checking scheduled drivers…</p>}
+        {impact.isPending && <p role="status">Checking scheduled drivers{"\u2026"}</p>}
         {impact.isError && <p role="alert">Scheduled drivers could not be checked. Close and try again.</p>}
         {impact.data?.items.length ? (
           <div>

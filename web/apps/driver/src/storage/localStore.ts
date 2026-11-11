@@ -31,6 +31,9 @@ async function transact<T>(
 }
 
 export const localStore = {
+  clear: async (): Promise<void> => {
+    await transact("readwrite", (store) => store.clear());
+  },
   get: <T>(key: string) => transact<T | undefined>("readonly", (store) => store.get(key)),
   set: async <T>(key: string, value: T): Promise<void> => {
     await transact("readwrite", (store) => store.put(value, key));

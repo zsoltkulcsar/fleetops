@@ -6,6 +6,7 @@ import { Drawer } from "@fleetops/ui";
 import { DriverRequestError, scheduleApi } from "./scheduleApi";
 import { driverDate } from "./DriverSchedule";
 import { defectCategoryLabel, defectSeverityLabel } from "./defectLabels";
+import { DriverReleaseNotice } from "./DriverReleaseNotice";
 
 export async function openFreshFile(documentId: string, fileId: string) {
   const target = window.open("", "_blank");
@@ -55,7 +56,7 @@ export function DriverTruck({ id, online, onClose }: { id: string; online: boole
         {!online ? (
           <p>Truck details and photos need a connection.</p>
         ) : truck.isPending ? (
-          <p role="status">Loading truck details…</p>
+          <p role="status">Loading truck details{"\u2026"}</p>
         ) : truck.isError ? (
           <div role="alert">
             <p>
@@ -68,13 +69,14 @@ export function DriverTruck({ id, online, onClose }: { id: string; online: boole
         ) : (
           truck.data && (
             <>
+              <DriverReleaseNotice release={truck.data.release} />
               <h3>Open defects</h3>
               {truck.data.defects?.length ? (
                 truck.data.defects.map((defect) => (
                   <div key={defect.id}>
                     <p>
-                      <TriangleAlert size={18} aria-hidden /> {defectCategoryLabel(defect.category)} ·{" "}
-                      {defectSeverityLabel(defect.severity)} · {driverDate(defect.date)}
+                      <TriangleAlert size={18} aria-hidden /> {defectCategoryLabel(defect.category)}{" "}
+                      {"\u00b7"} {defectSeverityLabel(defect.severity)} {"\u00b7"} {driverDate(defect.date)}
                     </p>
                     {defect.photos.map((photo, index) => (
                       <button
@@ -123,7 +125,7 @@ export function DriverTruck({ id, online, onClose }: { id: string; online: boole
                       <div>
                         <strong>{defectCategoryLabel(item.category)}</strong>
                         <span>
-                          {item.severity} · {driverDate(item.date)}
+                          {item.severity} {"\u00b7"} {driverDate(item.date)}
                         </span>
                       </div>
                       {item.documentId && item.fileId && (
@@ -149,7 +151,7 @@ export function DriverTruck({ id, online, onClose }: { id: string; online: boole
                         <strong>{document.type.replaceAll("_", " ")}</strong>
                         <span>
                           {document.status}
-                          {document.expiresAt ? ` · Expires ${driverDate(document.expiresAt)}` : ""}
+                          {document.expiresAt ? ` \u00b7 Expires ${driverDate(document.expiresAt)}` : ""}
                         </span>
                         {document.files.map((file) => (
                           <button

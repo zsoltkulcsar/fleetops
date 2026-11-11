@@ -1,4 +1,5 @@
 import { apiClient } from "@fleetops/api-client";
+import "./sessionEvents";
 
 export const driverApi = {
   enrol: async (personnelNumber: string, code: string) => {
@@ -18,6 +19,10 @@ export const driverApi = {
   session: async () => {
     const result = await apiClient.GET("/api/v1/auth/session", { cache: "no-store" });
     return result.response.status;
+  },
+  completePinReset: async () => {
+    const result = await apiClient.POST("/api/v1/driver/pin-reset/complete");
+    if (!result.response.ok) throw new Error("pin_reset_failed");
   },
   signOut: async () => {
     const result = await apiClient.POST("/api/v1/auth/sign-out");

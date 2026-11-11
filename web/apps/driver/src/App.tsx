@@ -7,6 +7,8 @@ import { PinForm } from "./PinForm";
 import { en } from "./i18n/en";
 import { localStore } from "./storage/localStore";
 import { commandQueue } from "./storage/commandQueue";
+import { resetSessionState } from "./sessionEvents";
+import { resetVaultPin } from "./storage/resetVaultPin";
 import {
   createVault,
   eraseVault,
@@ -24,6 +26,7 @@ type Stage =
   | "enrol"
   | "privacy"
   | "set-pin"
+  | "reset-pin"
   | "unlock"
   | "locked"
   | "expired"
@@ -40,10 +43,12 @@ export function App() {
   const [install, setInstall] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [employeeStatus, setEmployeeStatus] = useState<string>();
+  const [unsent, setUnsent] = useState<string[]>([]);
   const config = useQuery({
     queryKey: ["driver-config"],
     queryFn: driverApi.config,
-    enabled: stage === "set-pin",
+    enabled: stage === "set-pin" || stage === "reset-pin",
     retry: false,
   });
 
@@ -54,11 +59,13 @@ export function App() {
         lockVault();
         setOfficePhone(revokedPhone);
         setStage("revoked");
+        setUnsent((await localStore.get<string[]>("revoked-unsent")) ?? []);
         return;
       }
       const stored = await readVault();
       setVault(stored);
       if (stored) {
+        setEmployeeStatus(stored.config.employeeStatus);
         setOfficePhone(stored.config.officePhone);
         setStage(
           stored.locked || !stored.wrappedKey || stored.failedTries >= stored.config.maxPinTries
@@ -99,21 +106,66 @@ export function App() {
       return;
     }
     if (status === 401) {
-      lockVault();
-      // Persist the safe contact separately so a reload cannot restore access.
-      await localStore.set("revoked", officePhone);
-      await eraseVault();
-      client.clear();
-      sessionStorage.removeItem("driver-onboarding");
-      setVault(undefined);
-      setStage("revoked");
+      if ((await localStore.get<string>("revoked")) === undefined) setStage("expired");
     } else if (status === 200) {
-      await markOnline();
+      const fresh = await driverApi.config();
+      setEmployeeStatus(fresh.employeeStatus);
+      if (fresh.pinResetRequired) {
+        client.setQueryData(["driver-config"], fresh);
+        setStage("reset-pin");
+        return false;
+      }
+      await markOnline(fresh);
       const current = await readVault();
       setVault(current);
       if (current && !current.locked) setStage(isUnlocked() ? "shell" : "unlock");
+      return true;
     }
   }, [officePhone, client]);
+
+  useEffect(() => {
+    const suspend = () => setEmployeeStatus("suspended");
+    const revoke = () => {
+      void (async () => {
+        let items: string[];
+        try {
+          items = (await commandQueue.list()).map(
+            (command) =>
+              `${command.type.replaceAll(".", " ")} - ${new Date(command.deviceTime).toLocaleString("de-DE")}`,
+          );
+        } catch {
+          items = ["Saved items could not be opened on this locked phone."];
+        }
+        setUnsent(items);
+        await localStore.set("revoked-unsent", items);
+        await localStore.set("revoked", officePhone);
+        lockVault();
+        client.clear();
+        setStage("revoked");
+      })().catch(() => {
+        lockVault();
+        setStage("revoked");
+      });
+    };
+    window.addEventListener("fleetops:driver-revoked", revoke);
+    window.addEventListener("fleetops:driver-suspended", suspend);
+    return () => {
+      window.removeEventListener("fleetops:driver-revoked", revoke);
+      window.removeEventListener("fleetops:driver-suspended", suspend);
+    };
+  }, [officePhone, client]);
+
+  useEffect(() => {
+    if (!online || !["shell", "locked", "unlock", "expired"].includes(stage)) return;
+    const check = () => {
+      void checkSession().catch(() => {
+        /* Keep the local screen when the connection fails. */
+      });
+    };
+    check();
+    const timer = window.setInterval(check, 15_000);
+    return () => window.clearInterval(timer);
+  }, [online, stage, checkSession]);
 
   useEffect(() => {
     const expiredSession = () => {
@@ -122,15 +174,6 @@ export function App() {
     window.addEventListener("fleetops:driver-session-expired", expiredSession);
     return () => window.removeEventListener("fleetops:driver-session-expired", expiredSession);
   }, [checkSession]);
-
-  useEffect(() => {
-    if (online && (stage === "shell" || stage === "expired")) {
-      void checkSession().catch(() => {
-        lockVault();
-        setStage("storage-error");
-      });
-    }
-  }, [online, stage, checkSession]);
 
   useEffect(() => {
     if (stage !== "shell" || !vault) return;
@@ -230,13 +273,20 @@ export function App() {
         }}
       >
         <h1>{en.enrol}</h1>
-        <label>
+        <label htmlFor="enrol-personnel-number">
           {en.personnelNumber}
-          <input name="personnelNumber" autoComplete="username" required disabled={enrol.isPending} />
+          <input
+            id="enrol-personnel-number"
+            name="personnelNumber"
+            autoComplete="username"
+            required
+            disabled={enrol.isPending}
+          />
         </label>
-        <label>
+        <label htmlFor="enrol-code">
           {en.smsCode}
           <input
+            id="enrol-code"
             name="code"
             inputMode="numeric"
             autoComplete="one-time-code"
@@ -274,7 +324,7 @@ export function App() {
         </div>
       </section>
     );
-  else if (stage === "set-pin" && !config.data)
+  else if ((stage === "set-pin" || stage === "reset-pin") && !config.data)
     content = (
       <section className="driver-screen">
         <h1>{en.setPin}</h1>
@@ -286,21 +336,25 @@ export function App() {
         )}
       </section>
     );
-  else if (stage === "set-pin" || stage === "unlock")
+  else if (stage === "set-pin" || stage === "reset-pin" || stage === "unlock")
     content = (
       <PinForm
         key={stage}
-        setting={stage === "set-pin"}
-        length={(stage === "set-pin" ? config.data?.pinLength : vault?.config.pinLength) ?? 0}
+        setting={stage !== "unlock"}
+        length={(stage !== "unlock" ? config.data?.pinLength : vault?.config.pinLength) ?? 0}
         busy={busy}
         error={error}
         onSubmit={(pin) =>
           run(async () => {
-            if (stage === "set-pin") {
+            if (stage === "set-pin" || stage === "reset-pin") {
               if (!config.data) throw new Error("missing_config");
-              await createVault(pin, config.data);
+              if (stage === "reset-pin") {
+                await resetVaultPin(pin, config.data);
+                await driverApi.completePinReset();
+              } else await createVault(pin, config.data);
               sessionStorage.removeItem("driver-onboarding");
               setOfficePhone(config.data.officePhone);
+              setEmployeeStatus(config.data.employeeStatus);
               setVault(await readVault());
               setStage("shell");
             } else {
@@ -308,8 +362,7 @@ export function App() {
               const current = await readVault();
               setVault(current);
               if (result === "unlocked") {
-                await checkSession();
-                if (isUnlocked()) setStage("shell");
+                if ((await checkSession()) && isUnlocked()) setStage("shell");
               } else if (result === "wrong" && current) {
                 setError(en.triesLeft(current.config.maxPinTries - current.failedTries));
               } else setStage(result === "missing" ? "enrol" : result === "expired" ? "expired" : "locked");
@@ -321,10 +374,55 @@ export function App() {
   else if (stage === "locked" || stage === "expired" || stage === "revoked")
     content = (
       <section className="driver-screen">
-        <h1>{en[stage]}</h1>
+        <h1>{stage === "revoked" ? "This phone was signed out. Not sent:" : en[stage]}</h1>
+        {stage === "revoked" && (
+          <>
+            <ul>
+              {unsent.map((item, index) => (
+                <li key={index}>{item}</li>
+              ))}
+            </ul>
+            {unsent.length === 0 && <p>No unsent items.</p>}
+            <button
+              className="primary"
+              disabled={busy}
+              onClick={() =>
+                void run(async () => {
+                  lockVault();
+                  await Promise.allSettled([
+                    eraseVault(),
+                    localStore.clear(),
+                    (async () => {
+                      if ("caches" in window) {
+                        for (const key of await caches.keys())
+                          if (key.includes("fleetops") || key.includes("workbox")) await caches.delete(key);
+                      }
+                    })(),
+                  ]);
+                  sessionStorage.removeItem("driver-onboarding");
+                  client.clear();
+                  setVault(undefined);
+                  setUnsent([]);
+                  resetSessionState();
+                  setStage("enrol");
+                })
+              }
+            >
+              OK
+            </button>
+          </>
+        )}
         <div className="driver-actions">
           {stage === "expired" && (
-            <button className="primary" disabled={!online || busy} onClick={() => void run(checkSession)}>
+            <button
+              className="primary"
+              disabled={!online || busy}
+              onClick={() =>
+                void run(async () => {
+                  await checkSession();
+                })
+              }
+            >
               {en.retry}
             </button>
           )}
@@ -340,6 +438,7 @@ export function App() {
     content = (
       <DriverShell
         name={vault.config.name}
+        employeeStatus={employeeStatus}
         officePhone={vault.config.officePhone}
         busy={busy}
         onSignOut={() =>

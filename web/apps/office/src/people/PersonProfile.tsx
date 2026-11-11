@@ -12,6 +12,7 @@ import { CanDrive, PersonStatus } from "./PersonStatus";
 import { PersonForm } from "./PersonForm";
 import { PersonActionDialog, type PersonAction } from "./PersonActionDialog";
 import { SendEnrolment } from "./SendEnrolment";
+import { historyLabel, historyValue } from "./historyLabels";
 import "../fleet/fleet.css";
 import "./people.css";
 
@@ -29,6 +30,11 @@ export function PersonProfile() {
   const [sessionId, setSessionId] = useState<string>();
   const [saved, setSaved] = useState("");
   const person = useQuery({ queryKey: ["person", id], queryFn: () => peopleApi.detail(id) });
+  const history = useQuery({
+    queryKey: ["person-history", id],
+    queryFn: () => peopleApi.history(id),
+    enabled: tab === "history",
+  });
   const sessions = useQuery({
     queryKey: ["person-sessions", id],
     queryFn: () => peopleApi.sessions(id),
@@ -52,6 +58,7 @@ export function PersonProfile() {
       client.invalidateQueries({ queryKey: ["people"] }),
       client.invalidateQueries({ queryKey: ["person-sessions", id] }),
       client.invalidateQueries({ queryKey: ["attention"] }),
+      client.invalidateQueries({ queryKey: ["person-history", id] }),
     ]);
   }
   if (person.isLoading)
@@ -270,7 +277,52 @@ export function PersonProfile() {
         {tab === "history" && (
           <>
             <h2>History</h2>
-            <p>Audit history is currently unavailable for this profile.</p>
+            {history.isLoading && <p role="status">{"Loading history\u2026"}</p>}
+            {history.isError && (
+              <Banner
+                label="History unavailable"
+                retryLabel="Try again"
+                onRetry={() => void history.refetch()}
+              >
+                Data could not be loaded. Check the connection and try again.
+              </Banner>
+            )}
+            {history.data?.items.length === 0 && <p>No changes recorded yet.</p>}
+            {history.data && (
+              <div className="table-wrap">
+                <table>
+                  <caption className="visually-hidden">Person audit history</caption>
+                  <thead>
+                    <tr>
+                      <th>Time</th>
+                      <th>Who</th>
+                      <th>Field</th>
+                      <th>Old</th>
+                      <th>New</th>
+                      <th>Reason</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {history.data.items.map((entry) => (
+                      <tr key={entry.id}>
+                        <td>{formatBerlinDateTime(entry.createdAt)}</td>
+                        <td>{entry.actor}</td>
+                        <td>{historyLabel(entry.field)}</td>
+                        {entry.masked ? (
+                          <td colSpan={3}>{"Medical \u2014 visible to HR only"}</td>
+                        ) : (
+                          <>
+                            <td>{historyValue(entry.oldValue)}</td>
+                            <td>{historyValue(entry.newValue)}</td>
+                            <td>{historyLabel(entry.reason)}</td>
+                          </>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </>
         )}
       </section>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { EmptyState, Panel } from "@fleetops/ui";
+import { Panel } from "@fleetops/ui";
+import { CompanySettings } from "./CompanySettings";
 import { apiClient, type components } from "@fleetops/api-client";
 import { en } from "../i18n/en";
 import { useSession } from "../auth/AuthGate";
@@ -25,10 +26,19 @@ export function Settings() {
     enabled: isOwner,
     retry: false,
   });
-  if (!isOwner) return <SettingsPage />;
+  const allowed = session.data?.roles.some((role) => role === "owner" || role === "hr");
+  if (!allowed) return <p role="alert">Settings are available to HR and owners.</p>;
+  if (!isOwner)
+    return (
+      <>
+        <SettingsPage />
+        <CompanySettings />
+      </>
+    );
   return (
     <>
-      <SettingsPage showEmptyState={!jobs.data} />
+      <SettingsPage />
+      <CompanySettings />
       {jobs.data && (
         <Panel title={en.settings.jobs.title}>
           <div className="jobs-panel">
@@ -86,16 +96,15 @@ function JobRow({
   );
 }
 
-function SettingsPage({ showEmptyState = true }: { showEmptyState?: boolean }) {
+function SettingsPage() {
   useEffect(() => {
-    document.title = `${en.nav.settings} · ${en.appName}`;
+    document.title = `${en.nav.settings} \u00b7 ${en.appName}`;
   }, []);
 
   return (
     <div className="page">
       <h1>{en.nav.settings}</h1>
       <p className="ui-muted">{en.subtitles.settings}</p>
-      {showEmptyState && <EmptyState heading={en.states.empty}>{en.states.emptyBody}</EmptyState>}
     </div>
   );
 }
