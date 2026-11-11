@@ -5,6 +5,7 @@ import { Banner, Panel, Plate } from "@fleetops/ui";
 import type { components } from "@fleetops/api-client";
 import { defectApi } from "./defectApi";
 import { DefectState, defectDate, useDefectAccess } from "./defectPresentation";
+import { defectCategoryLabel } from "./defectLabels";
 import { FleetTabs } from "./FleetTabs";
 import { DefectDetail } from "./DefectDetail";
 import { LogDefect } from "./LogDefect";
@@ -117,10 +118,10 @@ export function Defects({ vehicleId }: { vehicleId?: string }) {
                             <td>
                               <button className="defect-row-link" onClick={() => setOpened(report.id)}>
                                 <Plate>{report.plate}</Plate>
-                                <span className="visually-hidden">Open defect {report.category}</span>
+                                <span className="visually-hidden">Open defect {defectCategoryLabel(report.category)}</span>
                               </button>
                             </td>
-                            <td>{report.category.replaceAll("_", " ")}</td>
+                            <td>{defectCategoryLabel(report.category)}</td>
                             <td>
                               {report.reportedByName}
                               <br />

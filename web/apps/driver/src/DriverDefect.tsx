@@ -11,6 +11,7 @@ import { localStore } from "./storage/localStore";
 import { companyDate, resolveSuggestedTruck } from "./storage/shiftProjection";
 import { useVoiceNote } from "./useVoiceNote";
 import { driverDate } from "./DriverSchedule";
+import { defectCategoryLabel, defectSeverityLabel, defectStatusLabel } from "./defectLabels";
 
 const categories: components["schemas"]["DefectCategory"][] = [
   "brakes",
@@ -261,7 +262,7 @@ export function DriverDefect({
                   aria-pressed={category === value}
                   onClick={() => setCategory(value)}
                 >
-                  {value === "load_securing" ? "Load securing" : value[0].toUpperCase() + value.slice(1)}
+                  {defectCategoryLabel(value)}
                 </button>
               ))}
             </div>
@@ -359,8 +360,8 @@ export function DriverDefect({
       <h2>Your reports</h2>
       {snapshot?.defects?.map((defect) => (
         <p key={defect.id}>
-          <TriangleAlert size={16} aria-hidden /> {defect.category.replaceAll("_", " ")} {defect.severity}{" "}
-          {defect.status.replaceAll("_", " ")} {driverDate(defect.reportedAt)}
+          <TriangleAlert size={16} aria-hidden /> {defectCategoryLabel(defect.category)} · {defectSeverityLabel(defect.severity)} ·{" "}
+          {defectStatusLabel(defect.status)} · {driverDate(defect.reportedAt)}
         </p>
       ))}
     </section>

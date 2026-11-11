@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Drawer } from "@fleetops/ui";
 import { DriverRequestError, scheduleApi } from "./scheduleApi";
 import { driverDate } from "./DriverSchedule";
+import { defectCategoryLabel, defectSeverityLabel } from "./defectLabels";
 
 export async function openFreshFile(documentId: string, fileId: string) {
   const target = window.open("", "_blank");
@@ -72,8 +73,8 @@ export function DriverTruck({ id, online, onClose }: { id: string; online: boole
                 truck.data.defects.map((defect) => (
                   <div key={defect.id}>
                     <p>
-                      <TriangleAlert size={18} aria-hidden /> {defect.category.replaceAll("_", " ")}{" "}
-                      {defect.severity} {driverDate(defect.date)}
+                      <TriangleAlert size={18} aria-hidden /> {defectCategoryLabel(defect.category)} ·{" "}
+                      {defectSeverityLabel(defect.severity)} · {driverDate(defect.date)}
                     </p>
                     {defect.photos.map((photo, index) => (
                       <button
@@ -120,7 +121,7 @@ export function DriverTruck({ id, online, onClose }: { id: string; online: boole
                   {truck.data.items.map((item) => (
                     <li key={item.id}>
                       <div>
-                        <strong>{item.category.replaceAll("_", " ")}</strong>
+                        <strong>{defectCategoryLabel(item.category)}</strong>
                         <span>
                           {item.severity} · {driverDate(item.date)}
                         </span>

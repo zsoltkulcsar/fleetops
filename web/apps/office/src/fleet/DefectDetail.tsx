@@ -4,6 +4,7 @@ import { Drawer } from "@fleetops/ui";
 import type { components } from "@fleetops/api-client";
 import { defectApi } from "./defectApi";
 import { DefectState, defectDate, useDefectAccess } from "./defectPresentation";
+import { defectCategoryLabel } from "./defectLabels";
 import { useOnline } from "../shell/Shell";
 import { RepairForm } from "./RepairForm";
 import { SwapPicker } from "./SwapPicker";
@@ -84,7 +85,7 @@ export function DefectDetail({
     <Drawer
       open
       title={
-        detail ? `${detail.report.plate}: ${detail.report.category.replaceAll("_", " ")}` : "Defect report"
+        detail ? `${detail.report.plate}: ${defectCategoryLabel(detail.report.category)}` : "Defect report"
       }
       closeLabel="Close defect"
       onClose={onClose}
@@ -240,7 +241,9 @@ export function DefectDetail({
               <ul className="history-list">
                 {detail.history.map((item, index) => (
                   <li key={index}>
-                    {defectDate(item.at, true)}: {item.fieldName} {item.oldValue} {"\u2192"} {item.newValue}.{" "}
+                    {defectDate(item.at, true)}: {item.fieldName}{" "}
+                    {item.oldValue ? `${item.oldValue} \u2192 ${item.newValue ?? "\u2013"}` : `${item.newValue ?? "\u2013"}`}
+                    {" \u00b7 "}
                     {item.reason}
                   </li>
                 ))}

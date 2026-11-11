@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Drawer } from "@fleetops/ui";
 import { apiClient, type components } from "@fleetops/api-client";
 import { checked, defectApi } from "./defectApi";
+import { defectCategoryLabel } from "./defectLabels";
 import { useOnline } from "../shell/Shell";
 
 export function LogDefect({
@@ -112,7 +113,7 @@ export function LogDefect({
           {(["brakes", "lights", "tyres", "engine", "body", "tacho", "load_securing", "other"] as const).map(
             (value) => (
               <option key={value} value={value}>
-                {value.replaceAll("_", " ")}
+                {defectCategoryLabel(value)}
               </option>
             ),
           )}

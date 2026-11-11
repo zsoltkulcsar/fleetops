@@ -42,7 +42,8 @@ public sealed class EfOfficeDefectReads(FleetOpsDbContext db, IObjectStore objec
         var history = await db.AuditEntries.AsNoTracking().Where(entry => entry.EntityType == nameof(DefectReport) && entry.EntityId == id)
             .OrderBy(entry => entry.CreatedAt).ThenBy(entry => entry.Id)
             .Select(entry => new DefectHistoryItem(entry.FieldName, entry.OldValue, entry.NewValue, entry.ActorId, entry.Reason, entry.CreatedAt)).ToListAsync(cancellationToken);
-        return new(WithAge(row, time.GetUtcNow()), report.Description, report.RepairId, report.ClosedBy, report.ClosedAt, report.CloseReason, photos, history);
+        var readable = history.Select(item => DefectHistoryText.Readable(item, files.Count)).Where(item => item is not null).Select(item => item!).ToList();
+        return new(WithAge(row, time.GetUtcNow()), report.Description, report.RepairId, report.ClosedBy, report.ClosedAt, report.CloseReason, photos, readable);
     }
 
     private IQueryable<DefectRow> Rows(IQueryable<DefectReport> reports)

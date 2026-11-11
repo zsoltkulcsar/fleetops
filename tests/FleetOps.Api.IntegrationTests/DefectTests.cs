@@ -527,6 +527,33 @@ public sealed class DefectTests : IAsyncLifetime
         Assert.False(await db.PendingFiles.AnyAsync(Cancellation));
     }
 
+    [Fact]
+    public async Task Defect_history_shows_photo_counts_and_readable_reasons()
+    {
+        var photo = await Photo();
+        var id = await Report(severity: "major", photos: [photo]);
+        await PostOffice($"/api/v1/fleet/defects/{id}/confirm", new { });
+        using var office = factory.AsDispatcher();
+        var detail = await Get(office, $"/api/v1/fleet/defects/{id}");
+        var history = detail.GetProperty("history").EnumerateArray().Select(item => new
+        {
+            Field = item.GetProperty("fieldName").GetString(),
+            Old = item.GetProperty("oldValue").ValueKind == JsonValueKind.Null ? null : item.GetProperty("oldValue").GetString(),
+            New = item.GetProperty("newValue").ValueKind == JsonValueKind.Null ? null : item.GetProperty("newValue").GetString(),
+            Reason = item.GetProperty("reason").GetString(),
+        }).ToList();
+        Assert.Contains(history, row => row.Field == "Photos" && row.New == "1 added" && row.Reason == "Reported in the app");
+        Assert.Contains(history, row => row.Field == "Category" && row.New == "Brakes");
+        Assert.Contains(history, row => row.Field == "Severity" && row.New == "Major");
+        Assert.Contains(history, row => row.Field == "Status" && row.Old == "Open" && row.New == "Acknowledged" && row.Reason == "Confirmed by dispatch");
+        var text = string.Join(" ", history.Select(row => $"{row.Field} {row.Old} {row.New} {row.Reason}"));
+        Assert.DoesNotContain("System.", text);
+        Assert.DoesNotContain("driver_defect_report", text);
+        Assert.DoesNotContain("office_defect_confirm", text);
+        Assert.DoesNotMatch(@"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}", text);
+        Assert.DoesNotContain(history, row => row.Field is "CommandId" or "DeviceTime" or "ServerReceivedAt");
+    }
+
     private async Task<Guid> Employee()
     {
         var id = Guid.NewGuid();

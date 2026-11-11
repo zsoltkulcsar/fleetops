@@ -387,3 +387,30 @@ test("defects and maintenance tabs have no accessibility violations", async ({ p
     expect(result.violations).toEqual([]);
   }
 });
+test("defect rows and detail show labels, not wire values", async ({ page }) => {
+  const state = await setup(page);
+  state.rows[0] = { ...state.rows[0], category: "load_securing" };
+  state.detail.report = { ...state.detail.report, category: "load_securing" };
+  state.detail.history = [
+    {
+      fieldName: "Photos",
+      oldValue: null,
+      newValue: "1 added",
+      actorId: employeeId,
+      reason: "Reported in the app",
+      at: "2026-11-09T10:00:00Z",
+    },
+  ];
+  await page.goto("/fleet/defects");
+  const first = page.locator("tbody tr").first();
+  await expect(first.getByRole("cell").nth(2)).toHaveText("Load securing");
+  await expect(first).not.toContainText("load_securing");
+  await expect(first).not.toContainText("load securing load securing");
+  await first.getByRole("button").click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("heading", { name: "B-TEST 32: Load securing" })).toBeVisible();
+  await expect(dialog.getByRole("listitem").filter({ hasText: "Photos" })).toHaveText(
+    "09.11.2026 11:00: Photos 1 added · Reported in the app",
+  );
+  await expect(dialog).not.toContainText("System.Guid");
+});

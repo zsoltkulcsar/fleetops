@@ -203,8 +203,48 @@ test("truck drawer lists open defects without the reporter", async ({ page }) =>
   await page.getByRole("button", { name: "Open truck B-TEST 32", exact: true }).click();
   const drawer = page.getByRole("dialog");
   await expect(drawer.getByRole("heading", { name: "Open defects" })).toBeVisible();
-  await expect(drawer).toContainText("brakes critical 09.11.2026");
+  await expect(drawer).toContainText("Brakes · Do not drive · 09.11.2026");
   await expect(drawer.getByRole("button", { name: /photo 1/i })).toBeVisible();
   await expect(drawer).not.toContainText("Dana Driver");
   await expect(drawer).not.toContainText(/reported by/i);
+});
+
+test("your reports list shows labels", async ({ page }) => {
+  await setup(page);
+  const snapshot: Schema["DriverSnapshot"] = {
+    employeeId: "00000000-0000-0000-0000-000000000031",
+    generatedAt: "2026-11-10T10:00:00Z",
+    canDrive: true,
+    readinessCauses: [],
+    documents: [],
+    cycles: [],
+    defects: [
+      {
+        id: photoId,
+        vehicleId: truckId,
+        category: "tyres",
+        severity: "critical",
+        status: "cancelled",
+        reportedAt: "2026-11-10T09:00:00Z",
+      },
+      {
+        id: shift.id,
+        vehicleId: truckId,
+        category: "load_securing",
+        severity: "major",
+        status: "in_repair",
+        reportedAt: "2026-11-09T09:00:00Z",
+      },
+    ],
+  };
+  await page.route("**/api/v1/driver/snapshot", (route) => route.fulfill({ json: snapshot }));
+  await page.getByRole("link", { name: "Week", exact: true }).click();
+  await page.getByRole("button", { name: "Refresh schedule", exact: true }).click();
+  await page.getByRole("link", { name: "Defect", exact: true }).click();
+  const reports = page.locator("section").filter({ has: page.getByRole("heading", { name: "Your reports" }) });
+  await expect(reports).toContainText("Tyres · Do not drive · Cancelled · 10.11.2026");
+  await expect(reports).toContainText("Load securing · Fix soon · In repair · 09.11.2026");
+  await expect(reports).not.toContainText("tyres");
+  await expect(reports).not.toContainText("critical");
+  await expect(reports).not.toContainText("in_repair");
 });

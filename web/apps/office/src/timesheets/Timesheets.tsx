@@ -19,9 +19,17 @@ export function Timesheets() {
   const online = useOnline();
   const allowed = session.data?.roles.some((role) => ["dispatcher", "hr", "owner"].includes(role)) === true;
   const client = useQueryClient();
-  const [week, setWeek] = useState(() => monday("Europe/Berlin"));
-  const [filter, setFilter] = useState("all");
-  const [search, setSearch] = useState("");
+  // Attention cards link here with ?week=YYYY-MM-DD (any day of the week), ?filter= and ?search= (A-09, A-15).
+  const [week, setWeek] = useState(() => {
+    const day = params.get("week");
+    if (!day || !/^\d{4}-\d{2}-\d{2}$/.test(day) || Number.isNaN(Date.parse(`${day}T12:00:00Z`)))
+      return monday("Europe/Berlin");
+    return addDays(day, -((new Date(`${day}T12:00:00Z`).getUTCDay() + 6) % 7));
+  });
+  const [filter, setFilter] = useState(() =>
+    ["all", "awaiting", "missing", "warnings"].includes(params.get("filter") ?? "") ? params.get("filter")! : "all",
+  );
+  const [search, setSearch] = useState(() => (params.get("search") ?? "").slice(0, 200));
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<string[]>([]);
   const [focus, setFocus] = useState(-1);

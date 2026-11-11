@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Drawer } from "@fleetops/ui";
 import { defectApi } from "./defectApi";
 import { companyToday } from "./defectPresentation";
+import { defectCategoryLabel, defectSeverityLabel } from "./defectLabels";
 import { useOnline } from "../shell/Shell";
 
 export function RepairForm({
@@ -80,7 +81,7 @@ export function RepairForm({
                 }
               />
               <label htmlFor={`${id}-${defect.id}`}>
-                {defect.category.replaceAll("_", " ")} ({defect.severity})
+                {defectCategoryLabel(defect.category)} ({defectSeverityLabel(defect.severity)})
               </label>
             </div>
           ))}

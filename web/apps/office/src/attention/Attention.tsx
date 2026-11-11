@@ -15,6 +15,13 @@ function itemTitle(item: AttentionItem) {
   if (item.ruleId === "A-07") return "Critical defect: vehicle off road";
   if (item.ruleId === "A-08") return "Major defect awaiting repair";
   if (item.ruleId === "A-21") return "Schedule clash";
+  // Titles from the alert catalogue (design/domain.md section 13), never the bare code.
+  if (item.ruleId === "A-09") return "Missing timesheet";
+  if (item.ruleId === "A-10") return "Shift waiting for approval";
+  if (item.ruleId === "A-15") return "Week not submitted";
+  if (item.ruleId === "A-16") return "Shift running too long";
+  if (item.ruleId === "A-17") return "Driver change on a locked shift";
+  if (item.ruleId === "A-20") return "Cycle overrun: handover late";
   if (item.ruleId === "A-02")
     return `${en.attention.rules.a02} · ${en.documents.types[item.scopeKey as keyof typeof en.documents.types] ?? item.scopeKey}`;
   if (item.ruleId === "A-03")
@@ -29,8 +36,24 @@ function actionFor(item: AttentionItem, group: AttentionGroup, owner: boolean) {
       label: owner ? "View defect" : "Open defect",
       href: `/fleet/defects?defectId=${group.subjectId}`,
     };
-  if (item.ruleId === "A-10" || item.ruleId === "A-16")
+  if (item.ruleId === "A-10")
+    return { label: "Review & approve", href: `/timesheets?shiftId=${group.subjectId}` };
+  if (item.ruleId === "A-16" || item.ruleId === "A-17")
     return { label: "Open shift", href: `/timesheets?shiftId=${group.subjectId}` };
+  if (item.ruleId === "A-09") {
+    const day = /^\d{4}-\d{2}-\d{2}$/.test(item.scopeKey ?? "") ? item.scopeKey : (item.dueAt ?? "").slice(0, 10);
+    return {
+      label: "Add shift for driver",
+      href: `/timesheets?filter=missing&search=${encodeURIComponent(group.subjectName ?? "")}${day ? `&week=${day}` : ""}`,
+    };
+  }
+  if (item.ruleId === "A-15")
+    return { label: "Open shifts", href: `/timesheets?search=${encodeURIComponent(group.subjectName ?? "")}` };
+  if (item.ruleId === "A-20")
+    return {
+      label: "Open Schedule",
+      href: `/schedule?cycleId=${group.subjectId}${item.dueAt ? `&from=${item.dueAt.slice(0, 10)}` : ""}`,
+    };
   if (item.ruleId === "A-21")
     return {
       label: "Open Schedule",
@@ -270,19 +293,23 @@ function AttentionCard({
         <span className="eyebrow">
           {group.subjectType === "cycle"
             ? "Schedule"
-            : group.subjectType === "vehicle"
+            : group.subjectType === "vehicle" || group.subjectType === "defect"
               ? en.attention.vehicle
               : en.attention.person}
         </span>
         <span className="attention-subject">
-          {group.subjectType === "vehicle" ? (
+          {group.subjectType === "vehicle" || group.subjectType === "defect" ? (
             <Truck size={17} aria-hidden />
           ) : group.subjectType === "cycle" ? (
             <CalendarDays size={17} aria-hidden />
           ) : (
             <UserRound size={17} aria-hidden />
           )}
-          {group.subjectType === "vehicle" ? <Plate>{group.subjectName}</Plate> : group.subjectName}
+          {group.subjectType === "vehicle" || group.subjectType === "defect" ? (
+            <Plate>{group.subjectName}</Plate>
+          ) : (
+            group.subjectName
+          )}
         </span>
       </header>
       <div className="attention-body">
