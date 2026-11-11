@@ -904,6 +904,10 @@ namespace FleetOps.Migrations.Migrations
                         .HasColumnType("uuid[]")
                         .HasColumnName("photos");
 
+                    b.Property<Guid?>("RepairId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("repair_id");
+
                     b.Property<DateTimeOffset>("ReportedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("reported_at");
