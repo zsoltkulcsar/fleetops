@@ -249,6 +249,13 @@ test("office edit needs a reason and returns an approved shift to awaiting", asy
 test("add shift on a missing day", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await timesheetRoutes(page);
+  await page.route("**/api/v1/timesheets/drivers?*", (route) =>
+    route.fulfill({
+      json: {
+        items: [{ id: detail().employeeId, name: "Dana Driver", personnelNumber: "D-100" }],
+      } satisfies Schema["TimesheetDrivers"],
+    }),
+  );
   let body: Schema["AddShiftRequest"] | undefined;
   await page.route("**/api/v1/timesheets/shifts", (route) => {
     body = route.request().postDataJSON();
@@ -278,6 +285,66 @@ test("add shift on a missing day", async ({ page }) => {
       ],
     },
   });
+});
+
+test("add shift lists drivers from the timesheets endpoint", async ({ page }) => {
+  await timesheetRoutes(page);
+  const drivers: Schema["TimesheetDrivers"] = {
+    items: [
+      { id: detail().employeeId, name: "Dana Driver", personnelNumber: "D-100" },
+      { id: "00000000-0000-0000-0000-000000000032", name: "Alex Driver", personnelNumber: "D-101" },
+    ],
+  };
+  const lookupRequests: string[] = [];
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname === "/api/v1/people/lookup") lookupRequests.push(request.url());
+  });
+  await page.route("**/api/v1/timesheets/drivers?*", (route) => route.fulfill({ json: drivers }));
+  await page.goto("/timesheets");
+  await page.getByRole("button", { name: "Add shift", exact: true }).click();
+  const select = page.getByLabel("Driver", { exact: true });
+  await expect(select.locator("option")).toHaveText(["Choose driver", "Dana Driver", "Alex Driver"]);
+  await select.selectOption(drivers.items[1].id);
+  await expect(select).toHaveValue(drivers.items[1].id);
+  expect(lookupRequests).toEqual([]);
+});
+
+test("drawer leaves edit mode and shows the new status after saving", async ({ page }) => {
+  const current = detail({ status: "approved" });
+  await timesheetRoutes(page, week(), current);
+  await page.route(`**/api/v1/timesheets/shifts/${shift.id}`, (route) => {
+    if (route.request().method() !== "PUT") return route.fulfill({ json: current });
+    const body: Schema["EditShiftRequest"] = route.request().postDataJSON();
+    current.shift = { ...current.shift, ...body.input, status: "submitted", version: 4 };
+    return route.fulfill({
+      json: { shiftId: shift.id, version: 4, status: "submitted" } satisfies Schema["OfficeShiftResult"],
+    });
+  });
+  await openShift(page);
+  const drawer = page.getByRole("dialog");
+  await expect(drawer.getByText("Approved", { exact: true })).toBeVisible();
+  await drawer.getByRole("button", { name: "Edit", exact: true }).click();
+  await expect(drawer.getByRole("heading", { name: "Edit shift", exact: true })).toBeVisible();
+  await drawer.getByLabel("Reason", { exact: true }).fill("Corrected mileage");
+  await drawer.getByLabel("End odometer (km)").fill("220");
+  await drawer.getByRole("button", { name: "Save shift", exact: true }).click();
+  await expect(drawer.getByText("Awaiting approval", { exact: true })).toBeVisible();
+  await expect(drawer.getByRole("heading", { name: "Edit shift", exact: true })).toHaveCount(0);
+});
+
+test("a running shift cell says Running", async ({ page }) => {
+  const grid = week();
+  const day = grid.rows[0].days[0];
+  day.status = "running";
+  day.label = "Running";
+  day.warnings = false;
+  day.shifts[0].status = "running";
+  await timesheetRoutes(page, grid);
+  await page.goto("/timesheets");
+  const cell = page.getByRole("table", { name: "Driver week grid" }).locator(".ts-cell").first();
+  await expect(cell.getByText("Running", { exact: true })).toBeVisible();
+  await expect(cell.locator("svg")).toHaveCount(1);
+  await expect(cell.locator("svg")).toBeVisible();
 });
 
 test("office ends a running shift", async ({ page }) => {

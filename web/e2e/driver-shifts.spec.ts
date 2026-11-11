@@ -50,6 +50,33 @@ test("driver sees what the office changed on a shift", async ({ page }) => {
   await expect(changes).toContainText("Shift end: 09.11.2026 16:00 \u2192 09.11.2026 17:00");
 });
 
+test("driver change list shows plain labels and no ids", async ({ page }) => {
+  const current: components["schemas"]["ShiftView"] = {
+    ...shift,
+    status: "rejected",
+    blockedAtStart: null,
+    deviceTimeGap: false,
+    officeChanges: [
+      { ...history, field: "Status", before: "submitted", after: "rejected" },
+      {
+        ...history,
+        auditId: "00000000-0000-0000-0000-000000000065",
+        field: "TruckId",
+        before: "B-OLD 10",
+        after: "B-NEW 20",
+      },
+    ],
+  };
+  await driverWeek(page, current);
+  await page.locator(".driver-shift-list button").click();
+  const changes = page.getByRole("region", { name: "Office changes" });
+  await expect(changes).toContainText("Status: Submitted \u2192 Rejected");
+  await expect(changes).toContainText("Truck: B-OLD 10 \u2192 B-NEW 20");
+  await expect(changes).not.toContainText(
+    /(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i,
+  );
+});
+
 test("a rejected shift shows the reason with fix and resubmit", async ({ page, context }) => {
   const current: components["schemas"]["ShiftView"] = {
     id: shift.id,

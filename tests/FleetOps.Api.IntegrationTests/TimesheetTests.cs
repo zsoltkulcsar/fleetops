@@ -434,6 +434,80 @@ public sealed class TimesheetTests : IAsyncLifetime
         Assert.Equal(stored.SubmittedAt, Assert.Single((await Get<ShiftSnapshot>(driver, "/api/v1/driver/shifts")).Shifts).SubmittedAt);
     }
 
+    [Fact]
+    public async Task Dispatcher_can_list_drivers_for_adding_a_shift()
+    {
+        var driverId = await Employee("Zulu", "PN-002");
+        var officeId = await Employee("Office", "OFF-001");
+        await using (var setup = Database())
+        {
+            (await setup.Employees.SingleAsync(row => row.Id == officeId, Cancellation)).Roles = "[\"dispatcher\"]";
+            await setup.SaveChangesAsync(Cancellation);
+        }
+        using var office = factory.AsDispatcher();
+        var result = await Get<TimesheetDrivers>(office, "/api/v1/timesheets/drivers");
+        Assert.Equal(2, result.Items.Count);
+        Assert.Contains(result.Items, row => row.Id == driverId && row.Name == "Driver Zulu" && row.PersonnelNumber == "PN-002");
+        Assert.Contains(result.Items, row => row.Id == employeeId && row.Name == "Driver Alpha" && row.PersonnelNumber == null);
+        using var driver = factory.AsDriver(employeeId);
+        using var response = await driver.GetAsync("/api/v1/timesheets/drivers", Cancellation);
+        await Error(response, HttpStatusCode.Forbidden, "permission_denied");
+        await using var verify = Database();
+        Assert.Equal("[\"dispatcher\"]", (await verify.Employees.SingleAsync(row => row.Id == officeId, Cancellation)).Roles);
+    }
+
+    [Fact]
+    public async Task Driver_snapshot_office_changes_exclude_approval_fields_and_ids()
+    {
+        var shift = await Seed();
+        using var office = factory.AsDispatcher();
+        var truck = await factory.CreateTruck(office, plate: "B-SN 42");
+        using var rejected = await office.PostAsJsonAsync($"/api/v1/timesheets/shifts/{shift.Id}/reject", new RejectShiftRequest(1, "Correct record"), Cancellation);
+        Assert.Equal(HttpStatusCode.OK, rejected.StatusCode);
+        using var driver = factory.AsDriver(employeeId);
+        var submitted = await Batch(driver, Command("shift.submit", shift.Id, 2));
+        Assert.Equal("applied", submitted.Status);
+        Assert.Null(submitted.Code);
+        using var approver = factory.AsDispatcher();
+        var approved = Assert.Single((await Approve(approver, new BulkApprovalItem(shift.Id, 3, "Checked record"))).Results);
+        Assert.Equal("approved", approved.Status);
+        Assert.Null(approved.Code);
+        using var edited = await office.PutAsJsonAsync($"/api/v1/timesheets/shifts/{shift.Id}", new EditShiftRequest(4, "Correct truck",
+            new(shift.Date, shift.StartAt, shift.EndAt, truck.Id, null, null, null, null, null)), VehicleApiFactory.JsonOptions, Cancellation);
+        Assert.Equal(HttpStatusCode.OK, edited.StatusCode);
+        using var snapshotDriver = factory.AsDriver(employeeId);
+        var changes = Assert.Single((await Get<ShiftSnapshot>(snapshotDriver, "/api/v1/driver/shifts")).Shifts).OfficeChanges;
+        Assert.Contains(changes, row => row.Field == "Status" && row.Before == "submitted" && row.After == "rejected");
+        Assert.Contains(changes, row => row.Field == "TruckId" && row.After == truck.Plate);
+        var excluded = new[] { "ApprovedBy", "ApprovedAt", "ApprovalNote", "SubmittedAt", "RejectReason" };
+        Assert.DoesNotContain(changes, row => excluded.Contains(row.Field));
+        foreach (var change in changes)
+        {
+            Assert.DoesNotMatch(@"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}", $"{change.Before} {change.After}");
+        }
+        await using var verify = Database();
+        var stored = await verify.Shifts.SingleAsync(Cancellation);
+        Assert.Equal(truck.Id, stored.TruckId);
+        Assert.Equal(ShiftStatus.Submitted, stored.Status);
+        Assert.Null(stored.ApprovedBy);
+        Assert.True(await verify.AuditEntries.AnyAsync(row => row.EntityId == shift.Id && row.FieldName == "ApprovedBy", Cancellation));
+    }
+
+    [Fact]
+    public async Task Office_ending_a_running_shift_keeps_source_app()
+    {
+        var shift = await Seed(status: ShiftStatus.Running);
+        using var office = factory.AsDispatcher();
+        using var response = await office.PostAsJsonAsync($"/api/v1/timesheets/shifts/{shift.Id}/end", new EndShiftRequest(1, "Driver phone unavailable", shift.StartAt.AddHours(8), null), Cancellation);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var result = await response.Content.ReadFromJsonAsync<OfficeShiftResult>(VehicleApiFactory.JsonOptions, Cancellation);
+        Assert.Equal(ShiftStatus.Draft, result!.Status);
+        await using var verify = Database();
+        Assert.Equal(ShiftSource.App, (await verify.Shifts.SingleAsync(Cancellation)).Source);
+        var audit = await verify.AuditEntries.SingleAsync(row => row.EntityId == shift.Id && row.FieldName == "EndAt" && row.Reason == "Driver phone unavailable", Cancellation);
+        Assert.Equal(VehicleApiFactory.ActorId.ToString(), audit.ActorId);
+    }
+
     private async Task<Guid> Employee(string lastName = "Alpha", string? personnelNumber = null)
     {
         var id = Guid.NewGuid();
