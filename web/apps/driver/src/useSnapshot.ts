@@ -41,11 +41,13 @@ export function useSnapshot() {
     window.addEventListener("online", update);
     window.addEventListener("offline", update);
     window.addEventListener("fleetops:document-synced", update);
+    window.addEventListener("fleetops:defect-synced", update);
     return () => {
       cancelled = true;
       window.removeEventListener("online", update);
       window.removeEventListener("offline", update);
       window.removeEventListener("fleetops:document-synced", update);
+      window.removeEventListener("fleetops:defect-synced", update);
     };
   }, [refresh]);
   return { snapshot, busy, error, online, refresh };

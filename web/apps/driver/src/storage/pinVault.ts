@@ -77,6 +77,7 @@ export async function createVault(pin: string, config: VaultConfig): Promise<voi
     await localStore.remove("driver-snapshot");
     await localStore.remove("driver-command-queue");
     await localStore.remove("driver-shifts");
+    await localStore.remove("driver-last-defect");
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const generatedKey = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, [
       "encrypt",
@@ -118,6 +119,7 @@ export async function unlock(pin: string): Promise<UnlockResult> {
       await localStore.remove("driver-snapshot");
       await localStore.remove("driver-command-queue");
       await localStore.remove("driver-shifts");
+      await localStore.remove("driver-last-defect");
       return "locked";
     }
     if (expired(vault)) return "expired";
@@ -143,6 +145,7 @@ export async function unlock(pin: string): Promise<UnlockResult> {
         await localStore.remove("driver-snapshot");
         await localStore.remove("driver-command-queue");
         await localStore.remove("driver-shifts");
+        await localStore.remove("driver-last-defect");
       }
       await localStore.set(vaultId, vault);
       return vault.locked ? "locked" : "wrong";
@@ -165,6 +168,7 @@ export const eraseVault = () =>
     await localStore.remove("driver-snapshot");
     await localStore.remove("driver-command-queue");
     await localStore.remove("driver-shifts");
+    await localStore.remove("driver-last-defect");
   });
 
 export type EncryptedRecord = { iv: Uint8Array<ArrayBuffer>; ciphertext: ArrayBuffer };

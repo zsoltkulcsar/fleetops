@@ -23,6 +23,21 @@ export function snapshotFields(snapshot: DriverSnapshot): DriverSnapshot {
       source,
       version,
     })),
+    swaps: snapshot.swaps?.map(({ id, vehicleId, vehiclePlate, from, to }) => ({
+      id,
+      vehicleId,
+      vehiclePlate,
+      from,
+      to,
+    })),
+    defects: snapshot.defects?.map(({ id, vehicleId, category, severity, status, reportedAt }) => ({
+      id,
+      vehicleId,
+      category,
+      severity,
+      status,
+      reportedAt,
+    })),
     documents: snapshot.documents.map(({ id, type, status, expiresAt, rejectReason }) => ({
       id,
       type,

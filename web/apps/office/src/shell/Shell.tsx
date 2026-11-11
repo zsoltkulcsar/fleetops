@@ -38,6 +38,8 @@ const routeNames: Record<string, string> = {
   "/timesheets": en.nav.timesheets,
   "/schedule": en.fleetTabs.schedule,
   "/fleet": en.nav.fleet,
+  "/fleet/defects": "Defects",
+  "/fleet/maintenance": "Maintenance",
   "/people": en.nav.people,
   "/documents": en.nav.documents,
   "/payroll": en.nav.payroll,

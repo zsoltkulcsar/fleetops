@@ -1,4 +1,7 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import type { components } from "@fleetops/api-client";
+import { AssignmentEditor } from "../fleet/AssignmentEditor";
+import "../fleet/defects.css";
+import { useEffect, useId, useMemo, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { Banner, Drawer, EmptyState, Panel, Plate } from "@fleetops/ui";
@@ -48,6 +51,7 @@ export function Schedule() {
   const end = addDays(start, 27);
   const view = params.get("view") === "driver" ? "driver" : "truck";
   const [editor, setEditor] = useState<ScheduleCycle | "new" | "pattern" | null>(null);
+  const [swap, setSwap] = useState<components["schemas"]["ScheduleSwap"]>();
   const [saved, setSaved] = useState("");
   const client = useQueryClient();
   const session = useSession();
@@ -63,12 +67,21 @@ export function Schedule() {
     document.title = "Schedule · FleetOps Office";
   }, []);
   const groups = useMemo(() => {
-    const result = new Map<string, { title: string; cycles: ScheduleCycle[] }>();
+    const result = new Map<
+      string,
+      { title: string; cycles: ScheduleCycle[]; swaps: components["schemas"]["ScheduleSwap"][] }
+    >();
     for (const cycle of query.data?.items ?? []) {
       const id = view === "truck" ? cycle.vehicleId : cycle.employeeId;
       const title = view === "truck" ? cycle.vehiclePlate : cycle.employeeName;
-      if (!result.has(id)) result.set(id, { title, cycles: [] });
+      if (!result.has(id)) result.set(id, { title, cycles: [], swaps: [] });
       result.get(id)!.cycles.push(cycle);
+    }
+    for (const swap of query.data?.swaps ?? []) {
+      const id = view === "truck" ? swap.vehicleId : swap.employeeId;
+      const title = view === "truck" ? swap.vehiclePlate : swap.employeeName;
+      if (!result.has(id)) result.set(id, { title, cycles: [], swaps: [] });
+      result.get(id)!.swaps.push(swap);
     }
     return [...result.entries()].sort(([, left], [, right]) => left.title.localeCompare(right.title));
   }, [query.data, view]);
@@ -113,12 +126,7 @@ export function Schedule() {
         </p>
       )}
       {query.isError && (
-        <Banner
-          kind="error"
-          label="Error"
-          onRetry={() => void query.refetch()}
-          retryLabel="Try again"
-        >
+        <Banner kind="error" label="Error" onRetry={() => void query.refetch()} retryLabel="Try again">
           Schedule could not be loaded. Check your connection and try again.
         </Banner>
       )}
@@ -189,6 +197,26 @@ export function Schedule() {
                     {view === "truck" ? <Plate>{group.title}</Plate> : <strong>{group.title}</strong>}
                   </div>
                   <div className="schedule-cycles">
+                    {group.swaps.map((item) => {
+                      const offset = Math.max(0, dayDifference(start, item.from));
+                      const length = Math.max(
+                        1,
+                        Math.min(28, dayDifference(start, item.to ?? end) + 1) - offset,
+                      );
+                      return (
+                        <button
+                          className="schedule-cycle schedule-swap"
+                          key={item.id}
+                          style={{ gridColumn: `${offset + 1} / span ${length}` }}
+                          onClick={() => setSwap(item)}
+                        >
+                          <span>Swap: {view === "truck" ? item.employeeName : item.vehiclePlate}</span>
+                          <small>
+                            {dateLabel(item.from)} to {item.to ? dateLabel(item.to) : "Open ended"}
+                          </small>
+                        </button>
+                      );
+                    })}
                     {group.cycles.map((cycle) => {
                       const offset = Math.max(0, dayDifference(start, cycle.from));
                       const length = Math.max(1, Math.min(28, dayDifference(start, cycle.to) + 1) - offset);
@@ -223,6 +251,7 @@ export function Schedule() {
           keep their slot.
         </p>
       </Panel>
+      {swap && <AssignmentEditor key={swap.id} swap={swap} onClose={() => setSwap(undefined)} />}
       {editor && (
         <CycleEditor
           key={typeof editor === "string" ? editor : editor.id}
@@ -254,6 +283,7 @@ function CycleEditor({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const fieldId = useId();
   const cycle = typeof mode === "object" ? mode : undefined;
   const patternMode = mode === "pattern";
   const [employeeId, setEmployeeId] = useState(cycle?.employeeId ?? "");
@@ -324,9 +354,10 @@ function CycleEditor({
         {cycle?.source === "generated" && (
           <p>Saving makes this cycle manual. Automatic rollover will keep this edit.</p>
         )}
-        <label>
-          Driver
+        <div className="schedule-field">
+          <label htmlFor={`${fieldId}-driver`}>Driver</label>
           <select
+            id={`${fieldId}-driver`}
             aria-label="Driver"
             required
             value={employeeId}
@@ -340,7 +371,7 @@ function CycleEditor({
               </option>
             ))}
           </select>
-        </label>
+        </div>
         {(drivers.isError || vehicles.isError) && (
           <p role="alert">Driver or truck choices could not be loaded. Close and try again.</p>
         )}
@@ -348,10 +379,14 @@ function CycleEditor({
         {patternMode && pattern.isError && (
           <p role="alert">Pattern could not be loaded. Choose the driver again or retry later.</p>
         )}
-        <div key={`${patternMode ? `${employeeId}:${pattern.data?.version}` : "cycle"}:${vehicles.isSuccess ? "trucks" : "loading"}`} className="schedule-form">
-          <label>
-            Truck
+        <div
+          key={`${patternMode ? `${employeeId}:${pattern.data?.version}` : "cycle"}:${vehicles.isSuccess ? "trucks" : "loading"}`}
+          className="schedule-form"
+        >
+          <div className="schedule-field">
+            <label htmlFor={`${fieldId}-truck`}>Truck</label>
             <select
+              id={`${fieldId}-truck`}
               aria-label="Truck"
               name="vehicleId"
               required
@@ -365,13 +400,14 @@ function CycleEditor({
                 </option>
               ))}
             </select>
-          </label>
+          </div>
           {patternMode ? (
             <>
               <div className="schedule-form-pair">
-                <label>
-                  On weeks
+                <div className="schedule-field">
+                  <label htmlFor={`${fieldId}-on-weeks`}>On weeks</label>
                   <input
+                    id={`${fieldId}-on-weeks`}
                     name="onWeeks"
                     type="number"
                     min={1}
@@ -379,10 +415,11 @@ function CycleEditor({
                     required
                     defaultValue={pattern.data?.pattern?.onWeeks ?? 2}
                   />
-                </label>
-                <label>
-                  Off weeks
+                </div>
+                <div className="schedule-field">
+                  <label htmlFor={`${fieldId}-off-weeks`}>Off weeks</label>
                   <input
+                    id={`${fieldId}-off-weeks`}
                     name="offWeeks"
                     type="number"
                     min={0}
@@ -390,17 +427,18 @@ function CycleEditor({
                     required
                     defaultValue={pattern.data?.pattern?.offWeeks ?? 2}
                   />
-                </label>
+                </div>
               </div>
-              <label>
-                Anchor date
+              <div className="schedule-field">
+                <label htmlFor={`${fieldId}-anchor-date`}>Anchor date</label>
                 <input
+                  id={`${fieldId}-anchor-date`}
                   name="anchorDate"
                   type="date"
                   required
                   defaultValue={pattern.data?.pattern?.anchorDate ?? monday()}
                 />
-              </label>
+              </div>
               <p className="ui-muted">
                 Keeps 12 weeks ahead. Future generated cycles change; manual cycles stay.
               </p>
@@ -408,31 +446,39 @@ function CycleEditor({
           ) : (
             <>
               <div className="schedule-form-pair">
-                <label>
-                  From
+                <div className="schedule-field">
+                  <label htmlFor={`${fieldId}-from`}>From</label>
                   <input
+                    id={`${fieldId}-from`}
                     name="from"
                     type="date"
                     required
                     defaultValue={cycle?.from ?? monday()}
                     disabled={!canEdit || saving}
                   />
-                </label>
-                <label>
-                  To
+                </div>
+                <div className="schedule-field">
+                  <label htmlFor={`${fieldId}-to`}>To</label>
                   <input
+                    id={`${fieldId}-to`}
                     name="to"
                     type="date"
                     required
                     defaultValue={cycle?.to ?? addDays(monday(), 13)}
                     disabled={!canEdit || saving}
                   />
-                </label>
+                </div>
               </div>
-              <label>
-                Reason
-                <textarea name="reason" required maxLength={500} disabled={!canEdit || saving} />
-              </label>
+              <div className="schedule-field">
+                <label htmlFor={`${fieldId}-reason`}>Reason</label>
+                <textarea
+                  id={`${fieldId}-reason`}
+                  name="reason"
+                  required
+                  maxLength={500}
+                  disabled={!canEdit || saving}
+                />
+              </div>
             </>
           )}
         </div>

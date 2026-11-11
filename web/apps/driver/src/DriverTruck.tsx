@@ -1,3 +1,5 @@
+import { TriangleAlert } from "lucide-react";
+import { apiClient } from "@fleetops/api-client";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Drawer } from "@fleetops/ui";
@@ -65,6 +67,53 @@ export function DriverTruck({ id, online, onClose }: { id: string; online: boole
         ) : (
           truck.data && (
             <>
+              <h3>Open defects</h3>
+              {truck.data.defects?.length ? (
+                truck.data.defects.map((defect) => (
+                  <div key={defect.id}>
+                    <p>
+                      <TriangleAlert size={18} aria-hidden /> {defect.category.replaceAll("_", " ")}{" "}
+                      {defect.severity} {driverDate(defect.date)}
+                    </p>
+                    {defect.photos.map((photo, index) => (
+                      <button
+                        key={photo.id}
+                        disabled={opening}
+                        onClick={async () => {
+                          setOpening(true);
+                          setFailure("");
+                          const target = window.open("", "_blank");
+                          if (target) target.opener = null;
+                          try {
+                            const result = await apiClient.GET(
+                              "/api/v1/driver/defects/{id}/photos/{fileId}/link",
+                              { params: { path: { id: defect.id, fileId: photo.id } }, cache: "no-store" },
+                            );
+                            if (!result.response.ok || !result.data) throw new Error("photo_unavailable");
+                            const url = new URL(result.data.url);
+                            if (
+                              url.protocol !== "https:" &&
+                              !(import.meta.env.DEV && url.protocol === "http:")
+                            )
+                              throw new Error("unsafe_file_link");
+                            if (target) target.location.href = url.href;
+                            else window.location.assign(url.href);
+                          } catch {
+                            target?.close();
+                            setFailure("The photo could not be opened. Try again while online.");
+                          } finally {
+                            setOpening(false);
+                          }
+                        }}
+                      >
+                        Open photo {index + 1}
+                      </button>
+                    ))}
+                  </div>
+                ))
+              ) : (
+                <p>No open defects on this truck.</p>
+              )}
               <h3>Open items</h3>
               {truck.data.items.length ? (
                 <ul className="driver-document-list">

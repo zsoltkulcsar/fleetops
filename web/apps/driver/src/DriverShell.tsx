@@ -10,6 +10,7 @@ import { DriverSchedule } from "./DriverSchedule";
 import { DriverDocuments } from "./DriverDocuments";
 import { DriverTruck } from "./DriverTruck";
 import { QueueStatus } from "./QueueStatus";
+import { DriverDefect } from "./DriverDefect";
 import { DriverNotifications } from "./DriverNotifications";
 
 export function DriverShell({
@@ -62,35 +63,10 @@ export function DriverShell({
             />
           }
         />
-        {pages
-          .filter((page) => page.path === "defect")
-          .map((page) => (
-            <Route
-              key={page.path}
-              path={page.path}
-              element={
-                <section className="driver-screen">
-                  <h1>{page.title}</h1>
-                  {page.path === "shift" && (
-                    <p className="driver-greeting">{en.greeting(name.trim().split(/\s+/)[0])}</p>
-                  )}
-                  <p>{en.comingSoon}</p>
-                  {page.path === "me" && (
-                    <div className="driver-actions">
-                      <button
-                        disabled={busy}
-                        onClick={async () => {
-                          if (window.confirm(en.signOutConfirm)) await onSignOut();
-                        }}
-                      >
-                        {busy ? en.working : en.signOut}
-                      </button>
-                    </div>
-                  )}
-                </section>
-              }
-            />
-          ))}
+        <Route
+          path="defect"
+          element={<DriverDefect snapshot={state.snapshot} shifts={shifts} officePhone={officePhone} />}
+        />
         <Route path="*" element={<Navigate to="/shift" replace />} />
       </Routes>
       {truck && <DriverTruck id={truck} online={state.online} onClose={() => setTruck(undefined)} />}

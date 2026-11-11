@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { commandQueue, type QueuedCommand } from "./storage/commandQueue";
 import { readVault } from "./storage/pinVault";
+import { flushDefects } from "./defectSync";
 import { flushDocuments } from "./documentSync";
 
 export function QueueStatus({ online }: { online: boolean }) {
@@ -11,9 +12,12 @@ export function QueueStatus({ online }: { online: boolean }) {
   const sync = useCallback(async () => {
     try {
       await flushDocuments();
+      await flushDefects();
       setSyncError("");
     } catch {
-      setSyncError("Your documents could not be sent. They are saved on this device. Retry when connected.");
+      setSyncError(
+        "Your waiting items could not be sent. They are saved on this device. Retry when connected.",
+      );
     }
   }, []);
   useEffect(() => {
@@ -101,6 +105,10 @@ export function QueueStatus({ online }: { online: boolean }) {
                   : command.state === "conflict"
                     ? "Office changed this item — review needed"
                     : "Could not sync — retry needed"}
+                {command.type === "defect.cancel" &&
+                  ["cancel_window_passed", "not_cancellable"].includes(command.errorCode ?? "") && (
+                    <p>Too late to cancel. Call dispatch.</p>
+                  )}
                 {command.errorCode === "running_shift_exists" && (
                   <p>You have an open shift on another device.</p>
                 )}

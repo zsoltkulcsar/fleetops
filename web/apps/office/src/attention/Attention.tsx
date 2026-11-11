@@ -12,6 +12,8 @@ import "./attention.css";
 
 const severityRank = { critical: 2, warning: 1, info: 0 } as const;
 function itemTitle(item: AttentionItem) {
+  if (item.ruleId === "A-07") return "Critical defect: vehicle off road";
+  if (item.ruleId === "A-08") return "Major defect awaiting repair";
   if (item.ruleId === "A-21") return "Schedule clash";
   if (item.ruleId === "A-02")
     return `${en.attention.rules.a02} · ${en.documents.types[item.scopeKey as keyof typeof en.documents.types] ?? item.scopeKey}`;
@@ -22,6 +24,11 @@ function itemTitle(item: AttentionItem) {
   return item.ruleId;
 }
 function actionFor(item: AttentionItem, group: AttentionGroup, owner: boolean) {
+  if (item.ruleId === "A-07" || item.ruleId === "A-08")
+    return {
+      label: owner ? "View defect" : "Open defect",
+      href: `/fleet/defects?defectId=${group.subjectId}`,
+    };
   if (item.ruleId === "A-10" || item.ruleId === "A-16")
     return { label: "Open shift", href: `/timesheets?shiftId=${group.subjectId}` };
   if (item.ruleId === "A-21")
@@ -312,7 +319,31 @@ function AttentionCard({
                   <Link className="ui-button primary" to={action.href}>
                     {action.label}
                   </Link>
-                  {expanded && canSnooze && item.snoozable && (
+                  {!owner && item.ruleId === "A-07" && (
+                    <>
+                      <Link
+                        className="ui-button"
+                        to={`/fleet/defects?defectId=${group.subjectId}&action=repair`}
+                      >
+                        Create repair
+                      </Link>
+                      <Link
+                        className="ui-button"
+                        to={`/fleet/defects?defectId=${group.subjectId}&action=swap`}
+                      >
+                        Swap driver
+                      </Link>
+                    </>
+                  )}
+                  {!owner && item.ruleId === "A-08" && (
+                    <Link
+                      className="ui-button"
+                      to={`/fleet/defects?defectId=${group.subjectId}&action=repair`}
+                    >
+                      Create repair
+                    </Link>
+                  )}
+                  {expanded && canSnooze && item.ruleId !== "A-07" && item.snoozable && (
                     <button
                       className="ui-button ghost"
                       type="button"
@@ -362,6 +393,7 @@ function SnoozeDialog({
   onClose: () => void;
   onSaved: (id: string, version: number) => void;
 }) {
+  const fieldId = useId();
   const [until, setUntil] = useState(() => new Date(Date.now() + 86_400_000).toISOString().slice(0, 10));
   const [reason, setReason] = useState("");
   const [error, setError] = useState("");
@@ -386,20 +418,21 @@ function SnoozeDialog({
         }}
       >
         <h2>{en.attention.snoozeTitle}</h2>
-        <label>
-          {en.attention.until}
-          <input
-            type="date"
-            value={until}
-            min={new Date().toISOString().slice(0, 10)}
-            max={new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10)}
-            onChange={(event) => setUntil(event.target.value)}
-          />
-        </label>
-        <label>
-          {en.attention.reason}
-          <textarea value={reason} onChange={(event) => setReason(event.target.value)} />
-        </label>
+        <label htmlFor={`${fieldId}-until`}>{en.attention.until}</label>
+        <input
+          id={`${fieldId}-until`}
+          type="date"
+          value={until}
+          min={new Date().toISOString().slice(0, 10)}
+          max={new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10)}
+          onChange={(event) => setUntil(event.target.value)}
+        />
+        <label htmlFor={`${fieldId}-reason`}>{en.attention.reason}</label>
+        <textarea
+          id={`${fieldId}-reason`}
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
+        />
         {error && <p className="ui-muted">{error}</p>}
         <div>
           <button type="button" className="ui-button" onClick={onClose}>

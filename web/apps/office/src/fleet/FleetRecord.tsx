@@ -1,4 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { Defects } from "./Defects";
+import { Maintenance } from "./Maintenance";
+import { SwapPicker } from "./SwapPicker";
+import { useDefectAccess } from "./defectPresentation";
+import { useEffect, useId, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Pencil } from "lucide-react";
 import { Banner, Drawer, EmptyState, Panel, Plate, StatusPill, Toast } from "@fleetops/ui";
@@ -39,6 +43,8 @@ function retiredDate(value: string): string {
   return `${String(date.getUTCDate()).padStart(2, "0")}.${String(date.getUTCMonth() + 1).padStart(2, "0")}.${date.getUTCFullYear()}`;
 }
 export function FleetRecord({ id }: { id: string }) {
+  const defectAccess = useDefectAccess();
+  const [swapOpen, setSwapOpen] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
   const session = useSession();
   const query = useQuery({ queryKey: ["fleet", "vehicle", id], queryFn: () => fleetApi.detail(id) });
@@ -108,6 +114,11 @@ export function FleetRecord({ id }: { id: string }) {
           </h1>
         </div>
         <div className="record-actions">
+          {defectAccess.canWrite && (
+            <button className="ui-button" onClick={() => setSwapOpen(true)}>
+              Swap driver
+            </button>
+          )}
           <StatusPill
             status={notUsable ? "off-road" : statusPillFor[shownStatus]}
             label={notUsable ? "Not usable" : statusLabel[shownStatus]}
@@ -214,7 +225,10 @@ export function FleetRecord({ id }: { id: string }) {
           )}
         </Panel>
       )}
-      {!["Overview", "History"].includes(tab) && (
+      {tab === "Defects" && <Defects vehicleId={id} />}
+      {tab === "Maintenance" && <Maintenance vehicleId={id} />}
+      {swapOpen && <SwapPicker vehicleId={id} onClose={() => setSwapOpen(false)} />}
+      {!["Overview", "History", "Documents", "Defects", "Maintenance"].includes(tab) && (
         <Panel title={tab}>
           <EmptyState heading={`${tab} coming later`}>
             {tab} will be filled by its own FleetOps feature.
@@ -269,6 +283,7 @@ function RetireDrawer({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const fieldId = useId();
   const [reason, setReason] = useState<RetiredReason | "">("");
   const impact = useQuery({
     queryKey: ["retirement-impact", vehicle.id],
@@ -309,21 +324,20 @@ function RetireDrawer({
         </Banner>
       )}
       <div className="fleet-form">
-        <label>
-          {en.fleet.retire.reason}
-          <select
-            value={reason}
-            onChange={(event) => {
-              const value = event.target.value;
-              if (value === "sold" || value === "scrapped" || value === "returned_lease") setReason(value);
-            }}
-          >
-            <option value="">Select a reason</option>
-            <option value="sold">{en.fleet.retire.sold}</option>
-            <option value="scrapped">{en.fleet.retire.scrapped}</option>
-            <option value="returned_lease">{en.fleet.retire.returnedLease}</option>
-          </select>
-        </label>
+        <label htmlFor={`${fieldId}-reason`}>{en.fleet.retire.reason}</label>
+        <select
+          id={`${fieldId}-reason`}
+          value={reason}
+          onChange={(event) => {
+            const value = event.target.value;
+            if (value === "sold" || value === "scrapped" || value === "returned_lease") setReason(value);
+          }}
+        >
+          <option value="">Select a reason</option>
+          <option value="sold">{en.fleet.retire.sold}</option>
+          <option value="scrapped">{en.fleet.retire.scrapped}</option>
+          <option value="returned_lease">{en.fleet.retire.returnedLease}</option>
+        </select>
         <ul className="drawer-list">
           <li>{en.fleet.retire.activeList}</li>
           <li>{en.fleet.retire.alertsResolved}</li>
@@ -376,6 +390,7 @@ function UndoRetireDrawer({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const fieldId = useId();
   const [reason, setReason] = useState("");
   const [failure, setFailure] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -416,10 +431,13 @@ function UndoRetireDrawer({
           void submit();
         }}
       >
-        <label>
-          {en.fleet.undoRetire.reason}
-          <textarea value={reason} onChange={(event) => setReason(event.target.value)} required />
-        </label>
+        <label htmlFor={`${fieldId}-reason`}>{en.fleet.undoRetire.reason}</label>
+        <textarea
+          id={`${fieldId}-reason`}
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
+          required
+        />
         <div className="drawer-actions">
           <button type="button" className="ui-button" onClick={onClose}>
             {en.fleet.undoRetire.cancel}

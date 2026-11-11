@@ -55,6 +55,19 @@ export function DriverSchedule({
   const next = cycles.find((cycle) => cycle.from > today);
   return (
     <section className="driver-screen driver-data-screen">
+      {snapshot?.swaps
+        ?.filter((swap) => !swap.to || swap.to >= today)
+        .map((swap) => (
+          <div className="driver-card" key={swap.id}>
+            <h2>
+              <Truck size={20} aria-hidden /> Swap
+            </h2>
+            <button onClick={() => onTruck(swap.vehicleId)}>{swap.vehiclePlate}</button>
+            <p>
+              {driverDate(swap.from)} to {swap.to ? driverDate(swap.to) : "Open ended"}
+            </p>
+          </div>
+        ))}
       {!embedded && <h1>{shift ? "Shift" : "Week"}</h1>}
       {next && cycles.some((cycle) => cycle.status === "overrun") && (
         <p className="driver-callout">

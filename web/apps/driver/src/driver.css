@@ -387,3 +387,32 @@ main:has(.driver-nav) .driver-screen {
     transition-duration: 0.01ms;
   }
 }
+
+.driver-defect-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.driver-defect-choices button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.driver-defect-choices button[aria-pressed="true"] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.driver-defect-photos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.driver-defect-photos img {
+  width: 120px;
+  height: 100px;
+  object-fit: cover;
+}
+.driver-defect-photos > div {
+  display: grid;
+  gap: 6px;
+}

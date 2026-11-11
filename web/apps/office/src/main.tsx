@@ -6,6 +6,8 @@ import { DevGalleryRoute, OfficePage, Shell } from "./shell/Shell";
 import "./shell/shell.css";
 import { AuthGate } from "./auth/AuthGate";
 import { installAuthExpiryHandler } from "./auth/api";
+import { Defects } from "./fleet/Defects";
+import { Maintenance } from "./fleet/Maintenance";
 import { Fleet } from "./fleet/Fleet";
 import { FleetRecord } from "./fleet/FleetRecord";
 import { Documents } from "./documents/Documents";
@@ -51,6 +53,8 @@ createRoot(document.getElementById("app")!).render(
             <Route path="/timesheets" element={<Timesheets />} />
             <Route path="/schedule" element={<Schedule />} />
             <Route path="/fleet" element={<Fleet />} />
+            <Route path="/fleet/defects" element={<Defects />} />
+            <Route path="/fleet/maintenance" element={<Maintenance />} />
             <Route path="/fleet/:id" element={<FleetRecordRoute />} />
             <Route path="/people" element={<People />} />
             <Route path="/documents" element={<Documents />} />

@@ -151,3 +151,13 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.schedule-swap {
+  border-left: 4px solid var(--accent);
+  background: var(--accent-soft);
+}
+
+.schedule-field {
+  display: grid;
+  gap: 6px;
+}
