@@ -6,7 +6,9 @@ import { companyInstant, wallTime } from "./shiftTime";
 export function CorrectionStatus({ request }: { request: components["schemas"]["CorrectionView"] }) {
   return (
     <div className="driver-card">
-      <strong>Correction {request.status}</strong>
+      <strong>
+        {request.date}: Correction {request.status}
+      </strong>
       {request.declineReason && <p>Declined: {request.declineReason}</p>}
       {request.diffs.map((diff) => (
         <p key={diff.field}>
@@ -38,8 +40,10 @@ export function CorrectionRequest({
     try {
       const start = String(form.get("start") ?? "");
       const end = String(form.get("end") ?? "");
-      const proposedStartAt = start ? companyInstant(start, zone, `${date}T00:00:00-14:00`) : null;
-      const proposedEndAt = end ? companyInstant(end, zone, proposedStartAt ?? `${date}T00:00:00-14:00`) : null;
+      const proposedStartAt = start ? companyInstant(start, zone, `${date}T00:00:00+14:00`) : null;
+      const proposedEndAt = end
+        ? companyInstant(end, zone, proposedStartAt ?? `${date}T00:00:00+14:00`)
+        : null;
       if (
         (proposedStartAt && Date.parse(proposedStartAt) > Date.now()) ||
         (proposedEndAt && Date.parse(proposedEndAt) > Date.now()) ||

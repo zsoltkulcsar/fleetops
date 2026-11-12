@@ -48,6 +48,21 @@ export function Timesheets() {
   const [failed, setFailed] = useState<Schema["BulkApprovalItem"][]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  useEffect(() => {
+    const shiftId = params.get("shiftId");
+    const employeeId = params.get("addEmployeeId");
+    const date = params.get("addDate");
+    const day = params.get("week");
+    if (shiftId) {
+      setOpened(shiftId);
+      setAdding(undefined);
+    } else if (employeeId && date && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      setOpened(undefined);
+      setAdding({ employeeId, date });
+    }
+    if (day && /^\d{4}-\d{2}-\d{2}$/.test(day) && Number.isFinite(Date.parse(`${day}T12:00:00Z`)))
+      setWeek(addDays(day, -((new Date(`${day}T12:00:00Z`).getUTCDay() + 6) % 7)));
+  }, [params]);
   const searchInput = useRef<HTMLInputElement>(null);
   const grid = useRef<HTMLTableElement>(null);
   const [shortcuts, setShortcuts] = useState(() => {
@@ -460,6 +475,16 @@ export function Timesheets() {
                           </span>
                           <ShiftStatus status={day.status} />
                           {day.shifts.length > 1 && <small>{day.shifts.length} shifts</small>}
+                          {day.shifts.flatMap((shift) =>
+                            (shift.ruleWarnings ?? []).map((warning) => (
+                              <small
+                                key={`${shift.id}-${warning.ruleId}`}
+                                className={warning.severity === "warning" ? "ts-warning" : "ui-muted"}
+                              >
+                                {warning.ruleId}: {warning.message}
+                              </small>
+                            )),
+                          )}
                           {day.warnings && (
                             <span>
                               <TriangleAlert size={14} aria-hidden /> Warning
@@ -475,6 +500,14 @@ export function Timesheets() {
                     <td>
                       <ShiftStatus status={row.status} />
                       {row.warnings && <StatusPill status="warning" />}
+                      {(row.ruleWarnings ?? []).map((warning) => (
+                        <small
+                          key={warning.ruleId}
+                          className={warning.severity === "warning" ? "ts-warning" : "ui-muted"}
+                        >
+                          {warning.ruleId}: {warning.message}
+                        </small>
+                      ))}
                     </td>
                   </tr>
                 ))}
@@ -543,6 +576,16 @@ export function Timesheets() {
                   {dateLabel(day.date)} {"\u00B7"} {hours(day.workMinutes)}
                 </h3>
                 <ShiftStatus status={day.status} />
+                {day.shifts.flatMap((shift) =>
+                  (shift.ruleWarnings ?? []).map((warning) => (
+                    <p
+                      key={`${shift.id}-${warning.ruleId}`}
+                      className={warning.severity === "warning" ? "ts-warning" : "ui-muted"}
+                    >
+                      {warning.ruleId}: {warning.message}
+                    </p>
+                  )),
+                )}
                 {day.absences.map((absence) => (
                   <p key={absence}>{absence}</p>
                 ))}

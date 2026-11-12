@@ -13,7 +13,9 @@ export function ruleValue(rule: RuleInput | undefined): Record<string, number> |
     if (
       !value ||
       typeof value !== "object" ||
-      Object.values(value).some((item) => typeof item !== "number" || !Number.isFinite(item))
+      Array.isArray(value) ||
+      Object.keys(value).length === 0 ||
+      Object.values(value).some((item) => typeof item !== "number" || !Number.isFinite(item) || item <= 0)
     )
       return undefined;
     return value;

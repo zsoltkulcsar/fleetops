@@ -147,7 +147,7 @@ export function DriverDay({
           This shift needs Office review. Your saved changes remain visible in sync status.
         </p>
       )}
-      <DrivingGuidance state={state} today={today} now={now} />
+      <DrivingGuidance state={state} driver={driver} today={today} now={now} />
       {running ? (
         <>
           <p className="driver-badge">

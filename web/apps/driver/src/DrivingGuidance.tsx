@@ -1,4 +1,5 @@
 import type { DriverShiftState } from "./useShifts";
+import type { DriverSnapshot } from "./storage/snapshot";
 import {
   breakProgress,
   confirmedWording,
@@ -12,16 +13,26 @@ export function DrivingGuidance({
   state,
   today,
   now,
+  driver,
 }: {
   state: DriverShiftState;
   today: string;
   now: number;
+  driver?: DriverSnapshot;
 }) {
-  const rules = state.snapshot?.complianceRules ?? [];
+  const rules = state.snapshot?.complianceRules ?? driver?.complianceRules ?? [];
   const breakRule = rules.find((rule) => rule.id === "C-04");
   const dailyRule = rules.find((rule) => rule.id === "C-01");
-  const breakValue = ruleValue(breakRule);
-  const dailyValue = ruleValue(dailyRule);
+  const parsedBreak = ruleValue(breakRule);
+  const breakValue =
+    parsedBreak &&
+    ["drivingMinutes", "breakMinutes", "splitFirstMinutes", "splitLastMinutes"].every((field) =>
+      Number.isFinite(parsedBreak[field]),
+    )
+      ? parsedBreak
+      : undefined;
+  const parsedDaily = ruleValue(dailyRule);
+  const dailyValue = parsedDaily && Number.isFinite(parsedDaily.minutes) ? parsedDaily : undefined;
   const shifts = state.shifts.filter((shift) => shift.date === today);
   const activities = shifts.flatMap((shift) => shiftActivities(shift, now));
   const driving = activities

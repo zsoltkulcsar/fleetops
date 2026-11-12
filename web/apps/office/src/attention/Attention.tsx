@@ -388,6 +388,7 @@ function AttentionCard({
                   <h3>
                     {itemTitle(item)} <span className="attention-rule">{item.ruleId}</span>
                   </h3>
+                  {item.guidance && <p className="ui-muted">{item.guidance}</p>}
                   <p className="ui-muted">
                     {item.dueAt ? (
                       <>
