@@ -7,6 +7,7 @@ import { timesheetsApi, type Schema } from "./api";
 import { dateLabel, hours, instant, ShiftStatus, timeLabel } from "./presentation";
 import { ShiftEditor } from "./ShiftEditor";
 import { Corrections } from "./Corrections";
+import { ReopenShift } from "../payroll/ReopenShift";
 
 export function ShiftDrawer({
   id,
@@ -129,6 +130,9 @@ export function ShiftDrawer({
               <p>Own shifts need another approver. If you are an owner, ask HR.</p>
             )}
             {shift.status === "exported" && <p>This shift is locked after export.</p>}
+            {shift.status === "exported" && (
+              <ReopenShift key={shift.version} id={id} version={shift.version} onSaved={saved} />
+            )}
             {shift.rejectReason && <p>Rejected: {shift.rejectReason}. The driver can fix and resubmit.</p>}
             {mode === "edit" && (
               <ShiftEditor

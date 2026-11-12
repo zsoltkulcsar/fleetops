@@ -17,8 +17,8 @@ export const navigation: NavigationItem[] = [
 ];
 function visibleItems(roles: string[]) {
   const owner = roles.includes("owner");
-  const dispatcher = roles.includes("dispatcher") && !owner;
-  return navigation.filter((item) => !(dispatcher && item.id === "payroll"));
+  const payrollAllowed = owner || roles.includes("hr");
+  return navigation.filter((item) => item.id !== "payroll" || payrollAllowed);
 }
 function routeFor(id: string) {
   return id === "attention" ? "/" : `/${id}`;

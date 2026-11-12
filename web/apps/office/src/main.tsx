@@ -2,7 +2,7 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Navigate, Route, Routes, useParams } from "react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { DevGalleryRoute, OfficePage, Shell } from "./shell/Shell";
+import { DevGalleryRoute, Shell } from "./shell/Shell";
 import "./shell/shell.css";
 import { AuthGate } from "./auth/AuthGate";
 import { installAuthExpiryHandler } from "./auth/api";
@@ -17,6 +17,7 @@ import { Settings } from "./settings/Settings";
 import { Attention } from "./attention/Attention";
 import { Schedule } from "./schedule/Schedule";
 import { Timesheets } from "./timesheets/Timesheets";
+import { Payroll } from "./payroll/Payroll";
 import { Absences } from "./absences/Absences";
 
 const queryClient = new QueryClient({
@@ -32,7 +33,7 @@ const queryClient = new QueryClient({
   },
 });
 installAuthExpiryHandler();
-const page = (section: string) => <OfficePage section={section} />;
+
 function CanonicalRedirect() {
   const path = window.location.pathname.toLowerCase().replace(/\/$/, "") || "/";
   const known = ["/", "/schedule", "/timesheets", "/fleet", "/people", "/documents", "/payroll", "/settings"];
@@ -62,7 +63,7 @@ createRoot(document.getElementById("app")!).render(
             <Route path="/people/absences" element={<Absences />} />
             <Route path="/people/:id" element={<PersonProfile />} />
             <Route path="/documents" element={<Documents />} />
-            <Route path="/payroll" element={page("payroll")} />
+            <Route path="/payroll" element={<Payroll />} />
             <Route path="/settings" element={<Settings />} />
             {import.meta.env.DEV && <Route path="/__gallery" element={<DevGalleryRoute />} />}
           </Route>
