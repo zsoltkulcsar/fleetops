@@ -31,6 +31,7 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
+FleetOps.Api.Pipeline.DatabasePoolLimits.Apply(builder.Configuration);
 builder.Services.AddPeople();
 builder.Services.AddAbsences();
 builder.Services.AddVehicleRelease();
