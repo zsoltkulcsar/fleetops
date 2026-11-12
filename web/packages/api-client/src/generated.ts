@@ -2120,6 +2120,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/shifts/{id}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PayrollReopenRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PayrollReopened"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/corrections": {
         parameters: {
             query?: never;
@@ -4689,6 +4730,259 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/payroll/readiness": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query: {
+                    month: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PayrollReadiness"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payroll/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query: {
+                    month: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PayrollPreview"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payroll/exports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query: {
+                    month: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PayrollHistory"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["GeneratePayrollCommand"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PayrollExportView"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payroll/exports/{id}/sent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PayrollSentRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PayrollExportView"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payroll/exports/{id}/discard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PayrollReasonRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PayrollExportView"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payroll/exports/{id}/download-link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PayrollDownload"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/timesheets/week": {
         parameters: {
             query?: never;
@@ -6166,6 +6460,12 @@ export interface components {
         ForgotRequest: {
             email: string;
         };
+        GeneratePayrollCommand: {
+            /** Format: date */
+            month: string;
+            format: string;
+            fingerprint: components["schemas"]["PayrollShiftVersion"][];
+        };
         GridCounts: {
             /** Format: int32 */
             all: number;
@@ -6396,6 +6696,138 @@ export interface components {
             night: string;
             countryCode: string;
             kind: components["schemas"]["OvernightKind"];
+        };
+        PayrollDay: {
+            /** Format: uuid */
+            employeeId: string;
+            personnelNumber: null | string;
+            name: string;
+            /** Format: date */
+            date: string;
+            /** Format: double */
+            drivingHours: number;
+            /** Format: double */
+            otherWorkHours: number;
+            /** Format: double */
+            availabilityHours: number;
+            nights: {
+                [key: string]: number;
+            };
+            absences: {
+                [key: string]: number;
+            };
+            sunday: boolean;
+            holiday: boolean;
+        };
+        PayrollDelta: {
+            /** Format: uuid */
+            employeeId: string;
+            /** Format: date */
+            date: string;
+            old: null | components["schemas"]["PayrollDay"];
+            new: null | components["schemas"]["PayrollDay"];
+        };
+        PayrollDownload: {
+            url: string;
+            /** Format: date-time */
+            expiresAt: string;
+        };
+        PayrollExportView: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date */
+            periodFrom: string;
+            /** Format: date */
+            periodTo: string;
+            format: string;
+            kind: string;
+            status: string;
+            /** Format: int32 */
+            version: number;
+            /** Format: uuid */
+            createdBy: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date */
+            sentDate: null | string;
+            note: null | string;
+            reason: null | string;
+            /** Format: uuid */
+            correctionOf: null | string;
+            checksum: string;
+            shifts: components["schemas"]["PayrollShiftVersion"][];
+            deltas: components["schemas"]["PayrollDelta"][];
+        };
+        PayrollHistory: {
+            exports: components["schemas"]["PayrollExportView"][];
+        };
+        PayrollPerson: {
+            /** Format: uuid */
+            employeeId: string;
+            name: string;
+            personnelNumber: null | string;
+            /** Format: int32 */
+            approved: number;
+            /** Format: int32 */
+            waiting: number;
+            missing: string[];
+            finalMonth: boolean;
+            ready: boolean;
+        };
+        PayrollPreview: {
+            /** Format: date */
+            month: string;
+            fingerprint: components["schemas"]["PayrollShiftVersion"][];
+            days: components["schemas"]["PayrollDay"][];
+            totals: components["schemas"]["PayrollTotal"][];
+        };
+        PayrollReadiness: {
+            /** Format: date */
+            month: string;
+            people: components["schemas"]["PayrollPerson"][];
+        };
+        PayrollReasonRequest: {
+            reason: string;
+        };
+        PayrollReopened: {
+            /** Format: uuid */
+            shiftId: string;
+            /** Format: int32 */
+            version: number;
+            status: string;
+        };
+        PayrollReopenRequest: {
+            /** Format: int32 */
+            version: number;
+            reason: string;
+        };
+        PayrollSentRequest: {
+            /** Format: date */
+            sentDate: string;
+            note: null | string;
+        };
+        PayrollShiftVersion: {
+            /** Format: uuid */
+            shiftId: string;
+            /** Format: int32 */
+            version: number;
+        };
+        PayrollTotal: {
+            /** Format: uuid */
+            employeeId: string;
+            name: string;
+            /** Format: double */
+            drivingHours: number;
+            /** Format: double */
+            otherWorkHours: number;
+            /** Format: double */
+            availabilityHours: number;
+            nights: {
+                [key: string]: number;
+            };
+            absences: {
+                [key: string]: number;
+            };
         };
         PeopleLookupItem: {
             /** Format: uuid */

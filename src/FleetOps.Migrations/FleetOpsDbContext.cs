@@ -41,6 +41,7 @@ public sealed partial class FleetOpsDbContext(DbContextOptions<FleetOpsDbContext
         ConfigureDefects(modelBuilder);
         ConfigureSchedule(modelBuilder);
         ConfigureShifts(modelBuilder);
+        ConfigurePayroll(modelBuilder);
         ConfigureAssignments(modelBuilder);
         ConfigureMaintenance(modelBuilder);
         ConfigureAbsences(modelBuilder);

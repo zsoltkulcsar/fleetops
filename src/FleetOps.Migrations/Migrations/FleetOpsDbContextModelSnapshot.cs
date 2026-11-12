@@ -1349,6 +1349,120 @@ namespace FleetOps.Migrations.Migrations
                     b.ToTable("notifications", "fleetops");
                 });
 
+            modelBuilder.Entity("FleetOps.Modules.Payroll.PayrollExport", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Checksum")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("checksum");
+
+                    b.Property<Guid?>("CorrectionOf")
+                        .HasColumnType("uuid")
+                        .HasColumnName("correction_of");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("DeltasJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("deltas");
+
+                    b.Property<string>("FileKey")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("file_key");
+
+                    b.Property<string>("Format")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("format");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("note");
+
+                    b.Property<DateOnly>("PeriodFrom")
+                        .HasColumnType("date")
+                        .HasColumnName("period_from");
+
+                    b.Property<DateOnly>("PeriodTo")
+                        .HasColumnType("date")
+                        .HasColumnName("period_to");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("reason");
+
+                    b.Property<Guid?>("SentBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("sent_by");
+
+                    b.Property<DateOnly?>("SentDate")
+                        .HasColumnType("date")
+                        .HasColumnName("sent_date");
+
+                    b.Property<string>("ShiftVersionsJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("shift_versions");
+
+                    b.Property<string>("SnapshotJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("snapshot");
+
+                    b.Property<string>("Status")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CorrectionOf");
+
+                    b.HasIndex("CreatedBy");
+
+                    b.HasIndex("PeriodFrom", "PeriodTo", "Version")
+                        .IsUnique();
+
+                    b.ToTable("payroll_exports", "fleetops", t =>
+                        {
+                            t.HasCheckConstraint("ck_payroll_kind", "kind IN ('regular', 'supplement', 'correction')");
+
+                            t.HasCheckConstraint("ck_payroll_period", "period_to >= period_from AND version > 0");
+
+                            t.HasCheckConstraint("ck_payroll_status", "status IN ('generated', 'sent', 'discarded', 'superseded')");
+                        });
+                });
+
             modelBuilder.Entity("FleetOps.Modules.Schedule.Cycle", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1932,6 +2046,10 @@ namespace FleetOps.Migrations.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("end_at");
 
+                    b.Property<Guid?>("ExportId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("export_id");
+
                     b.Property<int>("LastOfficeVersion")
                         .HasColumnType("integer")
                         .HasColumnName("last_office_version");
@@ -1997,6 +2115,8 @@ namespace FleetOps.Migrations.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_shifts_one_running_per_employee")
                         .HasFilter("status = 'Running'");
+
+                    b.HasIndex("ExportId");
 
                     b.HasIndex("OverrideId");
 
@@ -2505,6 +2625,20 @@ namespace FleetOps.Migrations.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("FleetOps.Modules.Payroll.PayrollExport", b =>
+                {
+                    b.HasOne("FleetOps.Modules.Payroll.PayrollExport", null)
+                        .WithMany()
+                        .HasForeignKey("CorrectionOf")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("FleetOps.People.Employee", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("FleetOps.Modules.Schedule.Cycle", b =>
                 {
                     b.HasOne("FleetOps.People.Employee", null)
@@ -2591,6 +2725,11 @@ namespace FleetOps.Migrations.Migrations
                         .HasForeignKey("EmployeeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("FleetOps.Modules.Payroll.PayrollExport", null)
+                        .WithMany()
+                        .HasForeignKey("ExportId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("FleetOps.Modules.Fleet.VehicleOverride", null)
                         .WithMany()

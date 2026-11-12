@@ -20,6 +20,7 @@ public sealed class Shift
     [AuditField(AuditFieldClasses.Plain)] public bool? DepartureCheckOk { get; set; }
     [AuditField(AuditFieldClasses.Plain)] public ShiftSource Source { get; set; } = ShiftSource.App;
     [AuditField(AuditFieldClasses.Plain)] public ShiftStatus Status { get; set; } = ShiftStatus.Running;
+    [AuditField(AuditFieldClasses.Plain)] public Guid? ExportId { get; set; }
     [AuditField(AuditFieldClasses.Personal)] public string? RejectReason { get; set; }
     [AuditField(AuditFieldClasses.Plain)] public DateTimeOffset? SubmittedAt { get; set; }
     [AuditField(AuditFieldClasses.Personal)] public string? ApprovalNote { get; set; }

@@ -1,3 +1,4 @@
+using FleetOps.Modules.Payroll;
 using System.Text.Json.Serialization;
 using System.Text;
 using System.Text.Json;
@@ -114,6 +115,17 @@ builder.Services.AddScoped<IAlertEvaluator, A10ApprovalEvaluator>();
 builder.Services.AddScoped<IAlertEvaluator, A16RunningShiftEvaluator>();
 builder.Services.AddScoped<ITimesheetAlertFacts, EfTimesheetAlertFacts>();
 builder.Services.AddScoped<IOfficeShiftStore, EfOfficeShiftStore>();
+builder.Services.AddScoped<IPayrollStore, EfPayrollStore>();
+builder.Services.AddSingleton<IPayrollExportFormat, CsvGenericPayrollFormat>();
+builder.Services.AddSingleton<IPayrollExportFormat, DatevLohnPayrollFormat>();
+builder.Services.AddScoped<IQueryHandler<GetPayrollReadinessQuery, PayrollReadiness>, PayrollQueries>();
+builder.Services.AddScoped<IQueryHandler<PreviewPayrollQuery, PayrollPreview>, PayrollQueries>();
+builder.Services.AddScoped<IQueryHandler<GetPayrollHistoryQuery, PayrollHistory>, PayrollQueries>();
+builder.Services.AddScoped<ICommandHandler<GeneratePayrollCommand, PayrollExportView>, PayrollCommands>();
+builder.Services.AddScoped<ICommandHandler<MarkPayrollSentCommand, PayrollExportView>, PayrollCommands>();
+builder.Services.AddScoped<ICommandHandler<DiscardPayrollCommand, PayrollExportView>, PayrollCommands>();
+builder.Services.AddScoped<ICommandHandler<ReopenPayrollShiftCommand, PayrollReopened>, PayrollCommands>();
+builder.Services.AddScoped<ICommandHandler<DownloadPayrollCommand, PayrollDownload>, PayrollCommands>();
 builder.Services.AddScoped<ITimesheetReadStore, EfTimesheetReadStore>();
 builder.Services.AddScoped<IQueryHandler<GetWeekGridQuery, WeekGrid>, TimesheetQueries>();
 builder.Services.AddScoped<IQueryHandler<GetShiftDetailQuery, ShiftDetail>, TimesheetQueries>();
@@ -290,6 +302,16 @@ app.UseExceptionHandler(new ExceptionHandlerOptions
         if (exception is ReleaseReviewConflictException reviewConflict) { await Results.Problem(statusCode: reviewConflict.Code == "not_found" ? 404 : 409, extensions: new Dictionary<string, object?> { ["code"] = reviewConflict.Code }).ExecuteAsync(context); return; }
         if (exception is AccessValidationException accessValidation) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "validation_error", ["fields"] = accessValidation.Fields }).ExecuteAsync(context); return; }
         if (exception is AccessConflictException accessConflict) { await Results.Problem(statusCode: accessConflict.Code == "not_found" ? 404 : 409, extensions: new Dictionary<string, object?> { ["code"] = accessConflict.Code }).ExecuteAsync(context); return; }
+        if (exception is PayrollValidationException payrollValidation)
+        {
+            await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "validation_error", ["fields"] = payrollValidation.Fields }).ExecuteAsync(context);
+            return;
+        }
+        if (exception is PayrollConflictException payrollConflict)
+        {
+            await Results.Problem(statusCode: payrollConflict.Code == "not_found" ? 404 : 409, extensions: new Dictionary<string, object?> { ["code"] = payrollConflict.Code, ["shifts"] = payrollConflict.Shifts }).ExecuteAsync(context);
+            return;
+        }
         if (exception is TimesheetValidationException timesheetValidation)
         {
             await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "validation_error", ["fields"] = timesheetValidation.Fields }).ExecuteAsync(context);
@@ -305,7 +327,7 @@ app.UseExceptionHandler(new ExceptionHandlerOptions
         if (exception is StorageUnavailableException) { await Results.Problem(statusCode: 503, extensions: new Dictionary<string, object?> { ["code"] = "storage_unavailable" }).ExecuteAsync(context); return; }
         if (exception is DocumentValidationException documentValidation) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = documentValidation.Code, ["fields"] = documentValidation.Fields }).ExecuteAsync(context); return; }
         var jsonException = VehicleJsonException.Find(exception);
-        if (context.Request.Method is "POST" or "PUT" && (context.Request.Path.StartsWithSegments("/api/v1/fleet/vehicles") || context.Request.Path.StartsWithSegments("/api/v1/documents") || context.Request.Path.StartsWithSegments("/api/v1/people") || context.Request.Path.StartsWithSegments("/api/v1/driver") || context.Request.Path.StartsWithSegments("/api/v1/schedule") || context.Request.Path.StartsWithSegments("/api/v1/settings") || context.Request.Path.StartsWithSegments("/api/v1/corrections")) && jsonException is not null)
+        if (context.Request.Method is "POST" or "PUT" && (context.Request.Path.StartsWithSegments("/api/v1/fleet/vehicles") || context.Request.Path.StartsWithSegments("/api/v1/documents") || context.Request.Path.StartsWithSegments("/api/v1/people") || context.Request.Path.StartsWithSegments("/api/v1/driver") || context.Request.Path.StartsWithSegments("/api/v1/schedule") || context.Request.Path.StartsWithSegments("/api/v1/settings") || context.Request.Path.StartsWithSegments("/api/v1/corrections") || context.Request.Path.StartsWithSegments("/api/v1/payroll") || context.Request.Path.StartsWithSegments("/api/v1/shifts")) && jsonException is not null)
         {
             var field = VehicleJsonException.FieldName(jsonException.Path);
             await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "validation_error", ["fields"] = field is null ? Array.Empty<string>() : new[] { field } }).ExecuteAsync(context); return;
@@ -353,6 +375,7 @@ app.MapPut("/api/v1/people/{id:guid}/cycle-pattern", async (Guid id, SaveCyclePa
 app.MapGet("/healthz", async (IDatabaseHealth database, CancellationToken cancellationToken) => await database.IsHealthyAsync(cancellationToken) ? Results.Ok(new { api = "ok", database = "ok" }) : Results.Problem(statusCode: 503, title: "Service unavailable", detail: "Database unavailable", extensions: new Dictionary<string, object?> { ["code"] = "database_unavailable", ["database"] = "unavailable" }));
 AuthEndpoints.Map(app);
 EpicThreeEndpoints.Map(app);
+PayrollEndpoints.Map(app);
 ShiftEndpoints.Map(app);
 TimesheetEndpoints.Map(app);
 DriverEndpoints.Map(app);

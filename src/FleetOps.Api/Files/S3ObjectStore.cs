@@ -17,6 +17,12 @@ public sealed class StorageOptions
 }
 public sealed class S3ObjectStore(IConfiguration configuration) : IObjectStore
 {
+    public async Task WriteAsync(string key, ReadOnlyMemory<byte> contents, string contentType, CancellationToken cancellationToken)
+    {
+        using var client = Client;
+        using var stream = new MemoryStream(contents.ToArray(), writable: false);
+        await client.PutObjectAsync(new PutObjectRequest { BucketName = options.Bucket, Key = key, InputStream = stream, ContentType = contentType, CannedACL = S3CannedACL.Private }, cancellationToken);
+    }
     private readonly StorageOptions options = configuration.GetSection("Storage").Get<StorageOptions>() ?? new();
     private AmazonS3Client Client => string.IsNullOrWhiteSpace(options.Endpoint) || string.IsNullOrWhiteSpace(options.Region) || string.IsNullOrWhiteSpace(options.AccessKeyId) || string.IsNullOrWhiteSpace(options.SecretAccessKey) || string.IsNullOrWhiteSpace(options.Bucket) ? throw new StorageUnavailableException() : new(new Amazon.Runtime.BasicAWSCredentials(options.AccessKeyId, options.SecretAccessKey), new AmazonS3Config { ServiceURL = options.Endpoint, AuthenticationRegion = options.Region, ForcePathStyle = true });
     public async Task<ObjectLink> CreateUploadLinkAsync(string key, string contentType, TimeSpan lifetime, CancellationToken cancellationToken) { using var client = Client; var expires = DateTime.UtcNow.Add(lifetime); var url = await client.GetPreSignedURLAsync(new GetPreSignedUrlRequest { BucketName = options.Bucket, Key = key, Verb = HttpVerb.PUT, ContentType = contentType, Expires = expires }); return new(url, new DateTimeOffset(expires, TimeSpan.Zero)); }
