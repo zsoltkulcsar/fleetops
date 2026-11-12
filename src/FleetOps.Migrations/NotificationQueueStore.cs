@@ -18,14 +18,18 @@ public sealed class NotificationQueueStore(IConfiguration configuration, TimePro
         var employees = await db.Employees.AsNoTracking().Where(employee => recipients.Contains(employee.Id) && employee.Status == EmployeeStatus.Active && (employee.EndDate == null || employee.EndDate >= today)).ToListAsync(cancellationToken);
         var users = await db.Users.AsNoTracking().Where(user => recipients.Contains(user.EmployeeId)).ToListAsync(cancellationToken);
         var subscribed = await db.PushSubscriptions.Where(subscription => recipients.Contains(subscription.EmployeeId)).Select(subscription => subscription.EmployeeId).Distinct().ToListAsync(cancellationToken);
-        return employees.Select(employee =>
+        var result = employees.Select(employee =>
         {
             var user = users.SingleOrDefault(user => user.EmployeeId == employee.Id);
             var roles = JsonSerializer.Deserialize<string[]>(employee.Roles) ?? [];
             var office = user is not null && roles.Any(role => role is "hr" or "dispatcher" or "owner");
             var preferences = user is null ? new NotifyPreferences(false, false, false) : new(user.CriticalPush, user.CriticalEmail, user.DigestEmail);
             return new NotificationRecipient(employee.Id, preferences, office, subscribed.Contains(employee.Id));
-        }).Where(recipient => recipient.EmployeeId == employeeId || recipient.Office).ToArray();
+        }).Where(recipient => recipient.EmployeeId == employeeId || recipient.Office).ToList();
+        // Direct in-app recipients can be uploaders without a linked employee record.
+        if (!await db.Employees.AnyAsync(employee => employee.Id == employeeId, cancellationToken))
+            result.Add(new NotificationRecipient(employeeId, new NotifyPreferences(false, false, false), false, false));
+        return result;
     }
     public async Task<Guid> InsertAsync(Guid employeeId, string template, object parameters, Guid? alertId, NotificationChannel channel, CommandContext context, CancellationToken cancellationToken)
     {

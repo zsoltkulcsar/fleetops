@@ -12,7 +12,10 @@ public sealed class NotificationDelivery(INotificationDeliveryStore store, IEmai
     private async Task<DeliveryOutcome?> AttemptAsync(PendingDelivery delivery, int maximum, CancellationToken cancellationToken)
     {
         var now = time.GetUtcNow();
-        if (delivery.SentAt is not null || delivery.Attempts >= maximum || delivery.NextAttemptAt > now) return null;
+        if (delivery.SentAt is not null || delivery.Attempts >= maximum) return null;
+        // In-app delivery is the stored row; external delivery needs a current recipient.
+        if (delivery.Channel == NotificationChannel.InApp) return new(now, delivery.Attempts, null);
+        if (delivery.NextAttemptAt > now) return null;
         try
         {
             if (!delivery.RecipientActive) throw new InvalidOperationException("recipient_unavailable");
