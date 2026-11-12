@@ -49,6 +49,7 @@ public sealed class VehicleApiFactory : WebApplicationFactory<Program>, IAsyncLi
     public FakeObjectStore ObjectStore { get; } = new();
 
     public bool UseRealObjectStore { get; set; }
+    public bool FreshStepUp { get => accessor.HasFreshStepUp; set => accessor.HasFreshStepUp = value; }
 
     public ConcurrentQueue<string>? LogItems { get; set; }
 
@@ -222,9 +223,10 @@ public sealed class VehicleApiFactory : WebApplicationFactory<Program>, IAsyncLi
         return client;
     }
 
-    private sealed class MutableAccessor : IAccessContextAccessor
+    private sealed class MutableAccessor : IAccessContextAccessor, IStepUpContextAccessor
     {
         public AccessContext? Current { get; set; }
+        public bool HasFreshStepUp { get; set; }
     }
 
     private sealed class FailingVehicleStore(EfVehicleStore inner, Action clearFailure) : IVehicleStore

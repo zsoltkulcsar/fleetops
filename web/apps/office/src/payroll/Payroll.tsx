@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@fleetops/api-client";
 import { Banner, Drawer, Panel } from "@fleetops/ui";
@@ -11,6 +11,9 @@ export function Payroll() {
   const session = useSession();
   const allowed = session.data?.roles.some((role) => role === "hr" || role === "owner") === true;
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  useEffect(() => {
+    document.title = "Payroll export · FleetOps Office";
+  }, []);
   return (
     <div className="page timesheets-page">
       <h1>Payroll export</h1>

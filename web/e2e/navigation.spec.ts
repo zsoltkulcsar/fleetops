@@ -29,7 +29,10 @@ test("every route shows its empty state heading", async ({ page }) => {
     else if (route === "/settings") {
       await expect(page.getByRole("heading", { name: "Holidays", exact: true })).toBeVisible();
       await expect(page.getByRole("heading", { name: "Users & roles", exact: true })).toBeVisible();
-    } else await expect(page.getByRole("heading", { level: 2, name: "Nothing here yet" })).toBeVisible();
+    } else if (route === "/payroll")
+      // Epic 11 replaced the placeholder: the month picker is the first thing on the page.
+      await expect(page.getByLabel("Month", { exact: true })).toBeVisible();
+    else await expect(page.getByRole("heading", { level: 2, name: "Nothing here yet" })).toBeVisible();
   }
 });
 test("placeholder pages have no action buttons", async ({ page }) => {

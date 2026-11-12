@@ -11,6 +11,16 @@ public sealed class FakeObjectStore : IObjectStore
     public ConcurrentQueue<string> Deleted { get; } = new();
     public ConcurrentQueue<string> Linked { get; } = new();
     public ConcurrentQueue<string> DownloadCalls { get; } = new();
+    public ConcurrentDictionary<string, byte[]> Contents { get; } = new();
+
+    public Task WriteAsync(string key, ReadOnlyMemory<byte> contents, string contentType, CancellationToken cancellationToken)
+    {
+        if (ThrowStorageUnavailable) throw new FleetOps.Api.Files.StorageUnavailableException();
+        Contents[key] = contents.ToArray();
+        Put(key, contents.Length, contentType);
+        return Task.CompletedTask;
+    }
+
     public bool ThrowStorageUnavailable { get; set; }
     public bool ThrowOnDelete { get; set; }
 
