@@ -102,6 +102,11 @@ builder.Services.AddScoped<IChangedSubjects, ChangedSubjects>();
 builder.Services.AddScoped<IPostCommandEvaluation, AlertPostCommandEvaluation>();
 builder.Services.AddScoped<IAlertEngine, AlertEngine>();
 builder.Services.AddScoped<ISettings, EfSettingsStore>();
+builder.Services.AddScoped<FleetOps.Modules.Audit.IAuditLogStore, AuditLogStore>();
+builder.Services.AddScoped<IQueryHandler<FleetOps.Modules.Audit.GetAuditLogQuery, FleetOps.Modules.Audit.AuditPage>, FleetOps.Modules.Audit.AuditLogHandler>();
+builder.Services.AddScoped<ICommandHandler<FleetOps.Modules.Audit.ExportAuditLogCommand, string>, FleetOps.Modules.Audit.AuditLogHandler>();
+builder.Services.AddScoped<IOwnerOverviewStore, OwnerOverviewStore>();
+builder.Services.AddScoped<IQueryHandler<GetOwnerOverviewQuery, OwnerOverview>, OwnerOverviewHandler>();
 builder.Services.AddScoped<INotifications, Notifications>();
 builder.Services.AddScoped<INotificationQueueStore, NotificationQueueStore>();
 builder.Services.AddScoped<INotificationDeliveryStore, NotificationDeliveryStore>();
@@ -296,6 +301,7 @@ builder.Services.AddScoped<ICommandHandler<SetVehicleOffRoadCommand, VehicleDeta
 builder.Services.AddHostedService<NotificationScheduleService>();
 var app = builder.Build();
 app.MapNotificationSettings();
+app.MapOwnerAndAudit();
 app.UseExceptionHandler(new ExceptionHandlerOptions
 {
     SuppressDiagnosticsCallback = _ => true,
@@ -307,6 +313,11 @@ app.UseExceptionHandler(new ExceptionHandlerOptions
             context.Items["ProblemCode"] = refusal.Code;
             var status = refusal.Code is "not_signed_in" or "session_revoked" ? 401 : refusal.Code == "state_conflict" ? 409 : 403;
             await Results.Problem(statusCode: status, extensions: new Dictionary<string, object?> { ["code"] = refusal.Code, ["allowedRoles"] = refusal.AllowedRoles.Select(x => x.Code()).ToArray() }).ExecuteAsync(context); return;
+        }
+        if (exception is FleetOps.Modules.Audit.AuditFilterException auditFilterException)
+        {
+            await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "validation_error", ["fields"] = auditFilterException.Fields }).ExecuteAsync(context);
+            return;
         }
         if (exception is NotificationException notificationException)
         {

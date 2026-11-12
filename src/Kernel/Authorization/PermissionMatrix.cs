@@ -79,6 +79,8 @@ public static class PermissionMatrix
         E("employees.phone.change", Cell.None, Cell.None, Cell.Full, Cell.Full), E("audit.export", Cell.None, Cell.None, Cell.Full, Cell.Full),
         E("driver.config", Cell.Own, Cell.None, Cell.None, Cell.None),
         E("notifications.mine", Cell.Own, Cell.Own, Cell.Own, Cell.Own),
+        E("audit.view", Cell.None, Cell.None, Cell.Full, Cell.Full),
+        E("owner.overview", Cell.None, Cell.None, Cell.None, Cell.Full),
         E("jobs.trigger", Cell.None, Cell.None, Cell.None, Cell.Full),
         E("alerts.view", Cell.None, Cell.Full, Cell.Full, Cell.View),
         E("alerts.snooze", Cell.None, Cell.Full, Cell.Full, Cell.None)
