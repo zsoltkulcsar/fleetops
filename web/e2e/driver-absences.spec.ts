@@ -75,8 +75,11 @@ test("driver sees days left and a declined reason", async ({ page }) => {
 
 test("driver starting on vacation is asked to confirm", async ({ page, context }) => {
   await setup(page, { ...snapshot, absences: [{ ...absence, status: "approved", declineReason: null }] });
+  // The phone must hold today's data (and the absence) before the signal goes; CI showed a race here.
+  const start = page.getByRole("button", { name: "Start shift", exact: true });
+  await expect(start).toBeEnabled();
   await context.setOffline(true);
-  await page.getByRole("button", { name: "Start shift", exact: true }).click();
+  await start.click();
   const dialog = page.getByRole("dialog");
   const confirmation = dialog.getByRole("checkbox", { name: /Start anyway/ });
   await expect(dialog).toContainText("You're on vacation today. Start anyway?");
