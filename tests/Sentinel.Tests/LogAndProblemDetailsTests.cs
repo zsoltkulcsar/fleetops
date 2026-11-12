@@ -51,7 +51,7 @@ public sealed class LogAndProblemDetailsTests
         Assert.Empty(safeBody);
         Assert.Equal(500, (int)throwingResponse.StatusCode);
         Assert.Contains(control, logs);
-        Assert.Contains("Unhandled exception InvalidOperationException TraceId", logs);
+        Assert.Contains("Unhandled exception InvalidOperationException SqlState - TraceId", logs);
         Assert.DoesNotContain("test exception:", logs, StringComparison.Ordinal);
         Assert.DoesNotContain(sentinel, logs, StringComparison.Ordinal);
         Assert.DoesNotContain(sentinel, problemBody, StringComparison.Ordinal);

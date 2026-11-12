@@ -387,7 +387,7 @@ app.UseExceptionHandler(new ExceptionHandlerOptions
         if (exception is DocumentConflictException documentConflict) { await Results.Problem(statusCode: documentConflict.Code is "state_conflict" or "version_conflict" or "upload_pending" or "command_id_reused" ? 409 : 404, extensions: new Dictionary<string, object?> { ["code"] = documentConflict.Code }).ExecuteAsync(context); return; }
         if (exception is AlertValidationException alertValidation) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "validation_error", ["fields"] = alertValidation.Fields }).ExecuteAsync(context); return; }
         if (exception is AlertConflictException alertConflict) { await Results.Problem(statusCode: alertConflict.Code is "state_conflict" or "version_conflict" or "not_snoozable" ? 409 : 404, extensions: new Dictionary<string, object?> { ["code"] = alertConflict.Code }).ExecuteAsync(context); return; }
-        try { app.Logger.LogError("Unhandled exception {ExceptionType} TraceId {TraceId}", exception?.GetType().Name ?? "Unknown", context.TraceIdentifier); } catch { }
+        try { app.Logger.LogError("Unhandled exception {ExceptionType} SqlState {SqlState} TraceId {TraceId}", exception?.GetType().Name ?? "Unknown", (exception as Npgsql.PostgresException)?.SqlState ?? (exception?.InnerException as Npgsql.PostgresException)?.SqlState ?? "-", context.TraceIdentifier); } catch { }
         context.Response.StatusCode = 500; await Results.Problem(statusCode: 500).ExecuteAsync(context);
     }
 });
