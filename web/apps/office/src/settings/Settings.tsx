@@ -7,6 +7,15 @@ import { apiClient, type components } from "@fleetops/api-client";
 import { en } from "../i18n/en";
 import { useSession } from "../auth/AuthGate";
 import { formatBerlinDateTime } from "../shell/date";
+import { Link } from "react-router";
+
+function AuditLink() {
+  return (
+    <p className="settings-audit-link">
+      <Link to="/audit">Open the audit log</Link>
+    </p>
+  );
+}
 
 async function loadJobs() {
   const result = await apiClient.GET("/api/v1/admin/jobs");
@@ -33,16 +42,22 @@ export function Settings() {
     return (
       <>
         <SettingsPage />
+        <AuditLink />
         <CompanySettings />
       </>
     );
   return (
     <>
       <SettingsPage />
+      <AuditLink />
       <CompanySettings />
       <ComplianceRules />
       {jobs.data && (
         <Panel title={en.settings.jobs.title}>
+          <p className="ui-muted">
+            On the Demo, escalation and the digest run when you press Run now; their timing is not claimed
+            here.
+          </p>
           <div className="jobs-panel">
             {jobs.data.items.map((job) => (
               <JobRow

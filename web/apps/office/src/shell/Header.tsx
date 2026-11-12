@@ -216,6 +216,9 @@ export function Header({ pageName }: { pageName: string }) {
             </div>
           )}
         </div>
+        <Link className="ui-button ghost" to="/me/notifications">
+          My notifications
+        </Link>
         <button className="ui-button ghost" type="button" onClick={signOut}>
           {en.auth.signOut}
         </button>

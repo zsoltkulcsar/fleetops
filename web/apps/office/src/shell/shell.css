@@ -474,3 +474,56 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Epic 12: owner overview strip, audit log, my notifications */
+.owner-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: var(--space-3, 0.75rem);
+  margin-block: var(--space-3, 0.75rem);
+}
+.audit-filters,
+.me-cover-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+  margin-block: var(--space-3, 0.75rem);
+}
+.audit-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.audit-table th,
+.audit-table td {
+  text-align: left;
+  padding: var(--space-2, 0.5rem);
+  border-bottom: 1px solid var(--color-border, #d0d5dd);
+  overflow-wrap: anywhere;
+}
+.audit-pager {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 0.75rem);
+  margin-block: var(--space-3, 0.75rem);
+}
+.me-prefs,
+.me-covers {
+  display: grid;
+  gap: var(--space-2, 0.5rem);
+  padding: 0;
+  list-style: none;
+}
+@media (max-width: 767px) {
+  .audit-table thead {
+    display: none;
+  }
+  .audit-table td {
+    display: block;
+    border-bottom: 0;
+  }
+  .audit-table tr {
+    display: block;
+    border-bottom: 1px solid var(--color-border, #d0d5dd);
+  }
+}

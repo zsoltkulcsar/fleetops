@@ -1,3 +1,5 @@
+import { AuditLog } from "./audit/AuditLog";
+import { MyNotifications } from "./me/MyNotifications";
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Navigate, Route, Routes, useParams } from "react-router";
@@ -65,6 +67,8 @@ createRoot(document.getElementById("app")!).render(
             <Route path="/documents" element={<Documents />} />
             <Route path="/payroll" element={<Payroll />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/audit" element={<AuditLog />} />
+            <Route path="/me/notifications" element={<MyNotifications />} />
             {import.meta.env.DEV && <Route path="/__gallery" element={<DevGalleryRoute />} />}
           </Route>
           <Route path="*" element={<CanonicalRedirect />} />

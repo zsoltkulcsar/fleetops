@@ -13,6 +13,7 @@ import { Banner, Plate, SegmentedControl, Skeleton, Toast } from "@fleetops/ui";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router";
 import { useSession } from "../auth/AuthGate";
+import { OwnerStrip } from "./OwnerStrip";
 import { en } from "../i18n/en";
 import { formatDocumentDate, formatTodayBerlin } from "../shell/date";
 import { useOnline } from "../shell/Shell";
@@ -212,6 +213,7 @@ export function Attention() {
           <p className="ui-muted">{en.attention.openLine(data.totals.open, data.totals.critical)}</p>
         </div>
       </header>
+      {session.data?.roles.includes("owner") && <OwnerStrip />}
       {!online && (
         <Banner kind="offline" label={en.banner.offline}>
           {en.states.offline}
