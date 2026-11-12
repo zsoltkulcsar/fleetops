@@ -99,7 +99,8 @@ export function shiftActivities(shift: ShiftView, now: number): RuleActivity[] {
     }));
 }
 
-export function durationLabel(minutes: number): string {
-  const rounded = Math.max(0, Math.ceil(minutes));
+/** Time left rounds up ("Break due in 1:00" until it is due); time already driven rounds down. */
+export function durationLabel(minutes: number, kind: "remaining" | "elapsed" = "remaining"): string {
+  const rounded = Math.max(0, kind === "elapsed" ? Math.floor(minutes) : Math.ceil(minutes));
   return `${Math.floor(rounded / 60)}:${String(rounded % 60).padStart(2, "0")}`;
 }

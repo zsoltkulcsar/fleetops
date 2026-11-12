@@ -56,7 +56,7 @@ export function DrivingGuidance({
       {dailyValue && (
         <div>
           <strong>
-            Driving today {durationLabel(driving)} of {durationLabel(dailyValue.minutes)}
+            Driving today {durationLabel(driving, "elapsed")} of {durationLabel(dailyValue.minutes)}
           </strong>
           <p>{dailyRule?.confirmed ? confirmedWording : guideWording}</p>
         </div>
