@@ -27,6 +27,21 @@ public sealed class DatabasePoolLimitsTests
     }
 
     [Fact]
+    public void Transaction_pooler_port_turns_off_the_reset_on_close()
+    {
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["ConnectionStrings:FleetOps"] = "Host=pooler.example;Port=6543;Database=postgres;Username=runtime",
+            ["FLEETOPS_DATABASE_RUNTIME_URL"] = "Host=pooler.example;Port=5432;Database=postgres;Username=runtime",
+        }).Build();
+
+        DatabasePoolLimits.Apply(configuration);
+
+        Assert.True(new NpgsqlConnectionStringBuilder(configuration["ConnectionStrings:FleetOps"]).NoResetOnClose);
+        Assert.False(new NpgsqlConnectionStringBuilder(configuration["FLEETOPS_DATABASE_RUNTIME_URL"]).NoResetOnClose);
+    }
+
+    [Fact]
     public void Pool_cap_comes_from_configuration()
     {
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>

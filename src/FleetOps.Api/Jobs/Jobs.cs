@@ -60,19 +60,19 @@ public sealed class JobRunner(IConfiguration configuration, IEnumerable<IJob> jo
         var connectionBuilder = new NpgsqlConnectionStringBuilder(connectionString) { Pooling = false };
         await using var connection = new NpgsqlConnection(connectionBuilder.ConnectionString);
         await connection.OpenAsync(cancellationToken);
-        var locked = await TryLockAsync(connection, name, cancellationToken);
-        if (!locked)
+        var actor = new SystemActor($"system:{name}");
+        var started = time.GetUtcNow();
+        // A lease row in job_runs, created under a transaction-scoped lock: safe through a transaction pooler,
+        // where a session lock taken on one server connection could be released on another and never free.
+        var leased = await TryStartRunAsync(connection, name, trigger, actor.Name, started, cancellationToken);
+        if (leased is not Guid runId)
         {
             var skipped = await InsertRunAsync(connection, name, trigger, JobStatus.Skipped, 0, null, time.GetUtcNow(), time.GetUtcNow(), cancellationToken, $"system:{name}");
             return new("skipped", 0);
         }
-        Guid runId = Guid.Empty;
         var processed = 0;
-        var actor = new SystemActor($"system:{name}");
         try
         {
-            var started = time.GetUtcNow();
-            runId = await InsertRunAsync(connection, name, trigger, JobStatus.Running, 0, null, started, null, cancellationToken, actor.Name);
             var cursor = await LoadCursorAsync(connection, name, cancellationToken);
             while (true)
             {
@@ -95,29 +95,48 @@ public sealed class JobRunner(IConfiguration configuration, IEnumerable<IJob> jo
         }
         catch (Exception exception)
         {
-            if (runId != Guid.Empty)
-                await FinishRunAsync(connection, runId, JobStatus.Failed, processed, exception.GetType().Name, time.GetUtcNow(), CancellationToken.None);
+            await FinishRunAsync(connection, runId, JobStatus.Failed, processed, exception.GetType().Name, time.GetUtcNow(), CancellationToken.None);
             return new("failed", processed, exception.GetType().Name);
         }
-        finally
+    }
+
+    /// <summary>Starts a run unless another run of the same job holds a lease younger than <see cref="JobLease"/>.</summary>
+    private static async Task<Guid?> TryStartRunAsync(NpgsqlConnection connection, string name, JobTrigger trigger, string actorName, DateTimeOffset started, CancellationToken cancellationToken)
+    {
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        await using (var lockCommand = new NpgsqlCommand("select pg_advisory_xact_lock(hashtextextended('fleetops.job.' || $1, 0))", connection, transaction))
         {
-            await UnlockAsync(connection, name, CancellationToken.None);
+            lockCommand.Parameters.AddWithValue(name);
+            await lockCommand.ExecuteScalarAsync(cancellationToken);
         }
+        await using (var busy = new NpgsqlCommand("select exists (select 1 from fleetops.job_runs where name = $1 and status = $2 and finished_at is null and started_at > $3)", connection, transaction))
+        {
+            busy.Parameters.AddWithValue(name);
+            busy.Parameters.AddWithValue(JobStatus.Running.ToString());
+            busy.Parameters.AddWithValue(started - JobLease);
+            if ((bool)(await busy.ExecuteScalarAsync(cancellationToken) ?? false))
+            {
+                await transaction.CommitAsync(cancellationToken);
+                return null;
+            }
+        }
+        var id = Guid.CreateVersion7();
+        await using (var insert = new NpgsqlCommand("insert into fleetops.job_runs (id, name, trigger, actor_name, started_at, finished_at, status, processed, error_type) values ($1, $2, $3, $4, $5, null, $6, 0, null)", connection, transaction))
+        {
+            insert.Parameters.AddWithValue(id);
+            insert.Parameters.AddWithValue(name);
+            insert.Parameters.AddWithValue(trigger.ToString());
+            insert.Parameters.AddWithValue(actorName);
+            insert.Parameters.AddWithValue(started);
+            insert.Parameters.AddWithValue(JobStatus.Running.ToString());
+            await insert.ExecuteNonQueryAsync(cancellationToken);
+        }
+        await transaction.CommitAsync(cancellationToken);
+        return id;
     }
 
-    private static async Task<bool> TryLockAsync(NpgsqlConnection connection, string name, CancellationToken cancellationToken)
-    {
-        await using var command = new NpgsqlCommand("select pg_try_advisory_lock(hashtextextended('fleetops.job.' || $1, 0))", connection);
-        command.Parameters.AddWithValue(name);
-        return (bool)(await command.ExecuteScalarAsync(cancellationToken) ?? false);
-    }
-
-    private static async Task UnlockAsync(NpgsqlConnection connection, string name, CancellationToken cancellationToken)
-    {
-        await using var command = new NpgsqlCommand("select pg_advisory_unlock(hashtextextended('fleetops.job.' || $1, 0))", connection);
-        command.Parameters.AddWithValue(name);
-        await command.ExecuteScalarAsync(cancellationToken);
-    }
+    /// <summary>A run that crashed without finishing stops blocking its job after this long.</summary>
+    private static readonly TimeSpan JobLease = TimeSpan.FromMinutes(15);
 
     private static async Task<Guid> InsertRunAsync(NpgsqlConnection connection, string name, JobTrigger trigger, JobStatus status, int processed, string? errorType, DateTimeOffset started, DateTimeOffset? finished, CancellationToken cancellationToken, string actorName = "")
     {

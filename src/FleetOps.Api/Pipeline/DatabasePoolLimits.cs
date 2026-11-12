@@ -30,6 +30,8 @@ public static class DatabasePoolLimits
             }
             if (!Names(value, "Maximum Pool Size", "Max Pool Size", "MaxPoolSize")) builder.MaxPoolSize = maximum;
             if (!Names(value, "Connection Idle Lifetime", "ConnectionIdleLifetime")) builder.ConnectionIdleLifetime = idleSeconds;
+            // Supabase transaction pooler (port 6543): no reset query on return, as Npgsql advises for transaction poolers.
+            if (builder.Port == 6543 && !Names(value, "No Reset On Close", "NoResetOnClose")) builder.NoResetOnClose = true;
             configuration[key] = builder.ConnectionString;
         }
     }

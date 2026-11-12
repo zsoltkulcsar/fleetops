@@ -87,10 +87,8 @@ public sealed class JobTests : IAsyncLifetime
     [Fact]
     public async Task Second_call_during_a_run_is_skipped()
     {
-        await using var lockConnection = await factory.DirectConnection();
-        await using var lockCommand = new NpgsqlCommand("select pg_advisory_lock(hashtextextended('fleetops.job.' || $1, 0))", lockConnection);
-        lockCommand.Parameters.AddWithValue("recording");
-        await lockCommand.ExecuteNonQueryAsync();
+        // Another run of the same job holds a fresh lease.
+        await factory.InsertRunningRow("recording", factory.Clock.GetUtcNow().AddMinutes(-1));
         using var response = await factory.GetJob("recording");
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         Assert.True(response.StatusCode == HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
@@ -100,24 +98,42 @@ public sealed class JobTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Lock_is_held_on_its_own_connection()
+    public async Task Stale_lease_does_not_block_the_job()
+    {
+        // A run that crashed 20 minutes ago without finishing must not block the job forever.
+        await factory.InsertRunningRow("recording", factory.Clock.GetUtcNow().AddMinutes(-20));
+        using var response = await factory.GetJob("recording");
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("succeeded", body.GetProperty("status").GetString());
+        Assert.Equal(1, factory.RecordingRuns);
+    }
+
+    [Fact]
+    public async Task Running_job_holds_a_lease_row_while_it_runs()
     {
         factory.BlockingJob.Release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var run = factory.GetJob("blocking");
         await factory.BlockingJob.Started.Task.WaitAsync(TimeSpan.FromSeconds(10));
-        var lockConnectionPid = await factory.Scalar<long>("select pid::bigint from pg_locks where locktype = 'advisory' and granted and classid is not null limit 1");
-        Assert.NotEqual(factory.BlockingJob.DataConnectionPid, lockConnectionPid);
+        Assert.Equal(1L, await factory.Scalar<long>("select count(*) from fleetops.job_runs where name = 'blocking' and status = 'Running' and finished_at is null"));
+        using (var second = await factory.GetJob("blocking"))
+            Assert.Equal("skipped", (await second.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("status").GetString());
+        // No session-level advisory lock is held: the lease must work through a transaction pooler.
+        Assert.Equal(0L, await factory.Scalar<long>("select count(*) from pg_locks where locktype = 'advisory' and granted"));
         factory.BlockingJob.Release.SetResult();
         using var response = await run;
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(0L, await factory.Scalar<long>("select count(*) from fleetops.job_runs where name = 'blocking' and status = 'Running'"));
     }
 
     [Fact]
-    public async Task Lock_is_released_after_a_failure()
+    public async Task Lease_is_released_after_a_failure()
     {
         using var response = await factory.GetJob("throwing");
         Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
-        Assert.True(await factory.TryAdvisoryLock("throwing"));
+        Assert.Equal(0L, await factory.Scalar<long>("select count(*) from fleetops.job_runs where name = 'throwing' and status = 'Running'"));
+        using var again = await factory.GetJob("throwing");
+        Assert.Equal(HttpStatusCode.InternalServerError, again.StatusCode);
+        Assert.Equal(2L, await factory.Scalar<long>("select count(*) from fleetops.job_runs where name = 'throwing' and status = 'Failed'"));
     }
 
     [Fact]
@@ -283,6 +299,7 @@ public sealed class JobApiFactory : WebApplicationFactory<Program>, IAsyncLifeti
     public async Task ClearJobRuns() { await using var connection = new NpgsqlConnection(AdminConnectionString); await connection.OpenAsync(); await using var command = new NpgsqlCommand("truncate fleetops.job_runs", connection); await command.ExecuteNonQueryAsync(); }
     public async Task<T> Scalar<T>(string sql) { await using var connection = await DirectConnection(); await using var command = new NpgsqlCommand(sql, connection); return (T)(await command.ExecuteScalarAsync())!; }
     public Task<bool> TryAdvisoryLock(string name) => TryAdvisoryLockAsync(name);
+    public async Task InsertRunningRow(string name, DateTimeOffset startedAt) { await using var connection = new NpgsqlConnection(AdminConnectionString); await connection.OpenAsync(); await using var command = new NpgsqlCommand("insert into fleetops.job_runs (id, name, trigger, actor_name, started_at, finished_at, status, processed, error_type) values ($1, $2, 'scheduler', 'system:test', $3, null, 'Running', 0, null)", connection); command.Parameters.AddWithValue(Guid.NewGuid()); command.Parameters.AddWithValue(name); command.Parameters.AddWithValue(startedAt); await command.ExecuteNonQueryAsync(); }
     private async Task<bool> TryAdvisoryLockAsync(string name) { await using var connection = await DirectConnection(); await using var command = new NpgsqlCommand("select pg_try_advisory_lock(hashtextextended('fleetops.job.' || $1, 0))", connection); command.Parameters.AddWithValue(name); return (bool)(await command.ExecuteScalarAsync())!; }
     public Task<int> JobRunCount(string name) => Scalar<int>($"select count(*)::int from fleetops.job_runs where name = '{name}'");
     public async Task<JobRunRow> JobRun(string name) { await using var connection = await DirectConnection(); await using var command = new NpgsqlCommand("select status, actor_name, trigger, finished_at, error_type, coalesce(error_type, '') from fleetops.job_runs where name = $1 order by started_at desc limit 1", connection); command.Parameters.AddWithValue(name); await using var reader = await command.ExecuteReaderAsync(); Assert.True(await reader.ReadAsync()); return new(reader.GetString(0), reader.GetString(1), reader.GetString(2), reader.IsDBNull(3) ? null : reader.GetFieldValue<DateTimeOffset>(3), reader.IsDBNull(4) ? null : reader.GetString(4), reader.GetString(5)); }
