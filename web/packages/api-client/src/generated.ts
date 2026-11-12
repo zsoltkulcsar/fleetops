@@ -273,6 +273,125 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/owner/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["OwnerOverview"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit-log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    PersonId?: string;
+                    EntityType?: string;
+                    EntityId?: string;
+                    From?: string;
+                    To?: string;
+                    Page?: number;
+                    PageSize?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AuditPage"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit-log/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    PersonId?: string;
+                    EntityType?: string;
+                    EntityId?: string;
+                    From?: string;
+                    To?: string;
+                    Page?: number;
+                    PageSize?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/jobs/{name}/run": {
         parameters: {
             query?: never;
@@ -5939,6 +6058,29 @@ export interface components {
             /** Format: int32 */
             critical: number;
         };
+        AuditPage: {
+            items: components["schemas"]["AuditRow"][];
+            /** Format: int32 */
+            total: number;
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            pageSize: number;
+        };
+        AuditRow: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            time: string;
+            who: string;
+            entityType: string;
+            /** Format: uuid */
+            entityId: string;
+            field: string;
+            oldValue: null | string;
+            newValue: null | string;
+            reason: string;
+        };
         AuthSessionResponse: {
             /** Format: uuid */
             employeeId: string;
@@ -6998,6 +7140,16 @@ export interface components {
             night: string;
             countryCode: string;
             kind: components["schemas"]["OvernightKind"];
+        };
+        OwnerKpi: {
+            key: string;
+            /** Format: double */
+            value: null | number;
+            status: null | string;
+            href: string;
+        };
+        OwnerOverview: {
+            items: components["schemas"]["OwnerKpi"][];
         };
         PayrollDay: {
             /** Format: uuid */

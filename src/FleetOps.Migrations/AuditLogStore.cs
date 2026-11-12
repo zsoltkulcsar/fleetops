@@ -24,11 +24,15 @@ public sealed class AuditLogStore(IConfiguration configuration, TimeProvider tim
         var documentIds = rows.Where(entry => entry.EntityType.ToLower() == "document").Select(entry => entry.EntityId).ToArray();
         var nonMedicalIds = await db.Documents.Where(document => documentIds.Contains(document.Id) && document.Type != DocumentType.Medical).Select(document => document.Id).ToListAsync(cancellationToken);
         var entityTypes = db.Model.GetEntityTypes().Select(entity => entity.ClrType).Distinct().ToDictionary(type => type.Name, StringComparer.OrdinalIgnoreCase);
+        // Show people by name, not by ID; actors that are not a person (system jobs) keep their label.
+        var actorIds = rows.Select(entry => Guid.TryParse(entry.ActorId, out var actorId) ? actorId : Guid.Empty).Where(actorId => actorId != Guid.Empty).Distinct().ToArray();
+        var actorNames = await db.Employees.AsNoTracking().Where(employee => actorIds.Contains(employee.Id))
+            .ToDictionaryAsync(employee => employee.Id.ToString(), employee => employee.FirstName + " " + employee.LastName, cancellationToken);
         return new(rows.Select(entry =>
         {
             var special = (entry.EntityType.ToLower() == "document" && !nonMedicalIds.Contains(entry.EntityId)) || entry.FieldName.Contains("phone", StringComparison.OrdinalIgnoreCase) || entry.FieldName.Contains("pin", StringComparison.OrdinalIgnoreCase) ||
                 entityTypes.TryGetValue(entry.EntityType, out var type) && type.GetProperty(entry.FieldName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase)?.GetCustomAttribute<AuditFieldAttribute>()?.Classification == AuditFieldClasses.Special;
-            return new AuditSourceRow(new AuditRow(entry.Id, entry.CreatedAt, entry.ActorId, entry.EntityType, entry.EntityId, entry.FieldName, entry.OldValue, entry.NewValue, entry.Reason), special);
+            return new AuditSourceRow(new AuditRow(entry.Id, entry.CreatedAt, actorNames.GetValueOrDefault(entry.ActorId, entry.ActorId), entry.EntityType, entry.EntityId, entry.FieldName, entry.OldValue, entry.NewValue, entry.Reason), special);
         }).ToArray(), total, filter.Page, filter.PageSize);
     }
     public async Task RecordExportAsync(Guid actorId, CommandContext context, CancellationToken cancellationToken)
