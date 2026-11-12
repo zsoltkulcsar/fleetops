@@ -58,6 +58,19 @@ public sealed class CommandDispatcher(IAccessContextAccessor accessor, ICommandP
         catch { try { await transaction.RollbackAsync(CancellationToken.None); } catch { } throw; }
     }
 
+    // Restricted entry point for registered notification jobs, including authenticated cron runs.
+    internal async Task<NotificationJobResult> DispatchNotificationJobAsync(RunNotificationJobCommand command, CancellationToken cancellationToken)
+    {
+        await using var transaction = await transactions.BeginAsync(cancellationToken);
+        var handler = services.GetRequiredService<ICommandHandler<RunNotificationJobCommand, NotificationJobResult>>();
+        var result = await handler.HandleAsync(command, AccessContext.For(Guid.Empty, RoleCode.Owner), transaction.Context, cancellationToken);
+        await transaction.CommitAsync(CancellationToken.None);
+        var ids = services.GetRequiredService<INotificationIds>().Items;
+        if (ids.Count > 0)
+            await services.GetRequiredService<IPostCommitNotifications>().TrySendAsync(ids, CancellationToken.None);
+        return result;
+    }
+
     internal async Task ApplyScheduledLeaveAsync(Guid employeeId, DateOnly today, CommandContext context, CancellationToken cancellationToken)
     {
         var handler = services.GetRequiredService<ICommandHandler<FleetOps.People.ApplyScheduledLeaveCommand, FleetOps.People.PersonSaveResult>>();

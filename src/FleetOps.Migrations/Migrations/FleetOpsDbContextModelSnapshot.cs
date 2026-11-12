@@ -158,6 +158,24 @@ namespace FleetOps.Migrations.Migrations
                         .HasColumnType("text")
                         .HasColumnName("concurrency_stamp");
 
+                    b.Property<bool>("CriticalEmail")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("critical_email");
+
+                    b.Property<bool>("CriticalPush")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("critical_push");
+
+                    b.Property<bool>("DigestEmail")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("digest_email");
+
                     b.Property<string>("Email")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)")
@@ -294,6 +312,21 @@ namespace FleetOps.Migrations.Migrations
                     b.HasIndex("EmployeeId");
 
                     b.ToTable("privacy_acknowledgements", "fleetops");
+                });
+
+            modelBuilder.Entity("FleetOps.Identity.SmsDailyUsage", b =>
+                {
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date")
+                        .HasColumnName("date");
+
+                    b.Property<int>("Count")
+                        .HasColumnType("integer")
+                        .HasColumnName("count");
+
+                    b.HasKey("Date");
+
+                    b.ToTable("sms_daily_usage", "fleetops");
                 });
 
             modelBuilder.Entity("FleetOps.Migrations.JobCheckpoint", b =>
@@ -1289,6 +1322,41 @@ namespace FleetOps.Migrations.Migrations
                         });
                 });
 
+            modelBuilder.Entity("FleetOps.Modules.Notifications.AlertCover", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateOnly>("From")
+                        .HasColumnType("date")
+                        .HasColumnName("from_date");
+
+                    b.Property<Guid>("FromId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("from_id");
+
+                    b.Property<DateOnly>("To")
+                        .HasColumnType("date")
+                        .HasColumnName("to_date");
+
+                    b.Property<Guid>("ToId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("to_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FromId", "From", "To");
+
+                    b.HasIndex("ToId", "From", "To");
+
+                    b.ToTable("alert_covers", "fleetops", t =>
+                        {
+                            t.HasCheckConstraint("ck_alert_cover_dates", "to_date >= from_date and from_id <> to_id");
+                        });
+                });
+
             modelBuilder.Entity("FleetOps.Modules.Notifications.Notification", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1312,6 +1380,10 @@ namespace FleetOps.Migrations.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
+
+                    b.Property<DateOnly?>("DigestDate")
+                        .HasColumnType("date")
+                        .HasColumnName("digest_date");
 
                     b.Property<Guid>("EmployeeId")
                         .HasColumnType("uuid")
@@ -1346,7 +1418,50 @@ namespace FleetOps.Migrations.Migrations
                     b.HasIndex("NextAttemptAt", "Id")
                         .HasFilter("sent_at is null");
 
+                    b.HasIndex("EmployeeId", "AlertId", "TemplateCode", "Channel")
+                        .IsUnique()
+                        .HasFilter("alert_id is not null");
+
+                    b.HasIndex("EmployeeId", "TemplateCode", "Channel", "DigestDate")
+                        .IsUnique()
+                        .HasFilter("digest_date is not null");
+
                     b.ToTable("notifications", "fleetops");
+                });
+
+            modelBuilder.Entity("FleetOps.Modules.Notifications.PushSubscription", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Auth")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("auth");
+
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("employee_id");
+
+                    b.Property<string>("Endpoint")
+                        .IsRequired()
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)")
+                        .HasColumnName("endpoint");
+
+                    b.Property<string>("P256dh")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("p256dh");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmployeeId", "Endpoint")
+                        .IsUnique();
+
+                    b.ToTable("push_subscriptions", "fleetops");
                 });
 
             modelBuilder.Entity("FleetOps.Modules.Payroll.PayrollExport", b =>
@@ -2622,6 +2737,30 @@ namespace FleetOps.Migrations.Migrations
                         .WithMany()
                         .HasForeignKey("VehicleId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FleetOps.Modules.Notifications.AlertCover", b =>
+                {
+                    b.HasOne("FleetOps.People.Employee", null)
+                        .WithMany()
+                        .HasForeignKey("FromId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FleetOps.People.Employee", null)
+                        .WithMany()
+                        .HasForeignKey("ToId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FleetOps.Modules.Notifications.PushSubscription", b =>
+                {
+                    b.HasOne("FleetOps.People.Employee", null)
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 

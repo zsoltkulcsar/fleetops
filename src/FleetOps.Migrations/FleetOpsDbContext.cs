@@ -33,6 +33,7 @@ public sealed partial class FleetOpsDbContext(DbContextOptions<FleetOpsDbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        ConfigureNotificationDelivery(modelBuilder);
         ConfigureCompanySettings(modelBuilder);
         ConfigureComplianceRules(modelBuilder);
         ConfigureCorrections(modelBuilder);

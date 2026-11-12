@@ -7,6 +7,9 @@ public enum SessionStage { PendingSecondFactor, PendingEnrolment, PendingPrivacy
 public sealed class OfficeUser : IdentityUser<Guid>
 {
     public Guid EmployeeId { get; set; }
+    public bool CriticalPush { get; set; } = true;
+    public bool CriticalEmail { get; set; } = true;
+    public bool DigestEmail { get; set; } = true;
     public long? LastAcceptedTotpStep { get; set; }
     public int FailedSecondFactorAttempts { get; set; }
 }

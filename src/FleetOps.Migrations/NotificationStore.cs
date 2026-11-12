@@ -7,25 +7,6 @@ using FleetOps.Kernel;
 
 namespace FleetOps.Migrations;
 
-public sealed class EfNotifications(TimeProvider time, INotificationIds ids) : INotifications
-{
-    public async Task<Guid> AddAsync(Guid employeeId, string templateCode, object parameters, Guid? alertId, CommandContext context, CancellationToken cancellationToken)
-    {
-        if (templateCode is not ("correction_done" or "correction_declined" or "vacation_decided" or "absence_recorded" or "schedule_request_decided" or "vehicle_release_review" or "doc_expiring" or "expiry_warning" or "assignment_changed" or "vehicle_unusable" or "defect_cancelled" or "document_rejected" or "critical_alert" or "schedule_changed" or "sync_conflict" or "week_reminder" or "shift_rejected" or "shift_edited_by_office")) throw new ArgumentException("Unknown notification template.", nameof(templateCode));
-        var id = Guid.CreateVersion7();
-        await using var command = new NpgsqlCommand("insert into fleetops.notifications (id, employee_id, alert_id, template_code, parameters, channel, created_at, attempts) values ($1,$2,$3,$4,$5::jsonb,'in_app',$6,0)", (NpgsqlConnection)context.DbConnection, (NpgsqlTransaction)context.DbTransaction);
-        command.Parameters.AddWithValue(id);
-        command.Parameters.AddWithValue(employeeId);
-        command.Parameters.AddWithValue(alertId is null ? DBNull.Value : alertId.Value);
-        command.Parameters.AddWithValue(templateCode);
-        command.Parameters.AddWithValue(JsonSerializer.Serialize(parameters));
-        command.Parameters.AddWithValue(time.GetUtcNow());
-        await command.ExecuteNonQueryAsync(cancellationToken);
-        ids.Add(id);
-        return id;
-    }
-}
-
 public sealed class InAppSender(IConfiguration configuration, TimeProvider time, ILogger<InAppSender> logger) : INotificationSender, IPostCommitNotifications
 {
     public NotificationChannel Channel => NotificationChannel.InApp;
@@ -83,7 +64,11 @@ public sealed class NotificationQueryHandler(IConfiguration configuration) : IQu
         var connectionString = configuration.GetConnectionString("FleetOps") ?? configuration["FLEETOPS_DATABASE_RUNTIME_URL"] ?? throw new InvalidOperationException("Database is not configured.");
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync(cancellationToken);
-        await using var command = new NpgsqlCommand("select id, template_code, parameters, created_at, read_at from fleetops.notifications where employee_id = $1 and ($2::uuid is null or id < $2) order by id desc limit $3", connection);
+        if (query.Cursor is not null && !Guid.TryParse(query.Cursor, out _)) throw new NotificationException("validation_error", "cursor");
+        await using var languageCommand = new NpgsqlCommand("select language_pref from fleetops.employees where id = $1", connection);
+        languageCommand.Parameters.AddWithValue(actor.EmployeeId);
+        var language = await languageCommand.ExecuteScalarAsync(cancellationToken) as string;
+        await using var command = new NpgsqlCommand("select id, template_code, parameters, created_at, read_at from fleetops.notifications where channel = 'in_app' and employee_id = $1 and ($2::uuid is null or id < $2) order by id desc limit $3", connection);
         command.Parameters.AddWithValue(actor.EmployeeId);
         command.Parameters.AddWithValue(query.Cursor is null ? DBNull.Value : Guid.Parse(query.Cursor));
         command.Parameters.AddWithValue(Math.Clamp(query.Limit, 1, 100));
@@ -97,7 +82,7 @@ public sealed class NotificationQueryHandler(IConfiguration configuration) : IQu
                 var template = reader.GetString(1);
                 var parameters = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(reader.GetString(2)) ?? [];
                 if (template is "vacation_decided" or "schedule_request_decided") decisionParameters[id] = parameters;
-                var text = NotificationTemplates.Render(template, parameters, "en");
+                var text = NotificationTemplates.Render(template, parameters, language);
                 var link = template == "vacation_decided" ? "/driver/#/me" : template == "schedule_request_decided" ? "/driver/#/schedule" : template == "absence_recorded" ? "/people" : template == "doc_expiring" ? "/driver/#/me" : template == "expiry_warning" ? "/attention" : template is "correction_done" or "correction_declined" or "week_reminder" or "shift_rejected" or "shift_edited_by_office" ? "/driver/#/week" : template == "sync_conflict" ? (actor.Roles.Contains(RoleCode.Driver) ? "/driver/#/week" : "/attention") : template is "schedule_changed" or "assignment_changed" ? "/driver/#/schedule" : template == "document_rejected" && parameters.TryGetValue("documentId", out var documentId) ? (actor.Roles.Contains(RoleCode.Driver) ? $"/driver/#/me?open={documentId.GetString()}" : $"/documents?open={documentId.GetString()}") : "/";
                 items.Add(new(id, template, text, reader.GetFieldValue<DateTimeOffset>(3), reader.IsDBNull(4) ? null : reader.GetFieldValue<DateTimeOffset>(4), link));
             }
@@ -120,7 +105,7 @@ public sealed class NotificationQueryHandler(IConfiguration configuration) : IQu
                 parameters["reason"] = JsonSerializer.SerializeToElement(reason);
             items[index] = item with { Text = NotificationTemplates.Render(item.TemplateCode, parameters, "en") };
         }
-        await using var unreadCommand = new NpgsqlCommand("select count(*) from fleetops.notifications where employee_id = $1 and read_at is null", connection);
+        await using var unreadCommand = new NpgsqlCommand("select count(*) from fleetops.notifications where channel = 'in_app' and employee_id = $1 and read_at is null", connection);
         unreadCommand.Parameters.AddWithValue(actor.EmployeeId);
         var unread = Convert.ToInt32(await unreadCommand.ExecuteScalarAsync(cancellationToken));
         return new(items, unread, items.Count == query.Limit ? items[^1].Id.ToString() : null);
@@ -131,7 +116,7 @@ public sealed class MarkNotificationReadHandler(TimeProvider time) : ICommandHan
 {
     public async Task<bool> HandleAsync(MarkNotificationReadCommand command, AccessContext actor, CommandContext context, CancellationToken cancellationToken)
     {
-        await using var update = new NpgsqlCommand("update fleetops.notifications set read_at = coalesce(read_at, $1) where id = $2 and employee_id = $3 returning id", (NpgsqlConnection)context.DbConnection, (NpgsqlTransaction)context.DbTransaction);
+        await using var update = new NpgsqlCommand("update fleetops.notifications set read_at = coalesce(read_at, $1) where id = $2 and employee_id = $3 and channel = 'in_app' returning id", (NpgsqlConnection)context.DbConnection, (NpgsqlTransaction)context.DbTransaction);
         update.Parameters.AddWithValue(time.GetUtcNow()); update.Parameters.AddWithValue(command.Id); update.Parameters.AddWithValue(actor.EmployeeId);
         return await update.ExecuteScalarAsync(cancellationToken) is Guid;
     }
@@ -141,7 +126,7 @@ public sealed class MarkAllNotificationsReadHandler(TimeProvider time) : IComman
 {
     public async Task<int> HandleAsync(MarkAllNotificationsReadCommand command, AccessContext actor, CommandContext context, CancellationToken cancellationToken)
     {
-        await using var update = new NpgsqlCommand("update fleetops.notifications set read_at = $1 where employee_id = $2 and read_at is null", (NpgsqlConnection)context.DbConnection, (NpgsqlTransaction)context.DbTransaction);
+        await using var update = new NpgsqlCommand("update fleetops.notifications set read_at = $1 where employee_id = $2 and channel = 'in_app' and read_at is null", (NpgsqlConnection)context.DbConnection, (NpgsqlTransaction)context.DbTransaction);
         update.Parameters.AddWithValue(time.GetUtcNow()); update.Parameters.AddWithValue(actor.EmployeeId);
         return await update.ExecuteNonQueryAsync(cancellationToken);
     }

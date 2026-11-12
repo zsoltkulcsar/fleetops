@@ -16,6 +16,7 @@ public sealed class Notification
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? SentAt { get; set; }
     public DateTimeOffset? ReadAt { get; set; }
+    public DateOnly? DigestDate { get; set; }
     public int Attempts { get; set; }
     public DateTimeOffset? NextAttemptAt { get; set; }
 }
@@ -63,6 +64,23 @@ public static class NotificationTemplates
 {
     public static string Render(string templateCode, IReadOnlyDictionary<string, JsonElement> parameters, string? language)
     {
+        if (templateCode == "daily_digest")
+        {
+            var germanDigest = string.Equals(language, "de", StringComparison.OrdinalIgnoreCase);
+            var groups = parameters.TryGetValue("groups", out var value) && value.ValueKind == JsonValueKind.Array ? value.EnumerateArray().ToArray() : [];
+            var lines = groups.Select(group => group.GetProperty("ruleId").GetString() + ": " + group.GetProperty("count").GetInt32() + " | " + string.Join(", ", group.GetProperty("top").EnumerateArray().Select(item => "/attention?alert=" + item.GetGuid())));
+            return (germanDigest ? "Offene Hinweise" : "Open alerts") + "\n" + string.Join("\n", lines);
+        }
+        if (templateCode is "missing_shift" or "submit_reminder" or "shift_still_running")
+        {
+            var germanReminder = string.Equals(language, "de", StringComparison.OrdinalIgnoreCase);
+            return templateCode switch
+            {
+                "missing_shift" => germanReminder ? "Bitte pr\u00fcfen Sie Ihre fehlende Schicht." : "Please review your missing shift.",
+                "submit_reminder" => germanReminder ? "Bitte reichen Sie Ihre Woche ein." : "Please submit your week.",
+                _ => germanReminder ? "Ihre Schicht l\u00e4uft noch. Bitte pr\u00fcfen Sie die Endzeit." : "Your shift is still running. Please review the end time."
+            };
+        }
         if (templateCode == "assignment_changed") return string.Equals(language, "de", StringComparison.OrdinalIgnoreCase) ? "Ihre Fahrzeugzuordnung wurde ge\u00e4ndert. Bitte pr\u00fcfen Sie Ihren Dienstplan." : "Your truck assignment has changed. Please check your schedule.";
         var german = string.Equals(language, "de", StringComparison.OrdinalIgnoreCase);
         if (templateCode is "vacation_decided" or "schedule_request_decided")

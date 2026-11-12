@@ -120,7 +120,7 @@ public sealed class EfDocumentStore(IObjectStore objects, IConfiguration configu
         document.RejectReason = reason.Trim();
         document.Version++;
         await db.SaveChangesAsync(cancellationToken);
-        await notifications.AddAsync(document.CreatedBy, "document_rejected", new { documentId = document.Id, documentType = document.Type.ToString().ToSnakeCase() }, null, context, cancellationToken);
+        await notifications.AddAsync(document.OwnerType == DocumentOwnerType.Employee ? document.OwnerId : document.CreatedBy, "document_rejected", new { documentId = document.Id, documentType = document.Type.ToString().ToSnakeCase() }, null, context, cancellationToken);
         changedSubjects?.Add(document.OwnerType == DocumentOwnerType.Employee ? "employee" : "vehicle", document.OwnerId);
         changedSubjects?.Add("document", document.Id);
         return await ReadDetailAsync(db, id, cancellationToken, actor) ?? throw new DocumentConflictException("not_found");

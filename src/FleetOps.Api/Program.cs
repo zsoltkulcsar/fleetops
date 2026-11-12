@@ -84,7 +84,9 @@ builder.Services.AddScoped<IStepUpContextAccessor>(services => services.GetRequi
 builder.Services.AddSingleton<IMailbox, DemoMailbox>();
 builder.Services.Configure<EnrolmentOptions>(builder.Configuration.GetSection("Enrolment"));
 builder.Services.AddScoped<IEnrolmentStore, EfEnrolmentStore>();
-builder.Services.AddScoped<IEnrolmentSms, DemoEnrolmentSms>();
+builder.Services.AddScoped<DemoEnrolmentSms>();
+builder.Services.AddScoped<ISmsDailyBudget, SmsDailyBudget>();
+builder.Services.AddScoped<IEnrolmentSms, LimitedEnrolmentSms>();
 builder.Services.AddScoped<EnrolDriverHandler>();
 builder.Services.AddScoped<ICommandHandler<SendEnrolmentCommand, SendEnrolmentResult>, SendEnrolmentHandler>();
 builder.Services.AddScoped<IQueryHandler<GetDriverConfigQuery, DriverConfig>, DriverConfigHandler>();
@@ -100,11 +102,33 @@ builder.Services.AddScoped<IChangedSubjects, ChangedSubjects>();
 builder.Services.AddScoped<IPostCommandEvaluation, AlertPostCommandEvaluation>();
 builder.Services.AddScoped<IAlertEngine, AlertEngine>();
 builder.Services.AddScoped<ISettings, EfSettingsStore>();
-builder.Services.AddScoped<INotifications, EfNotifications>();
+builder.Services.AddScoped<INotifications, Notifications>();
+builder.Services.AddScoped<INotificationQueueStore, NotificationQueueStore>();
+builder.Services.AddScoped<INotificationDeliveryStore, NotificationDeliveryStore>();
+builder.Services.AddSingleton<DemoEmailSender>();
+builder.Services.AddSingleton<IEmailSender>(services => services.GetRequiredService<DemoEmailSender>());
+builder.Services.AddSingleton<DemoPushSender>();
+builder.Services.AddSingleton<IPushSender>(services => services.GetRequiredService<DemoPushSender>());
+builder.Services.AddSingleton<IPushConfiguration, ConfiguredPush>();
+builder.Services.AddScoped<INotificationPreferencesStore, NotificationPreferencesStore>();
+builder.Services.AddScoped<IPushSubscriptionStore, PushSubscriptionStore>();
+builder.Services.AddScoped<IAlertCoverStore, AlertCoverStore>();
+builder.Services.AddScoped<INotificationJobStore, NotificationJobStore>();
+builder.Services.AddScoped<ICommandHandler<RunNotificationJobCommand, NotificationJobResult>, NotificationJobHandler>();
+builder.Services.AddScoped<IQueryHandler<GetNotifyPreferencesQuery, NotifyPreferences>, NotificationPreferencesHandler>();
+builder.Services.AddScoped<ICommandHandler<SaveNotifyPreferencesCommand, NotifyPreferences>, NotificationPreferencesHandler>();
+builder.Services.AddScoped<IQueryHandler<GetPushStatusQuery, PushStatus>, PushSubscriptionHandler>();
+builder.Services.AddScoped<ICommandHandler<SavePushSubscriptionCommand, bool>, PushSubscriptionHandler>();
+builder.Services.AddScoped<ICommandHandler<DeletePushSubscriptionCommand, bool>, PushSubscriptionHandler>();
+builder.Services.AddScoped<IQueryHandler<GetAlertCoversQuery, AlertCoverList>, AlertCoverHandler>();
+builder.Services.AddScoped<ICommandHandler<SaveAlertCoverCommand, AlertCoverList>, AlertCoverHandler>();
+builder.Services.AddScoped<ICommandHandler<DeleteAlertCoverCommand, bool>, AlertCoverHandler>();
+builder.Services.AddScoped<IJob, NotificationDigestJob>();
+builder.Services.AddScoped<IJob, AlertEscalationJob>();
 builder.Services.AddScoped<INotificationIds, NotificationIds>();
 builder.Services.AddScoped<InAppSender>();
 builder.Services.AddScoped<INotificationSender>(services => services.GetRequiredService<InAppSender>());
-builder.Services.AddScoped<IPostCommitNotifications>(services => services.GetRequiredService<InAppSender>());
+builder.Services.AddScoped<IPostCommitNotifications, NotificationDelivery>();
 builder.Services.AddScoped<IExpiryFacts, EfExpiryFacts>();
 builder.Services.AddScoped<IAlertEvaluator, A01ExpiryEvaluator>();
 builder.Services.AddScoped<IAlertEvaluator, A04ExpiryEvaluator>();
@@ -137,7 +161,8 @@ builder.Services.AddScoped<ICommandHandler<EndOfficeShiftCommand, OfficeShiftRes
 builder.Services.AddScoped<IAlertEvaluator, A09MissingShiftEvaluator>();
 builder.Services.AddScoped<IAlertEvaluator, A15WeekSubmissionEvaluator>();
 builder.Services.AddScoped<IShiftReminderFacts, EfShiftReminderFacts>();
-builder.Services.AddScoped<IAlertOpened, WeekReminderNotification>();
+builder.Services.AddScoped<IDriverAlertRecipient, DriverAlertRecipient>();
+builder.Services.AddScoped<IAlertOpened, DriverAlertNotifications>();
 builder.Services.AddScoped<IShiftAlertFacts, EfShiftAlertFacts>();
 builder.Services.AddScoped<IShiftCommandStore, EfShiftCommandStore>();
 builder.Services.AddScoped<IOfflineCommandResults, EfOfflineCommandResults>();
@@ -268,7 +293,9 @@ builder.Services.AddScoped<ICommandHandler<RetireVehicleCommand, VehicleDetail>,
 builder.Services.AddScoped<ICommandHandler<UndoRetireVehicleCommand, VehicleDetail>, UndoRetireVehicleHandler>();
 builder.Services.AddScoped<ICommandHandler<SetVehicleOffRoadCommand, VehicleDetail>, SetVehicleOffRoadHandler>();
 
+builder.Services.AddHostedService<NotificationScheduleService>();
 var app = builder.Build();
+app.MapNotificationSettings();
 app.UseExceptionHandler(new ExceptionHandlerOptions
 {
     SuppressDiagnosticsCallback = _ => true,
@@ -280,6 +307,16 @@ app.UseExceptionHandler(new ExceptionHandlerOptions
             context.Items["ProblemCode"] = refusal.Code;
             var status = refusal.Code is "not_signed_in" or "session_revoked" ? 401 : refusal.Code == "state_conflict" ? 409 : 403;
             await Results.Problem(statusCode: status, extensions: new Dictionary<string, object?> { ["code"] = refusal.Code, ["allowedRoles"] = refusal.AllowedRoles.Select(x => x.Code()).ToArray() }).ExecuteAsync(context); return;
+        }
+        if (exception is NotificationException notificationException)
+        {
+            await Results.Problem(statusCode: notificationException.Code == "validation_error" ? 400 : notificationException.Code == "not_found" ? 404 : 409, extensions: new Dictionary<string, object?> { ["code"] = notificationException.Code, ["fields"] = notificationException.Fields }).ExecuteAsync(context);
+            return;
+        }
+        if (exception is SmsLimitReachedException)
+        {
+            await Results.Problem(statusCode: 409, extensions: new Dictionary<string, object?> { ["code"] = "sms_limit_reached" }).ExecuteAsync(context);
+            return;
         }
         if (exception is SmsUnavailableException)
         {
@@ -327,7 +364,7 @@ app.UseExceptionHandler(new ExceptionHandlerOptions
         if (exception is StorageUnavailableException) { await Results.Problem(statusCode: 503, extensions: new Dictionary<string, object?> { ["code"] = "storage_unavailable" }).ExecuteAsync(context); return; }
         if (exception is DocumentValidationException documentValidation) { await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = documentValidation.Code, ["fields"] = documentValidation.Fields }).ExecuteAsync(context); return; }
         var jsonException = VehicleJsonException.Find(exception);
-        if (context.Request.Method is "POST" or "PUT" && (context.Request.Path.StartsWithSegments("/api/v1/fleet/vehicles") || context.Request.Path.StartsWithSegments("/api/v1/documents") || context.Request.Path.StartsWithSegments("/api/v1/people") || context.Request.Path.StartsWithSegments("/api/v1/driver") || context.Request.Path.StartsWithSegments("/api/v1/schedule") || context.Request.Path.StartsWithSegments("/api/v1/settings") || context.Request.Path.StartsWithSegments("/api/v1/corrections") || context.Request.Path.StartsWithSegments("/api/v1/payroll") || context.Request.Path.StartsWithSegments("/api/v1/shifts")) && jsonException is not null)
+        if (context.Request.Method is "POST" or "PUT" && (context.Request.Path.StartsWithSegments("/api/v1/fleet/vehicles") || context.Request.Path.StartsWithSegments("/api/v1/documents") || context.Request.Path.StartsWithSegments("/api/v1/people") || context.Request.Path.StartsWithSegments("/api/v1/driver") || context.Request.Path.StartsWithSegments("/api/v1/schedule") || context.Request.Path.StartsWithSegments("/api/v1/me") || context.Request.Path.StartsWithSegments("/api/v1/settings") || context.Request.Path.StartsWithSegments("/api/v1/corrections") || context.Request.Path.StartsWithSegments("/api/v1/payroll") || context.Request.Path.StartsWithSegments("/api/v1/shifts")) && jsonException is not null)
         {
             var field = VehicleJsonException.FieldName(jsonException.Path);
             await Results.Problem(statusCode: 400, extensions: new Dictionary<string, object?> { ["code"] = "validation_error", ["fields"] = field is null ? Array.Empty<string>() : new[] { field } }).ExecuteAsync(context); return;

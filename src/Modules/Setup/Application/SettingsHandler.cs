@@ -51,6 +51,8 @@ public sealed class SettingsHandler(ICompanySettingsStore store) : IQueryHandler
     }
     public static (int Min, int Max)? Range(string key) => key switch
     {
+        "sms.daily_limit" => (0, 100000),
+        "notifications.max_attempts" => (1, 20),
         "company.payroll_cutoff_day" => (1, 28),
         "company.max_shift_hours" => (0, 24),
         "alerts.escalation_minutes" => (1, 1440),

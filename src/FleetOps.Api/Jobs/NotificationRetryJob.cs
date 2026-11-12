@@ -15,8 +15,9 @@ public sealed class NotificationRetryJob(IConfiguration configuration, ISettings
         var maxAttempts = await settings.GetIntAsync(new SettingKey("notifications.max_attempts"), null, cancellationToken);
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync(cancellationToken);
-        await using var command = new NpgsqlCommand("select id, attempts from fleetops.notifications where sent_at is null and next_attempt_at <= now() and ($1::uuid is null or id > $1) order by id limit 100", connection);
+        await using var command = new NpgsqlCommand("select id, attempts from fleetops.notifications where sent_at is null and (next_attempt_at is null or next_attempt_at <= $2) and ($1::uuid is null or id > $1) order by id limit 100", connection);
         command.Parameters.AddWithValue(context.Cursor is null ? DBNull.Value : Guid.Parse(context.Cursor));
+        command.Parameters.AddWithValue(context.Now);
         var rows = new List<(Guid Id, int Attempts)>();
         await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
             while (await reader.ReadAsync(cancellationToken)) rows.Add((reader.GetGuid(0), reader.GetInt32(1)));

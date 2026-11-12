@@ -18,6 +18,7 @@ public static class SettingCatalog
         ["tacho.driver_card_days"] = 28,
         ["tacho.vehicle_unit_days"] = 90,
         ["vehicles.lease_lead_days"] = 30,
+        ["sms.daily_limit"] = 50,
         ["enrolment.code_minutes"] = 30,
         ["enrolment.max_tries"] = 5,
         ["driver.pin_length"] = 6,

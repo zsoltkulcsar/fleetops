@@ -171,7 +171,7 @@ public sealed class JobRunner(IConfiguration configuration, IEnumerable<IJob> jo
     }
 }
 
-public sealed class AlertsSweepJob(IConfiguration configuration, IAlertEngine engine, TimeProvider time, FleetOps.Kernel.ICompanyTimeService companyTime, CommandDispatcher dispatcher) : IJob
+public sealed class AlertsSweepJob(IConfiguration configuration, IAlertEngine engine, TimeProvider time, FleetOps.Kernel.ICompanyTimeService companyTime, CommandDispatcher dispatcher, INotificationIds notificationIds, IPostCommitNotifications postCommit) : IJob
 {
     public string Name => "alerts-sweep";
 
