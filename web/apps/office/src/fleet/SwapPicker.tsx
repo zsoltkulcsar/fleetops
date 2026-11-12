@@ -56,7 +56,7 @@ export function SwapPicker({
           <p>
             {defectDate(saved.from)} to {saved.to ? defectDate(saved.to) : "Open ended"}
           </p>
-          <Link to="/schedule">Open Schedule</Link>
+          <Link to="/plan">Open Plan</Link>
         </div>
       ) : (
         <form

@@ -259,7 +259,7 @@ export function People() {
           onSaved={(result, patternFailed) => {
             setAdding(false);
             setSaved(
-              `${result.enrolmentSent ? "Saved. Enrolment SMS sent." : "Saved. Enrolment SMS not sent. Use Resend enrolment on the Access tab."}${patternFailed ? " Cycle pattern was not saved. Open Schedule to set it up." : ""}`,
+              `${result.enrolmentSent ? "Saved. Enrolment SMS sent." : "Saved. Enrolment SMS not sent. Use Resend enrolment on the Access tab."}${patternFailed ? " Cycle pattern was not saved. Open Plan to set it up." : ""}`,
             );
             void people.refetch();
           }}

@@ -2,7 +2,7 @@ import { AuditLog } from "./audit/AuditLog";
 import { MyNotifications } from "./me/MyNotifications";
 import React from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter, Navigate, Route, Routes, useParams } from "react-router";
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useParams } from "react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { DevGalleryRoute, Shell } from "./shell/Shell";
 import "./shell/shell.css";
@@ -17,7 +17,7 @@ import { People } from "./people/People";
 import { PersonProfile } from "./people/PersonProfile";
 import { Settings } from "./settings/Settings";
 import { Attention } from "./attention/Attention";
-import { Schedule } from "./schedule/Schedule";
+import { Plan } from "./plan/Plan";
 import { Timesheets } from "./timesheets/Timesheets";
 import { Payroll } from "./payroll/Payroll";
 import { Absences } from "./absences/Absences";
@@ -38,7 +38,17 @@ installAuthExpiryHandler();
 
 function CanonicalRedirect() {
   const path = window.location.pathname.toLowerCase().replace(/\/$/, "") || "/";
-  const known = ["/", "/schedule", "/timesheets", "/fleet", "/people", "/documents", "/payroll", "/settings"];
+  const known = [
+    "/",
+    "/plan",
+    "/schedule",
+    "/timesheets",
+    "/fleet",
+    "/people",
+    "/documents",
+    "/payroll",
+    "/settings",
+  ];
   if (import.meta.env.DEV) known.push("/__gallery");
   return <Navigate to={known.includes(path) ? path : "/"} replace />;
 }
@@ -56,7 +66,8 @@ createRoot(document.getElementById("app")!).render(
           >
             <Route path="/" element={<Attention />} />
             <Route path="/timesheets" element={<Timesheets />} />
-            <Route path="/schedule" element={<Schedule />} />
+            <Route path="/plan" element={<Plan />} />
+            <Route path="/schedule" element={<ScheduleRedirect />} />
             <Route path="/fleet" element={<Fleet />} />
             <Route path="/fleet/defects" element={<Defects />} />
             <Route path="/fleet/maintenance" element={<Maintenance />} />
@@ -78,6 +89,11 @@ createRoot(document.getElementById("app")!).render(
   </React.StrictMode>,
 );
 
+// The plan used to live at /schedule as a Fleet tab; old links and bookmarks keep working.
+function ScheduleRedirect() {
+  const { search } = useLocation();
+  return <Navigate to={`/plan${search}`} replace />;
+}
 function FleetRecordRoute() {
   const { id = "" } = useParams();
   return <FleetRecord id={id} />;

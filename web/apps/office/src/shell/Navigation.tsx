@@ -1,4 +1,13 @@
-import { Bell, CalendarClock, FileText, MoreHorizontal, Settings, Truck, Users } from "lucide-react";
+import {
+  Bell,
+  CalendarClock,
+  CalendarRange,
+  FileText,
+  MoreHorizontal,
+  Settings,
+  Truck,
+  Users,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router";
 import { en } from "../i18n/en";
@@ -9,6 +18,7 @@ import { documentsApi } from "../documents/api";
 export type NavigationItem = { id: string; label: string; icon: typeof Bell };
 export const navigation: NavigationItem[] = [
   { id: "attention", label: en.nav.attention, icon: Bell },
+  { id: "plan", label: en.nav.plan, icon: CalendarRange },
   { id: "timesheets", label: en.nav.timesheets, icon: CalendarClock },
   { id: "fleet", label: en.nav.fleet, icon: Truck },
   { id: "people", label: en.nav.people, icon: Users },
@@ -32,16 +42,6 @@ export function NavigationLink({ item, compact = false }: { item: NavigationItem
     refetchInterval: 60_000,
   });
   const queue = counts.data?.queue ?? 0;
-  const { pathname } = useLocation();
-  // Schedule is a tab of Fleet (design/ia.md O-18), so Fleet stays current on /schedule.
-  const fleetTab = item.id === "fleet" && pathname.toLowerCase().startsWith("/schedule");
-  if (fleetTab)
-    return (
-      <Link to="/fleet" className="active" aria-current="page" aria-label={compact ? item.label : undefined}>
-        <Icon size={18} aria-hidden />
-        <span className={compact ? "visually-hidden" : undefined}>{item.label}</span>
-      </Link>
-    );
   return (
     <NavLink
       to={routeFor(item.id)}
@@ -115,7 +115,7 @@ export function MobileNavigation() {
   const trigger = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
   const { pathname } = useLocation();
-  const moreCurrent = ["/documents", "/payroll", "/settings"].includes(
+  const moreCurrent = ["/plan", "/documents", "/payroll", "/settings"].includes(
     pathname.toLowerCase().replace(/\/$/, ""),
   );
   useEffect(() => {
@@ -142,9 +142,12 @@ export function MobileNavigation() {
   }, [moreOpen]);
   return (
     <nav className="bottom-nav" aria-label="Mobile navigation">
-      {items.slice(0, 4).map((item) => (
-        <NavigationLink key={item.id} item={item} />
-      ))}
+      {items
+        .filter((item) => item.id !== "plan")
+        .slice(0, 4)
+        .map((item) => (
+          <NavigationLink key={item.id} item={item} />
+        ))}
       <button
         ref={trigger}
         type="button"
@@ -159,6 +162,9 @@ export function MobileNavigation() {
       </button>
       {moreOpen && (
         <div ref={menu} id="mobile-more-links" className="more-menu">
+          <Link to="/plan" onClick={() => setMoreOpen(false)}>
+            {en.nav.plan}
+          </Link>
           <Link to="/documents" onClick={() => setMoreOpen(false)}>
             {en.nav.documents}
           </Link>

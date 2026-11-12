@@ -56,7 +56,7 @@ function actionFor(item: AttentionItem, group: AttentionGroup, owner: boolean, d
     return dispatcherOnly
       ? {
           label: "Plan truck reassignment",
-          href: `/schedule?search=${encodeURIComponent(group.subjectName ?? "")}`,
+          href: `/plan?search=${encodeURIComponent(group.subjectName ?? "")}`,
         }
       : { label: "Upload renewal", href: `/documents?upload=employee:${group.subjectId}:${item.scopeKey}` };
   if (item.ruleId === "A-04")
@@ -88,13 +88,13 @@ function actionFor(item: AttentionItem, group: AttentionGroup, owner: boolean, d
     };
   if (item.ruleId === "A-20")
     return {
-      label: "Open Schedule",
-      href: `/schedule?cycleId=${group.subjectId}${item.dueAt ? `&from=${item.dueAt.slice(0, 10)}` : ""}`,
+      label: "Open Plan",
+      href: `/plan?cycleId=${group.subjectId}${item.dueAt ? `&from=${item.dueAt.slice(0, 10)}` : ""}`,
     };
   if (item.ruleId === "A-21")
     return {
-      label: "Open Schedule",
-      href: `/schedule?cycleId=${group.subjectId}${item.dueAt ? `&from=${item.dueAt.slice(0, 10)}` : ""}`,
+      label: "Open Plan",
+      href: `/plan?cycleId=${group.subjectId}${item.dueAt ? `&from=${item.dueAt.slice(0, 10)}` : ""}`,
     };
   if (owner)
     return {
@@ -350,7 +350,7 @@ function AttentionCard({
       <header>
         <span className="eyebrow">
           {group.subjectType === "cycle"
-            ? "Schedule"
+            ? "Plan"
             : group.subjectType === "vehicle" || group.subjectType === "defect"
               ? en.attention.vehicle
               : en.attention.person}

@@ -13,6 +13,7 @@ export const en = {
   },
   nav: {
     attention: "Attention",
+    plan: "Plan",
     timesheets: "Timesheets",
     fleet: "Fleet",
     people: "People",
@@ -24,7 +25,6 @@ export const en = {
   fleetTabs: {
     label: "Fleet views",
     vehicles: "Vehicles",
-    schedule: "Schedule",
   },
   states: {
     empty: "Nothing here yet",

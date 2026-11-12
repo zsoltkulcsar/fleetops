@@ -38,7 +38,9 @@ const repair: Schema["RepairDetail"] = {
 };
 async function setup(page: Page) {
   await page.route("**/api/v1/auth/session", (route) =>
-    route.fulfill({ json: { employeeId, roles: ["dispatcher"], stepUpMethod: "password" } satisfies Session }),
+    route.fulfill({
+      json: { employeeId, roles: ["dispatcher"], stepUpMethod: "password" } satisfies Session,
+    }),
   );
   await page.clock.setFixedTime(new Date("2026-11-10T10:00:00Z"));
   const state = {
@@ -371,9 +373,9 @@ test("a saved swap shows on the schedule", async ({ page }) => {
     to: null,
     maintenanceId: null,
   });
-  await page.getByRole("link", { name: "Open Schedule", exact: true }).click();
-  await expect(page.locator(".schedule-swap")).toContainText("Swap");
-  await expect(page.getByRole("region", { name: "Schedule timeline" })).toContainText("B-SWAP 20");
+  await page.getByRole("link", { name: "Open Plan", exact: true }).click();
+  await expect(page.locator('.plan-block[data-kind="swap"]')).toContainText("Swap");
+  await expect(page.getByRole("region", { name: "Plan timeline" })).toContainText("B-SWAP 20");
 });
 test("defects and maintenance tabs have no accessibility violations", async ({ page }) => {
   const state = await setup(page);

@@ -326,7 +326,16 @@ test("alert cards show their own title, subject type and action", async ({ page 
         subjectId: ids(70),
         subjectName: "B-D 0011",
         worstSeverity: "critical",
-        items: [item({ id: ids(71), ruleId: "A-07", severity: "critical", scopeKey: "", dueAt: null, snoozable: false })],
+        items: [
+          item({
+            id: ids(71),
+            ruleId: "A-07",
+            severity: "critical",
+            scopeKey: "",
+            dueAt: null,
+            snoozable: false,
+          }),
+        ],
       }),
       group({
         subjectType: "employee",
@@ -356,7 +365,10 @@ test("alert cards show their own title, subject type and action", async ({ page 
 
   await expect(card("Erik Eckert").first()).toContainText("Missing timesheet");
   const addShift = card("Erik Eckert").first().getByRole("link", { name: "Add shift for driver" });
-  await expect(addShift).toHaveAttribute("href", /\/timesheets\?filter=missing&search=Erik%20Eckert&week=2026-11-10/);
+  await expect(addShift).toHaveAttribute(
+    "href",
+    /\/timesheets\?filter=missing&search=Erik%20Eckert&week=2026-11-10/,
+  );
 
   await expect(card("Falk Albrecht")).toContainText("Shift waiting for approval");
   await expect(card("Falk Albrecht").getByRole("link", { name: "Review & approve" })).toHaveAttribute(
@@ -365,9 +377,9 @@ test("alert cards show their own title, subject type and action", async ({ page 
   );
 
   await expect(card("B-D 0006")).toContainText("Cycle overrun: handover late");
-  await expect(card("B-D 0006").getByRole("link", { name: "Open Schedule" })).toHaveAttribute(
+  await expect(card("B-D 0006").getByRole("link", { name: "Open Plan" })).toHaveAttribute(
     "href",
-    `/schedule?cycleId=${ids(200)}&from=2026-11-11`,
+    `/plan?cycleId=${ids(200)}&from=2026-11-11`,
   );
 
   for (const name of ["Erik Eckert", "Falk Albrecht", "B-D 0006"]) {

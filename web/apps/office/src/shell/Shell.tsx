@@ -36,7 +36,7 @@ function normalisePath(pathname: string) {
 const routeNames: Record<string, string> = {
   "/": en.nav.attention,
   "/timesheets": en.nav.timesheets,
-  "/schedule": en.fleetTabs.schedule,
+  "/plan": en.nav.plan,
   "/fleet": en.nav.fleet,
   "/fleet/defects": "Defects",
   "/fleet/maintenance": "Maintenance",

@@ -1,0 +1,332 @@
+/* Plan: four-week truck plan with a decision panel. Locked FleetOps tokens only. */
+.plan-actions,
+.plan-toolbar,
+.plan-view,
+.plan-range,
+.plan-card-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.plan-page .page-title h1 {
+  max-width: 28ch;
+}
+.plan-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+@media (min-width: 1360px) {
+  .plan-layout {
+    grid-template-columns: minmax(0, 1fr) 22rem;
+  }
+  .plan-side {
+    position: sticky;
+    top: var(--space-4);
+  }
+}
+.plan-board {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  min-width: 0;
+}
+.plan-toolbar {
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--line);
+}
+.plan-view [aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+.plan-range {
+  white-space: nowrap;
+}
+.plan-scroll {
+  overflow-x: auto;
+}
+.plan-timeline {
+  min-width: 44rem;
+}
+.plan-axis,
+.plan-lane {
+  display: grid;
+  grid-template-columns: 9.5rem minmax(0, 1fr);
+  border-bottom: 1px solid var(--line);
+}
+.plan-axis {
+  align-items: stretch;
+  color: var(--ink-2);
+  font-size: var(--type-caption);
+}
+.plan-axis > span {
+  padding: var(--space-3) var(--space-4);
+}
+.plan-weeks {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.plan-weeks > span {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+  padding: var(--space-3) var(--space-2);
+  border-left: 1px solid var(--line);
+  color: var(--ink-2);
+}
+.plan-weeks strong {
+  color: var(--ink);
+}
+.plan-today {
+  border-radius: 999px;
+  padding: 1px var(--space-2);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+.plan-lane[data-selected="true"] {
+  background: var(--surface-2);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.plan-subject {
+  padding: var(--space-2);
+  align-self: center;
+  overflow-wrap: anywhere;
+}
+.plan-subject > strong {
+  display: block;
+  padding: var(--space-2);
+}
+.plan-truck {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-1);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-2);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+.plan-truck:hover {
+  background: var(--surface-2);
+}
+.plan-status {
+  font-size: var(--type-caption);
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.plan-status[data-tone="ok"] {
+  color: var(--ok);
+}
+.plan-status[data-tone="warn"] {
+  color: var(--warn);
+}
+.plan-status[data-tone="crit"] {
+  color: var(--crit);
+}
+.plan-blocks {
+  display: grid;
+  grid-template-columns: repeat(28, minmax(0, 1fr));
+  grid-auto-flow: row dense;
+  gap: var(--space-1) 0;
+  padding: var(--space-2) 0;
+  border-left: 1px solid var(--line);
+}
+.plan-block {
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  gap: 2px;
+  min-height: 52px;
+  margin: 0 2px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface-2);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  overflow: hidden;
+}
+button.plan-block {
+  cursor: pointer;
+}
+button.plan-block:hover {
+  border-color: var(--ink-3);
+}
+.plan-block span,
+.plan-block small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plan-block span {
+  font-weight: 600;
+}
+.plan-block small {
+  color: var(--ink-2);
+  font-size: var(--type-caption);
+}
+.plan-block[data-source="manual"] {
+  border-style: dashed;
+}
+.plan-block[data-status="done"] {
+  background: transparent;
+}
+.plan-block[data-tone="issue"] {
+  background: var(--warn-bg);
+  border-color: var(--warn);
+}
+.plan-block[data-tone="issue"] small {
+  color: var(--warn);
+}
+.plan-block[data-tone="empty"] {
+  background: var(--surface);
+  border: 1px dashed var(--warn);
+}
+.plan-block[data-tone="empty"] small {
+  color: var(--warn);
+}
+.plan-block[data-kind="swap"],
+.plan-block[data-kind="workshop"] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.plan-block[data-kind="absence"] {
+  background: var(--idle-bg);
+}
+.plan-note {
+  margin: 0;
+  padding: var(--space-4);
+  color: var(--ink-2);
+  font-size: var(--type-caption);
+}
+.plan-state {
+  padding: var(--space-5);
+}
+.plan-success {
+  color: var(--ink);
+  padding: var(--space-3);
+  border-left: 3px solid var(--ok);
+  background: var(--surface);
+}
+.plan-side {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+.plan-card {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-driver-card);
+  background: var(--surface);
+}
+.plan-card h2,
+.plan-card p {
+  margin: 0;
+}
+.plan-decision {
+  border: 2px solid var(--accent);
+}
+.plan-card-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.plan-option {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.plan-option:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.plan-option:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.plan-option small,
+.plan-hint {
+  color: var(--ink-2);
+  font-size: var(--type-caption);
+}
+.plan-facts {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+}
+.plan-facts dt {
+  color: var(--ink-2);
+  font-size: var(--type-caption);
+}
+.plan-facts dd {
+  margin: 0;
+}
+.plan-link {
+  justify-self: start;
+  font-size: var(--type-caption);
+}
+.plan-card textarea {
+  width: 100%;
+  min-height: 4.5rem;
+  resize: vertical;
+}
+.schedule-form {
+  display: grid;
+  gap: var(--space-4);
+}
+.schedule-form label {
+  display: grid;
+  gap: var(--space-2);
+  font-weight: 600;
+}
+.schedule-form input,
+.schedule-form select,
+.schedule-form textarea {
+  width: 100%;
+  min-width: 0;
+}
+.schedule-form textarea {
+  min-height: 5rem;
+  resize: vertical;
+}
+.schedule-form-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+@media (max-width: 767px) {
+  .schedule-form-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.schedule-field {
+  display: grid;
+  gap: 6px;
+}
