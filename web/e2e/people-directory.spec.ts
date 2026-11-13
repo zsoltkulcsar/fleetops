@@ -214,3 +214,24 @@ test("people page and drawer have no accessibility violations", async ({ page })
   const drawer = await new AxeBuilder({ page: page as never }).withTags(tags).analyze();
   expect(drawer.violations).toEqual([]);
 });
+
+test("drawer says when no vacation entitlement is recorded", async ({ page }) => {
+  const empty: components["schemas"]["VacationBalance"] = {
+    year: 2026,
+    opening: 0,
+    entitlement: 0,
+    used: 0,
+    remaining: 0,
+  };
+  await page.route("**/api/v1/people/*/vacation-balance?*", (route) => route.fulfill({ json: empty }));
+  await page.goto("/people");
+  await page.getByRole("button", { name: "Quick view of Dana Driver" }).click();
+  const dialog = page.getByRole("dialog", { name: "Dana Driver" });
+  await dialog.getByRole("tab", { name: /Leave/ }).click();
+  await expect(
+    dialog.getByText("No vacation entitlement recorded. Set it with Edit fields on the full profile.", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(dialog.getByText("0 days", { exact: true })).toHaveCount(0);
+});

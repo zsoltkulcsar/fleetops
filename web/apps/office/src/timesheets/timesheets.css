@@ -308,7 +308,7 @@
   margin-right: 4px;
 }
 .ts-grid tbody th {
-  min-width: 150px;
+  min-width: 130px;
 }
 .ts-total {
   min-width: 112px;
@@ -400,7 +400,7 @@
   font-size: 13px;
 }
 .ts-status {
-  min-width: 140px;
+  min-width: 128px;
 }
 .ts-approve-row {
   display: inline-flex;

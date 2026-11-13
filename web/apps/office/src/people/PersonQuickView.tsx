@@ -355,7 +355,7 @@ export function PersonQuickView({
           {tab === "leave" && (
             <>
               <div className="people-balance" role="group" aria-label={`Vacation ${year}`}>
-                {balance.data ? (
+                {balance.data && balance.data.entitlement + balance.data.opening > 0 ? (
                   <>
                     <div>
                       <span>Entitlement {year}</span>
@@ -374,7 +374,11 @@ export function PersonQuickView({
                   </>
                 ) : (
                   <p className="ui-muted">
-                    {balance.isLoading ? "Loading vacation balance\u2026" : "Vacation balance unavailable."}
+                    {balance.isLoading
+                      ? "Loading vacation balance\u2026"
+                      : balance.data
+                        ? "No vacation entitlement recorded. Set it with Edit fields on the full profile."
+                        : "Vacation balance unavailable."}
                   </p>
                 )}
               </div>

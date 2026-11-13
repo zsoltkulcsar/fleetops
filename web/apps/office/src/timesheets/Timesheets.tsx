@@ -535,7 +535,6 @@ export function Timesheets() {
                     </th>
                   ))}
                   <th>Week total</th>
-                  <th className="ts-desktop">Nights</th>
                   <th>Status</th>
                 </tr>
               </thead>
@@ -611,15 +610,18 @@ export function Timesheets() {
                     ))}
                     <td className="ts-total">
                       <strong className="tabular-nums">{hours(row.workMinutes)} h</strong>
+                      {row.nights.length > 0 && (
+                        <small>
+                          Nights{" "}
+                          {row.nights.map((night) => `${night.count} (${night.countryCode})`).join(", ")}
+                        </small>
+                      )}
                       {row.days.some((day) => day.absences.length) && (
                         <small>
                           {row.days.filter((day) => day.absences.length).length} absence{" "}
                           {row.days.filter((day) => day.absences.length).length === 1 ? "day" : "days"}
                         </small>
                       )}
-                    </td>
-                    <td className="ts-desktop">
-                      {row.nights.map((night) => `${night.count} (${night.countryCode})`).join(", ") || "0"}
                     </td>
                     <td className="ts-status">
                       <ShiftStatus status={row.status} />
