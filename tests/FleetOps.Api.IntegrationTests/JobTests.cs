@@ -118,7 +118,8 @@ public sealed class JobTests : IAsyncLifetime
         using (var second = await factory.GetJob("blocking"))
             Assert.Equal("skipped", (await second.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("status").GetString());
         // No session-level advisory lock is held: the lease must work through a transaction pooler.
-        Assert.Equal(0L, await factory.Scalar<long>("select count(*) from pg_locks where locktype = 'advisory' and granted"));
+        // Only this test's database: other test classes share the server and take short transaction locks.
+        Assert.Equal(0L, await factory.Scalar<long>("select count(*) from pg_locks where locktype = 'advisory' and granted and database = (select oid from pg_database where datname = current_database())"));
         factory.BlockingJob.Release.SetResult();
         using var response = await run;
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
