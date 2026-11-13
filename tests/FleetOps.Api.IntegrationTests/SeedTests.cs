@@ -18,6 +18,7 @@ public sealed class DemoSeedCollection : ICollectionFixture<object>;
 public sealed class SeedTests
 {
     private const string Password = "demo-password-for-tests";
+    private static readonly Guid ExtraCycle = Guid.Parse("0000aaaa-0000-0000-0000-000000000001");
 
     [Fact]
     public async Task Seed_creates_the_fake_company()
@@ -25,11 +26,11 @@ public sealed class SeedTests
         await using var postgres = await TestPostgres.StartAsync(nameof(SeedTests));
         await SeedAsync(postgres);
         var counts = await CountsAsync(postgres);
-        Assert.Equal(28, counts.Employees);
+        Assert.Equal(12, counts.Employees);
         Assert.Equal(4, counts.Users);
         Assert.Equal(3, counts.Roles);
         Assert.Equal(4, counts.UserRoles);
-        Assert.Equal(35, counts.Vehicles);
+        Assert.Equal(12, counts.Vehicles);
         Assert.Equal(0, counts.AuditEntries);
         Assert.Equal(1, counts.Depots);
     }
@@ -43,7 +44,7 @@ public sealed class SeedTests
         await using (var connection = new NpgsqlConnection(postgres.MigratorConnectionString))
         {
             await connection.OpenAsync();
-            await using var command = new NpgsqlCommand("update fleetops.employees set last_name = 'Changed' where email = 'driver1@demo.fleetops.example'; delete from fleetops.vehicles where plate = 'B-D 0001';", connection);
+            await using var command = new NpgsqlCommand("update fleetops.employees set last_name = 'Changed' where email = 'driver1@demo.fleetops.example'; delete from fleetops.vehicles where plate = 'B-D 0012';", connection);
             await command.ExecuteNonQueryAsync();
         }
 
@@ -102,8 +103,12 @@ public sealed class SeedTests
         Assert.Equal(before, await SnapshotAsync(postgres));
         await using var verification = new NpgsqlConnection(postgres.MigratorConnectionString);
         await verification.OpenAsync(TestContext.Current.CancellationToken);
+        // Only the five seeded cycles remain; the extra one is gone.
         await using var count = new NpgsqlCommand("select count(*) from fleetops.cycles", verification);
-        Assert.Equal(0L, await count.ExecuteScalarAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(5L, await count.ExecuteScalarAsync(TestContext.Current.CancellationToken));
+        await using var extra = new NpgsqlCommand("select count(*) from fleetops.cycles where id = $1", verification);
+        extra.Parameters.AddWithValue(ExtraCycle);
+        Assert.Equal(0L, await extra.ExecuteScalarAsync(TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -243,8 +248,28 @@ public sealed class SeedTests
             Assert.True(numbers.Add(number), "Driver personnel numbers must be unique.");
             count++;
         }
-        Assert.Equal(24, count);
+        Assert.Equal(8, count);
     }
+    [Fact]
+    public async Task Seed_covers_the_eight_driver_use_cases()
+    {
+        await using var postgres = await TestPostgres.StartAsync(nameof(SeedTests));
+        await SeedAsync(postgres);
+        await using var connection = new NpgsqlConnection(postgres.MigratorConnectionString);
+        await connection.OpenAsync(TestContext.Current.CancellationToken);
+        await using var command = new NpgsqlCommand("select (select count(*) from fleetops.shifts where lower(status) = 'running'), (select count(*) from fleetops.cycles), (select count(*) from fleetops.absences where lower(status) = 'requested'), (select count(*) from fleetops.absences where lower(status) = 'approved'), (select count(*) from fleetops.defect_reports where lower(severity) = 'critical'), (select count(*) from fleetops.defect_reports), (select count(*) from fleetops.maintenance), (select count(*) from fleetops.employees where lower(status) = 'onboarding')", connection);
+        await using var reader = await command.ExecuteReaderAsync(TestContext.Current.CancellationToken);
+        Assert.True(await reader.ReadAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(1L, reader.GetInt64(0));
+        Assert.Equal(5L, reader.GetInt64(1));
+        Assert.Equal(1L, reader.GetInt64(2));
+        Assert.Equal(3L, reader.GetInt64(3));
+        Assert.Equal(1L, reader.GetInt64(4));
+        Assert.Equal(3L, reader.GetInt64(5));
+        Assert.Equal(5L, reader.GetInt64(6));
+        Assert.Equal(1L, reader.GetInt64(7));
+    }
+
     private static async Task SeedAsync(TestPostgres postgres) => await RunAsync(postgres, "Demo", Password);
 
     private static async Task RunAsync(TestPostgres postgres, string? environment, string? password, Func<int, Exception?>? failureFactory = null)
