@@ -147,7 +147,7 @@ export function QuickActions({ canManagePeople }: { canManagePeople: boolean }) 
     { label: "Approve shifts", to: "/timesheets?filter=awaiting", icon: ClipboardCheck },
     { label: "Add missing shift", to: "/timesheets?filter=missing", icon: CirclePlus },
     ...(canManagePeople ? [{ label: "Record absence", to: "/people/absences", icon: CalendarX }] : []),
-    { label: "Upload document", to: "/documents", icon: Upload },
+    { label: "Upload a document", to: "/documents", icon: Upload },
   ];
   return (
     <section className="cp-panel" aria-labelledby="cp-quick-title">

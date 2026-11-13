@@ -1,53 +1,669 @@
-.absence-toolbar {
+/* Absences & capacity (Round 7 layout): summary cards, month calendar with continuous bars, requests. */
+.absences-page {
   display: flex;
-  align-items: end;
-  gap: 12px;
+  flex-direction: column;
+  gap: 16px;
+}
+.absences-page > h1,
+.absences-page > .page-title {
+  margin: 0;
+}
+.absences-page > .people-views {
+  align-self: flex-start;
+}
+.abs-title {
+  align-items: center;
   flex-wrap: wrap;
-  margin-block: 16px;
+  gap: 12px 20px;
 }
-.absence-calendar-scroll {
-  overflow-x: auto;
-  border: 1px solid var(--line);
-  border-radius: 8px;
+.abs-title h2 {
+  margin: 0;
 }
-.absence-calendar {
-  min-width: 1200px;
-  width: 100%;
-  border-collapse: collapse;
+.abs-title .ui-button.primary svg {
+  margin-left: -2px;
 }
-.absence-calendar th,
-.absence-calendar td {
-  border: 1px solid var(--line);
-  padding: 4px;
-  height: 38px;
+.abs-subtitle {
+  margin: 2px 0 0;
+  color: var(--ink-3);
+  font-size: var(--type-caption);
 }
-.absence-calendar [data-holiday="true"] {
-  background: var(--idle-bg);
+
+/* Summary cards */
+.abs-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 14px;
 }
-.absence-day {
-  color: var(--ink);
+.abs-kpi {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding: 14px 16px;
+}
+.abs-kpi-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 500;
+}
+.abs-kpi-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+}
+.abs-kpi-icon.tone-accent {
   background: var(--accent-soft);
+  color: var(--accent);
+}
+.abs-kpi-icon.tone-ok {
+  background: var(--ok-bg);
+  color: var(--ok);
+}
+.abs-kpi-icon.tone-warn {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+.abs-kpi-icon.tone-crit {
+  background: var(--crit-bg);
+  color: var(--crit);
+}
+.abs-kpi-icon.tone-info {
+  background: var(--info-bg);
+  color: var(--info);
+}
+.abs-kpi strong {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+.abs-kpi small {
+  color: var(--ink-3);
+  font-size: 11px;
+}
+.abs-kpi-link {
+  justify-self: start;
+  color: var(--accent-strong);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.abs-kpi-link:hover {
+  text-decoration: underline;
+}
+
+/* Calendar card */
+.abs-card {
+  overflow: hidden;
   border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+  box-shadow: var(--elevation-card);
+}
+.abs-card > [role="status"],
+.abs-card > .ui-banner {
+  margin: 12px 16px;
+}
+.abs-card .table-wrap {
+  max-width: 100%;
+  margin: 0;
+}
+.abs-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.abs-month-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.abs-icon-button {
+  width: 38px;
+  padding: 0;
+}
+.abs-month {
+  min-width: 150px;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 600;
+}
+.abs-switch {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+.abs-switch button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 5px 12px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.abs-switch button:hover {
+  color: var(--ink);
+}
+.abs-switch button[aria-pressed="true"] {
+  background: var(--surface);
+  color: var(--accent-strong);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgb(15 23 42 / 10%);
+}
+.abs-empty {
+  margin: 0;
+  padding: 16px;
+  color: var(--ink-2);
+}
+
+/* Calendar grid: every row is a grid with the name column + one column per day. */
+.abs-calendar-scroll {
+  overflow-x: auto;
+}
+.abs-calendar {
+  --abs-name: 224px;
+  position: relative;
+}
+.abs-people {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.abs-row {
+  display: grid;
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+}
+.abs-head-label {
+  grid-column: 1;
+  grid-row: 1;
+  padding: 0 16px;
+  color: var(--ink-3);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.abs-cell {
+  grid-row: 1;
+  align-self: stretch;
+}
+.abs-cell[data-off="true"] {
+  background: var(--surface-2);
+}
+.abs-cell[data-week-start="true"] {
+  box-shadow: inset 1px 0 0 var(--line);
+}
+.abs-cell[data-today="true"] {
+  background: var(--accent-soft);
+  box-shadow:
+    inset 1px 0 0 var(--accent-border),
+    inset -1px 0 0 var(--accent-border);
+}
+.abs-weeks {
+  height: 34px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.abs-week {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+  height: 100%;
+  padding: 0 8px;
+  overflow: hidden;
+  box-shadow: inset 1px 0 0 var(--line);
+  white-space: nowrap;
+}
+.abs-week[data-now="true"] .abs-week-name {
+  color: var(--accent-strong);
+}
+.abs-week-pills {
+  display: inline-flex;
+  gap: 4px;
+  min-width: 0;
+}
+.abs-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 7px;
   border-radius: 6px;
-  padding: 6px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.abs-pill.tone-ok {
+  background: var(--ok-bg);
+  color: var(--ok);
+}
+.abs-pill.tone-warn {
+  background: var(--warn-tint);
+  color: var(--warn);
+}
+.abs-pill.tone-crit {
+  background: var(--crit-tint);
+  color: var(--crit);
+}
+.abs-pill.tone-pending {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+.abs-days {
+  height: 46px;
+  border-bottom-color: var(--line-strong);
+}
+.abs-day {
+  grid-row: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  font-variant-numeric: tabular-nums;
+}
+.abs-day small {
+  color: var(--ink-3);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.abs-day > span {
+  display: grid;
+  place-items: center;
+  min-width: 24px;
+  height: 22px;
+  border-radius: 7px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+.abs-day > span[data-holiday="true"] {
+  color: var(--ink-3);
+  text-decoration: underline dotted;
+}
+.abs-day > span[data-today="true"] {
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+.abs-person-row {
+  min-height: 52px;
+  padding-block: 6px;
+  row-gap: 4px;
+}
+.abs-person-row .abs-cell {
+  margin-block: -6px;
+}
+.abs-person {
+  grid-column: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 0 16px;
+}
+.abs-avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: #4f46e5;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.abs-avatar[data-tone="1"] {
+  background: #047857;
+}
+.abs-avatar[data-tone="2"] {
+  background: #0369a1;
+}
+.abs-avatar[data-tone="3"] {
+  background: #6d28d9;
+}
+.abs-person-text {
+  display: grid;
+  min-width: 0;
+  line-height: 1.3;
+}
+.abs-person-text strong {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.abs-person-text small {
+  color: var(--ink-3);
+  font-size: 11px;
+}
+
+/* Absence bars */
+.abs-bar {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  height: 32px;
+  margin: 0 3px;
+  padding: 0 9px;
+  overflow: hidden;
+  border: 1px solid var(--accent-border);
+  border-radius: 8px;
+  background: var(--accent-tint);
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.abs-bar svg {
+  flex: none;
+}
+.abs-bar:hover {
+  filter: brightness(0.97);
+  box-shadow: 0 1px 3px rgb(15 23 42 / 12%);
+}
+.abs-bar:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+.abs-bar-meta {
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+}
+.abs-bar[data-clipped-start="true"] {
+  margin-left: 0;
+  border-left-style: dashed;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.abs-bar[data-clipped-end="true"] {
+  margin-right: 0;
+  border-right-style: dashed;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.abs-bar[data-type="sick"] {
+  border-color: var(--orange-border);
+  background: var(--orange-bg);
+  color: var(--orange-ink);
+}
+.abs-bar[data-type="training"] {
+  border-color: var(--info-border);
+  background: var(--info-bg);
+  color: var(--info-strong);
+}
+.abs-bar[data-type="unpaid"],
+.abs-bar[data-type="time_off_in_lieu"],
+.abs-bar[data-type="other"] {
+  border-color: var(--line-strong);
+  background: var(--idle-bg);
+  color: var(--ink-2);
+}
+.abs-bar[data-status="requested"] {
+  border: 1.5px dashed var(--warn);
+  background: var(--warn-bg);
+  color: var(--warn-strong);
+}
+
+/* Drivers available per working day */
+.abs-available {
+  height: 40px;
+  border-bottom: 0;
+  font-variant-numeric: tabular-nums;
+}
+.abs-available-label {
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.abs-avail {
+  grid-row: 1;
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+.abs-avail > span {
+  display: grid;
+  place-items: center;
+  min-width: 24px;
+  height: 22px;
+  border-radius: 6px;
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 600;
+}
+.abs-avail > span[data-tone="warn"] {
+  border: 1px solid var(--warn-border);
+  background: var(--warn-tint);
+  color: var(--warn-strong);
+  font-weight: 700;
+}
+.abs-avail > span[data-tone="crit"] {
+  border: 1px solid var(--crit-border);
+  background: var(--crit-tint);
+  color: var(--crit-strong);
+  font-weight: 700;
+}
+
+/* Legend and footer */
+.abs-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 20px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--ink-2);
   font-size: 12px;
 }
-.absence-day[data-status="requested"] {
+.abs-legend ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-weight: 500;
+}
+.abs-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.abs-legend li::before {
+  content: "";
+  width: 12px;
+  height: 12px;
+  border: 1px solid var(--accent-border);
+  border-radius: 3px;
+  background: var(--accent-tint);
+}
+.abs-legend li[data-type="sick"]::before {
+  border-color: var(--orange-border);
+  background: var(--orange-bg);
+}
+.abs-legend li[data-type="training"]::before {
+  border-color: var(--info-border);
+  background: var(--info-bg);
+}
+.abs-legend li[data-type="other"]::before {
+  border-color: var(--line-strong);
+  background: var(--idle-bg);
+}
+.abs-legend li[data-type="requested"]::before {
+  border: 1.5px dashed var(--warn);
   background: var(--warn-bg);
 }
-.absence-requests {
-  padding: 16px;
-  margin-block: 16px;
+.abs-legend li[data-type="off"]::before {
+  border-color: var(--line);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 6px var(--surface-2);
 }
-.absence-requests article + article {
+
+/* Requests */
+.abs-requests {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+  box-shadow: var(--elevation-card);
+  scroll-margin-top: 16px;
+}
+.abs-requests > header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.abs-requests h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+.abs-count {
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--warn-tint);
+  color: var(--warn);
+  font-size: 12px;
+  font-weight: 600;
+}
+.abs-requests-empty {
+  margin: 0;
+  padding: 14px 16px;
+  color: var(--ink-2);
+}
+.abs-request {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+  padding: 14px 16px;
+}
+.abs-request + .abs-request {
   border-top: 1px solid var(--line);
-  margin-top: 16px;
-  padding-top: 16px;
 }
+.abs-request .abs-avatar {
+  width: 36px;
+  height: 36px;
+  font-size: 13px;
+}
+.abs-request-main {
+  display: grid;
+  flex: 1 1 240px;
+  gap: 2px;
+  min-width: 0;
+}
+.abs-request-main h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+.abs-request-main p {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 13px;
+}
+.abs-request-facts {
+  display: flex;
+  flex: 2 1 340px;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.abs-request-facts li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: 12px;
+}
+.abs-request-facts strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+.abs-request-facts li[data-tone="ok"] {
+  border-color: var(--ok-border);
+  background: var(--ok-bg);
+  color: var(--ok);
+  font-weight: 600;
+}
+.abs-request-facts li[data-tone="warn"] {
+  border-color: var(--warn-border);
+  background: var(--warn-bg);
+  color: var(--warn-strong);
+  font-weight: 600;
+}
+.abs-request-facts li[data-tone="crit"] {
+  border-color: var(--crit-border);
+  background: var(--crit-bg);
+  color: var(--crit-strong);
+  font-weight: 600;
+}
+
+/* Kept: used by the Plan page. */
 .schedule-absence {
   background: var(--idle-bg);
   border: 1px solid var(--line);
   color: var(--ink);
   padding: 8px;
   border-radius: 6px;
+}
+
+@media (max-width: 767px) {
+  .abs-calendar {
+    --abs-name: 168px;
+  }
+  .abs-month {
+    min-width: 0;
+  }
+  .abs-person {
+    padding: 0 10px;
+  }
+  .abs-person .abs-avatar {
+    display: none;
+  }
 }

@@ -259,7 +259,7 @@ export function Attention() {
             </div>
           )}
         </section>
-        <aside className="cp-side">
+        <aside className="cp-side" aria-label="Control panel">
           {!(owner && !session.data?.roles.some((role) => role === "hr" || role === "dispatcher")) && (
             <QuickActions canManagePeople={canManagePeople} />
           )}
