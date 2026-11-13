@@ -147,10 +147,11 @@ public sealed class DemoSeeder
     {
         foreach (var driver in new[] { Bastian, Claus, Dirk, Erik, Falk, Gerd, Hannes, Ivo })
         {
-            DocumentType[] types = [DocumentType.LicenceC_CE, DocumentType.DriverCard, DocumentType.Code95, DocumentType.Medical];
+            DocumentType[] types = [DocumentType.LicenceC_CE, DocumentType.DriverCard, DocumentType.Code95, DocumentType.Medical, DocumentType.IdCard, DocumentType.EmploymentContract];
+            if (driver == Ivo) types = [.. types, DocumentType.AdrCertificate];
             foreach (var type in types)
             {
-                if (driver == Hannes && type != DocumentType.LicenceC_CE) continue; // onboarding: papers still coming
+                if (driver == Hannes && type is DocumentType.DriverCard or DocumentType.Code95 or DocumentType.Medical) continue; // onboarding: papers still coming
                 if (driver == Gerd && type == DocumentType.DriverCard) continue; // missing
                 var expires = (driver, type) switch
                 {
@@ -161,6 +162,7 @@ public sealed class DemoSeeder
                 };
                 var document = Attested(driver, DocumentOwnerType.Employee, type, expires);
                 if (type == DocumentType.LicenceC_CE) document.Categories = ["C", "CE"];
+                if (type == DocumentType.EmploymentContract) document.ExpiresAt = null;
                 db.Documents.Add(document);
             }
         }
@@ -254,7 +256,7 @@ public sealed class DemoSeeder
         (int Id, int Vehicle, Guid By, int DaysAgo, DefectCategory Category, DefectSeverity Severity, DefectStatus Status, string Text, Guid? Repair)[] defects =
         [
             (9000, 1003, Bastian, 1, DefectCategory.Lights, DefectSeverity.Minor, DefectStatus.Open, "Left rear marker light is out.", null),
-            (9001, 1004, Erik, 2, DefectCategory.Brakes, DefectSeverity.Critical, DefectStatus.InRepair, "Brake warning light on, pedal feels soft.", repair),
+            (9001, 1004, Erik, 2, DefectCategory.Brakes, DefectSeverity.Critical, DefectStatus.Acknowledged, "Brake warning light on, pedal feels soft.", repair),
             (9002, 1009, Claus, 1, DefectCategory.Tyres, DefectSeverity.Major, DefectStatus.Open, "Tread low on axle 2, right side.", null),
         ];
         db.Maintenance.Add(new MaintenanceJob { Id = repair, Type = "repair", VehicleId = FixedGuid(1004), Workshop = "Werkstatt Nord (demo)", ScheduledFor = Today.AddDays(-1), DefectReportIds = [FixedGuid(9001)], Status = MaintenanceStatus.InProgress, DueDate = Today.AddDays(2) });
