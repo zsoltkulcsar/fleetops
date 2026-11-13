@@ -271,6 +271,7 @@
 }
 .directory-page .fleet-tabs a,
 .directory-tabs > span,
+.directory-tabs > a,
 .directory-chip {
   display: inline-flex;
   align-items: center;
