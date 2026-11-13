@@ -134,7 +134,10 @@ test("kind filter sends the kind to the server", async ({ page }) => {
     });
   });
   await page.goto("/fleet");
-  await page.getByRole("button", { name: "Trailers", exact: true }).click();
+  await page
+    .getByRole("group", { name: "Vehicle kind" })
+    .getByRole("button", { name: /^Trailers/ })
+    .click();
   await expect(page.getByText("No vehicles yet.")).toBeVisible();
   expect(kind).toBe("trailer");
 });
@@ -173,10 +176,13 @@ test("a failed list shows a banner with try again", async ({ page }) => {
   await expect(page.getByText("Data could not be loaded. Check the connection and try again.")).toBeVisible();
   await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
 });
-test("row opens the record at its own url", async ({ page }) => {
+test("row opens the drawer, and the drawer opens the record at its own url", async ({ page }) => {
   await list(page);
   await page.goto("/fleet");
-  await page.locator("tbody tr").click();
+  await page.locator("tbody tr").getByRole("cell").nth(1).click();
+  const dialog = page.getByRole("dialog", { name: "KS-DC 1177" });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("link", { name: "Open full record" }).click();
   await expect(page).toHaveURL(/\/fleet\/00000000-0000-0000-0000-000000000001$/);
 });
 test("record deep link loads directly", async ({ page }) => {

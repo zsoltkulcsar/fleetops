@@ -106,7 +106,7 @@ test("plan is its own page in the navigation and no longer a fleet tab", async (
   }
   await page.goto("/fleet");
   const tabs = page.getByRole("group", { name: "Fleet views" });
-  await expect(tabs.getByRole("link", { name: "Vehicles", exact: true })).toBeVisible();
+  await expect(tabs.getByRole("link", { name: /^Vehicles/ })).toBeVisible();
   await expect(tabs.getByRole("link", { name: "Schedule", exact: true })).toHaveCount(0);
 });
 test("plan groups timeline by truck and driver and keeps range in URL", async ({ page }) => {

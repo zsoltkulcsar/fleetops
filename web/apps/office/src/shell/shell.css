@@ -649,3 +649,107 @@
 .coming-later-body p {
   margin: 0;
 }
+
+/* Round 7 reference layout for Fleet (2026-11-13). */
+.view-switch {
+  display: inline-flex;
+  gap: 2px;
+  max-width: 100%;
+  margin: 0;
+  padding: 4px;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface-2);
+}
+.view-switch a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink-2);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.view-switch a:hover {
+  color: var(--ink);
+}
+.view-switch a[aria-current="page"] {
+  background: var(--surface);
+  color: var(--accent-strong);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgb(15 23 42 / 10%);
+}
+.view-switch-count {
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--accent-tint);
+  color: var(--accent-strong);
+  font-size: 12px;
+  font-weight: 600;
+}
+.view-switch-count.warn {
+  background: var(--warn-tint);
+  color: var(--warn-strong);
+}
+.view-switch-count.crit {
+  background: var(--crit-tint);
+  color: var(--crit-strong);
+}
+.directory-page > .view-switch {
+  margin-bottom: 16px;
+}
+.people-leave-pill.crit {
+  border-color: var(--crit-border);
+  background: var(--crit-bg);
+  color: var(--crit-strong);
+}
+.people-leave-pill.crit .people-leave-dot {
+  background: var(--crit);
+}
+.people-flag.crit {
+  background: var(--crit-tint);
+  color: var(--crit-strong);
+}
+.ts-kpi-icon.tone-ok {
+  background: var(--ok-bg);
+  color: var(--ok);
+}
+.fleet-kpis {
+  margin-bottom: 16px;
+}
+.fleet-vehicle {
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+}
+.fleet-vehicle .ui-muted {
+  font-size: 12px;
+}
+.fleet-driver {
+  font-weight: 600;
+}
+.fleet-table td {
+  vertical-align: middle;
+}
+.vehicle-mark {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.people-request.vehicle-causes {
+  border-color: var(--crit-border);
+  background: var(--crit-bg);
+}
+.people-request.vehicle-causes .eyebrow {
+  color: var(--crit-strong);
+}

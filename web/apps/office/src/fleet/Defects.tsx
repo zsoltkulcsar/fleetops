@@ -7,6 +7,7 @@ import { defectApi } from "./defectApi";
 import { DefectState, defectDate, useDefectAccess } from "./defectPresentation";
 import { defectCategoryLabel } from "./defectLabels";
 import { FleetTabs } from "./FleetTabs";
+import "../people/people.css";
 import { DefectDetail } from "./DefectDetail";
 import { LogDefect } from "./LogDefect";
 import { useOnline } from "../shell/Shell";
@@ -118,7 +119,9 @@ export function Defects({ vehicleId }: { vehicleId?: string }) {
                             <td>
                               <button className="defect-row-link" onClick={() => setOpened(report.id)}>
                                 <Plate>{report.plate}</Plate>
-                                <span className="visually-hidden">Open defect {defectCategoryLabel(report.category)}</span>
+                                <span className="visually-hidden">
+                                  Open defect {defectCategoryLabel(report.category)}
+                                </span>
                               </button>
                             </td>
                             <td>{defectCategoryLabel(report.category)}</td>
@@ -197,11 +200,21 @@ export function Defects({ vehicleId }: { vehicleId?: string }) {
   return vehicleId ? (
     <Panel title="Defects">{content}</Panel>
   ) : (
-    <div className="page fleet-page">
-      <div className="page-title">
-        <h1 tabIndex={-1}>Fleet {"\u00b7"} Defects</h1>
+    <div className="page fleet-page directory-page">
+      <div className="page-title people-header">
+        <div>
+          <div className="people-title-row">
+            <h1 tabIndex={-1}>Fleet {"\u00b7"} Defects</h1>
+            <span className="people-title-badge">Defect reports</span>
+          </div>
+          <p className="ui-muted people-subtitle">
+            Reported by drivers and the office; critical defects block the vehicle.
+          </p>
+        </div>
       </div>
-      <FleetTabs />
+      <div className="people-switch-row">
+        <FleetTabs />
+      </div>
       <Panel title="Defect reports">{content}</Panel>
     </div>
   );

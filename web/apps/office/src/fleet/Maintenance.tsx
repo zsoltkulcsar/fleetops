@@ -8,6 +8,7 @@ import { apiClient, type components } from "@fleetops/api-client";
 import { checked, defectApi } from "./defectApi";
 import { DefectState, companyToday, defectDate, useDefectAccess } from "./defectPresentation";
 import { FleetTabs } from "./FleetTabs";
+import "../people/people.css";
 import { useOnline } from "../shell/Shell";
 import "./defects.css";
 
@@ -431,11 +432,21 @@ export function Maintenance({ vehicleId }: { vehicleId?: string }) {
   return vehicleId ? (
     <Panel title="Maintenance">{content}</Panel>
   ) : (
-    <div className="page fleet-page">
-      <div className="page-title">
-        <h1 tabIndex={-1}>Fleet {"\u00b7"} Maintenance</h1>
+    <div className="page fleet-page directory-page">
+      <div className="page-title people-header">
+        <div>
+          <div className="people-title-row">
+            <h1 tabIndex={-1}>Fleet {"\u00b7"} Maintenance</h1>
+            <span className="people-title-badge">Service & repairs</span>
+          </div>
+          <p className="ui-muted people-subtitle">
+            Planned service, repairs in the workshop and what is overdue.
+          </p>
+        </div>
       </div>
-      <FleetTabs />
+      <div className="people-switch-row">
+        <FleetTabs />
+      </div>
       <Panel title="Maintenance">{content}</Panel>
     </div>
   );
