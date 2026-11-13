@@ -57,6 +57,21 @@ export const documentTypes: Record<DocumentOwnerType, readonly DocumentType[]> =
   vehicle: ["registration", "hu_report", "sp_report", "tacho_calibration", "insurance", "community_licence"],
 };
 
+/** Types whose expiry date must be set when the document is verified. */
+export const typesWithExpiry: readonly DocumentType[] = [
+  "licence_c_ce",
+  "driver_card",
+  "code95",
+  "medical",
+  "adr_certificate",
+  "id_card",
+  "hu_report",
+  "sp_report",
+  "tacho_calibration",
+  "insurance",
+  "community_licence",
+];
+
 export const documentsApi = {
   list: (params: { cursor?: string; search?: string; filter?: string }) => {
     const query = new URLSearchParams();

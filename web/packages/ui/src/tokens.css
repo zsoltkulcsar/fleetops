@@ -428,6 +428,20 @@ h2 {
   justify-content: space-between;
   margin-bottom: 24px;
 }
+.drawer-backdrop.modal-backdrop {
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.drawer.modal {
+  width: min(920px, 100%);
+  height: auto;
+  max-height: 100%;
+  border-radius: var(--radius-panel);
+}
+.drawer.modal header {
+  margin-bottom: 16px;
+}
 .toast {
   position: fixed;
   right: 20px;
@@ -447,6 +461,13 @@ h2 {
   font-variant-numeric: tabular-nums;
 }
 @media (max-width: 767px) {
+  .drawer-backdrop.modal-backdrop {
+    padding: 0;
+  }
+  .drawer.modal {
+    height: 100%;
+    border-radius: 0;
+  }
   .toast {
     right: 12px;
     bottom: 80px;

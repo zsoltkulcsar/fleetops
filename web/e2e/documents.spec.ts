@@ -83,7 +83,152 @@ test("documents list shows rows with status text", async ({ page }) => {
   await page.goto("/documents");
   await expect(page.getByText("KS-DC 1177")).toBeVisible();
   await page.getByRole("button", { name: "All", exact: true }).click();
-  await expect(page.locator("tbody").getByText("Uploaded")).toBeVisible();
+  await expect(page.locator("tbody").getByText("Awaiting verification", { exact: true })).toBeVisible();
+});
+
+test("document library shows document, owner, expiry, status and action columns", async ({ page }) => {
+  await session(page, ["dispatcher"]);
+  await list(page, [
+    { ...row("INS-1203"), type: "insurance", ownerName: "KS-DC 1203", expiresAt: "2027-10-11", canAct: true },
+    {
+      ...row("HU-1177"),
+      id: "00000000-0000-0000-0000-000000000011",
+      type: "hu_report",
+      status: "verified",
+      expiresAt: "2026-09-26",
+    },
+    {
+      ...row("REG-1311"),
+      id: "00000000-0000-0000-0000-000000000012",
+      ownerName: "KS-DC 1311",
+      status: "verified",
+      expiresAt: "2029-02-03",
+    },
+  ]);
+  await page.goto("/documents?filter=all");
+  await expect(page.getByRole("columnheader")).toHaveText([
+    "Document",
+    "Owner",
+    "Expiry",
+    "Status",
+    "Action",
+  ]);
+  const awaiting = page.getByRole("row", { name: /Insurance/ });
+  await expect(awaiting).toContainText("INS-1203");
+  await expect(awaiting).toContainText("11.10.2027");
+  await expect(awaiting).toContainText("Awaiting verification");
+  await expect(awaiting.getByRole("button")).toHaveText(["View", "Verify", "Reject"]);
+  const expired = page.getByRole("row", { name: /HU report/ });
+  await expect(expired.locator("[data-status]")).toHaveText("Expired");
+  await expect(expired.getByRole("button")).toHaveText(["View", "Upload renewal"]);
+  const verified = page.getByRole("row", { name: /KS-DC 1311/ });
+  await expect(verified.locator("[data-status]")).toHaveText("Verified");
+  await expect(verified.getByRole("button")).toHaveText(["View", "Upload renewal"]);
+});
+
+test("view shows the file inside the page without opening a window", async ({ page }) => {
+  await list(page, [{ ...row(), status: "verified", expiresAt: "2029-02-03" }]);
+  await page.route(`**/api/v1/documents/${row().id}`, (route) =>
+    route.fulfill({
+      json: {
+        ...row(),
+        status: "verified",
+        expiresAt: "2029-02-03",
+        verifiedAt: "2026-11-06T11:00:00Z",
+        rejectReason: null,
+        categories: [],
+        files: [{ id: "file-1", page: "page", contentType: "application/pdf", sizeBytes: 1024 }],
+      } satisfies components["schemas"]["DocumentDetail"],
+    }),
+  );
+  await page.route(`**/api/v1/documents/${row().id}/files/file-1/link`, (route) =>
+    route.fulfill({
+      json: { url: "https://objects.test/registration.pdf", expiresAt: "2026-11-06T11:00:00Z" },
+    }),
+  );
+  let fetched = 0;
+  await page.route("https://objects.test/registration.pdf", (route) => {
+    fetched += 1;
+    return route.fulfill({
+      status: 200,
+      contentType: "application/pdf",
+      headers: { "Access-Control-Allow-Origin": "*" },
+      body: "%PDF-1.4\n%%EOF",
+    });
+  });
+  let popups = 0;
+  page.context().on("page", () => {
+    popups += 1;
+  });
+  await page.goto("/documents?filter=all");
+  await page.getByRole("button", { name: "View: Vehicle registration, KS-DC 1177" }).click();
+  const dialog = page.getByRole("dialog", { name: "Vehicle registration" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator("iframe")).toHaveAttribute("src", /^blob:/);
+  await expect(dialog).toContainText("03.02.2029");
+  // The dev server runs React StrictMode, which mounts the preview effect twice.
+  expect(fetched).toBeGreaterThan(0);
+  expect(popups).toBe(0);
+  await expect(page).toHaveURL(/\/documents\?filter=all$/);
+});
+
+test("verify from the library sends the checked details and confirms", async ({ page }) => {
+  await session(page, ["dispatcher"]);
+  await list(page, [{ ...row(), type: "insurance", canAct: true }]);
+  const detail: components["schemas"]["DocumentDetail"] = {
+    ...row(),
+    type: "insurance",
+    canAct: true,
+    verifiedAt: null,
+    rejectReason: null,
+    categories: [],
+    files: [],
+  };
+  await page.route(`**/api/v1/documents/${row().id}`, (route) => route.fulfill({ json: detail }));
+  let sent: unknown;
+  await page.route(`**/api/v1/documents/${row().id}/verify`, (route) => {
+    sent = route.request().postDataJSON();
+    return route.fulfill({ json: { ...detail, status: "verified" } });
+  });
+  await page.goto("/documents?filter=all");
+  await page.getByRole("button", { name: "Verify: Insurance, KS-DC 1177" }).click();
+  const dialog = page.getByRole("dialog", { name: "Verify: Insurance" });
+  await expect(dialog.getByLabel("Number", { exact: true })).toHaveValue("DOC-1");
+  await dialog.getByLabel("Expires", { exact: true }).fill("2027-10-11");
+  await dialog.getByRole("button", { name: "Verify", exact: true }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByTestId("toast")).toContainText("Document verified.");
+  expect(sent).toMatchObject({ version: 1, expiresAt: "2027-10-11", number: "DOC-1" });
+});
+
+test("reject from the library needs a reason and sends it", async ({ page }) => {
+  await session(page, ["dispatcher"]);
+  await list(page, [{ ...row(), type: "insurance", canAct: true }]);
+  const detail: components["schemas"]["DocumentDetail"] = {
+    ...row(),
+    type: "insurance",
+    canAct: true,
+    verifiedAt: null,
+    rejectReason: null,
+    categories: [],
+    files: [],
+  };
+  await page.route(`**/api/v1/documents/${row().id}`, (route) => route.fulfill({ json: detail }));
+  let sent: unknown;
+  await page.route(`**/api/v1/documents/${row().id}/reject`, (route) => {
+    sent = route.request().postDataJSON();
+    return route.fulfill({ json: { ...detail, status: "rejected", rejectReason: "Page cut off" } });
+  });
+  await page.goto("/documents?filter=all");
+  await page.getByRole("button", { name: "Reject: Insurance, KS-DC 1177" }).click();
+  const dialog = page.getByRole("dialog", { name: "Verify: Insurance" });
+  const reject = dialog.getByRole("button", { name: "Reject", exact: true });
+  await expect(reject).toBeDisabled();
+  await dialog.getByLabel("Reason", { exact: true }).fill("Page cut off");
+  await reject.click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByTestId("toast")).toContainText("Document rejected.");
+  expect(sent).toEqual({ version: 1, reason: "Page cut off" });
 });
 
 test("filter missing from the URL selects the missing list", async ({ page }) => {

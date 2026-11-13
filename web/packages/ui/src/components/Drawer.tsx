@@ -12,12 +12,15 @@ export function Drawer({
   children,
   onClose,
   closeLabel,
+  variant = "drawer",
 }: {
   open: boolean;
   title: string;
   children: ReactNode;
   onClose: () => void;
   closeLabel: string;
+  /** "modal" centres the dialog over the page instead of docking it to the right edge. */
+  variant?: "drawer" | "modal";
 }) {
   const heading = useRef<HTMLHeadingElement>(null);
   const drawer = useRef<HTMLElement>(null);
@@ -73,10 +76,13 @@ export function Drawer({
   }, [open]);
   if (!open) return null;
   return createPortal(
-    <div className="drawer-backdrop" onMouseDown={() => closeRef.current()}>
+    <div
+      className={variant === "modal" ? "drawer-backdrop modal-backdrop" : "drawer-backdrop"}
+      onMouseDown={() => closeRef.current()}
+    >
       <aside
         ref={drawer}
-        className="drawer"
+        className={variant === "modal" ? "drawer modal" : "drawer"}
         role="dialog"
         aria-modal="true"
         aria-labelledby="drawer-title"

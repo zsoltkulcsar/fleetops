@@ -160,7 +160,7 @@ test("failed verification preserves entries and can be retried", async ({ page }
   await expect(page.getByRole("alert")).toHaveCount(0);
 });
 
-test("review file opens the document drawer and returns focus", async ({ page }) => {
+test("review file opens the document in the page and returns focus", async ({ page }) => {
   await session(page, ["hr"]);
   await queue(page, [row()]);
   await page.route(`**/api/v1/documents/${row().id}`, (route) =>
@@ -170,12 +170,23 @@ test("review file opens the document drawer and returns focus", async ({ page })
       }),
     }),
   );
+  await page.route(`**/api/v1/documents/${row().id}/files/file-1/link`, (route) =>
+    route.fulfill({ json: { url: "https://objects.test/review.pdf", expiresAt: "2026-11-06T11:00:00Z" } }),
+  );
+  await page.route("https://objects.test/review.pdf", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/pdf",
+      headers: { "Access-Control-Allow-Origin": "*" },
+      body: "%PDF-1.4\n%%EOF",
+    }),
+  );
   await page.goto("/documents");
   const review = page.getByRole("button", { name: "Review file: KS-DC 1177" });
   await review.click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await expect(page.getByRole("dialog")).toContainText("Vehicle registration");
-  await expect(page.getByRole("dialog").getByRole("button", { name: "Open PDF" })).toBeVisible();
+  await expect(page.getByRole("dialog").locator("iframe")).toHaveAttribute("src", /^blob:/);
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(review).toBeFocused();

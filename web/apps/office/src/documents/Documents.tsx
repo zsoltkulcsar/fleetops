@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Clock3, FileText, FileUp, RefreshCw, Search, XCircle } from "lucide-react";
+import { CheckCircle2, FileText, FileUp, Search, XCircle } from "lucide-react";
 import { Banner, Drawer, EmptyState, Panel, Toast } from "@fleetops/ui";
 import type { components } from "@fleetops/api-client";
 import { useSession } from "../auth/AuthGate";
@@ -11,20 +11,15 @@ import { fleetApi } from "../fleet/api";
 import {
   documentTypes,
   documentsApi,
+  typesWithExpiry,
   type DocumentOwnerType,
-  type DocumentStatus,
   type DocumentType,
 } from "./api";
+import { DocumentDialog, DocumentStatusPill, type DocumentDialogMode } from "./DocumentDialog";
 import "./documents.css";
 
 const accept = "image/jpeg,image/png,image/webp,image/heic,application/pdf";
 const maxFileSize = 15 * 1024 * 1024;
-const statusIcons: Record<DocumentStatus, typeof CheckCircle2> = {
-  uploaded: Clock3,
-  verified: CheckCircle2,
-  rejected: XCircle,
-  replaced: RefreshCw,
-};
 
 function roleOwner(roles: string[]): DocumentOwnerType | null {
   const hr = roles.includes("hr");
@@ -57,11 +52,15 @@ export function Documents() {
       : "queue",
   );
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [openId, setOpenId] = useState<string | null>(
-    new URLSearchParams(window.location.search).get("open"),
-  );
-  const [toast, setToast] = useState(false);
-  const canUpload = Boolean(roleOwner(session.data?.roles ?? []));
+  const [opened, setOpened] = useState<{ id: string; mode: DocumentDialogMode } | null>(() => {
+    const id = initialParams.get("open");
+    return id ? { id, mode: "view" } : null;
+  });
+  const [toast, setToast] = useState<string | null>(null);
+  const roles = session.data?.roles ?? [];
+  const canUpload = Boolean(roleOwner(roles));
+  const canUploadFor = (ownerType: DocumentOwnerType) =>
+    ownerType === "employee" ? roles.includes("hr") : roles.includes("dispatcher");
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if ((params.has("upload") || params.has("ownerId")) && canUpload) setDialogOpen(true);
@@ -210,9 +209,9 @@ export function Documents() {
                   <QueueCard
                     key={document.id}
                     document={document}
-                    roles={session.data?.roles ?? []}
+                    roles={roles}
                     onChanged={refresh}
-                    onReview={() => setOpenId(document.id)}
+                    onReview={() => setOpened({ id: document.id, mode: "view" })}
                   />
                 ))
               : null}
@@ -222,7 +221,7 @@ export function Documents() {
                   <caption className="visually-hidden">{en.documents.tableCaption}</caption>
                   <thead>
                     <tr>
-                      <th>{en.documents.ownerColumn}</th>
+                      <th scope="col">{en.documents.ownerColumn}</th>
                       <th>{en.documents.typeColumn}</th>
                       <th />
                     </tr>
@@ -259,46 +258,95 @@ export function Documents() {
                   </tbody>
                 </table>
               ) : (
-                <table>
+                <table className="documents-table">
                   <caption className="visually-hidden">{en.documents.tableCaption}</caption>
                   <thead>
                     <tr>
-                      <th>{en.documents.typeColumn}</th>
-                      <th>{en.documents.ownerColumn}</th>
-                      <th>{en.documents.numberColumn}</th>
-                      <th>{en.documents.issuedColumn}</th>
-                      <th>{en.documents.expiresColumn}</th>
-                      <th>{en.documents.statusColumn}</th>
-                      <th>{en.documents.uploadedColumn}</th>
+                      <th scope="col">{en.documents.documentColumn}</th>
+                      <th scope="col">{en.documents.ownerColumn}</th>
+                      <th scope="col">{en.documents.expiryColumn}</th>
+                      <th scope="col">{en.documents.statusColumn}</th>
+                      <th scope="col">{en.documents.actionColumn}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {documents.map((document) => {
-                      const Icon = statusIcons[document.status];
+                      const typeLabel = en.documents.types[document.type];
+                      const name = `${typeLabel}, ${document.ownerName}`;
+                      const awaiting = document.status === "uploaded" && document.canAct;
                       return (
-                        <tr key={document.id} onClick={() => setOpenId(document.id)} className="document-row">
+                        <tr key={document.id}>
                           <td>
-                            <button
-                              className="document-link"
-                              type="button"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                setOpenId(document.id);
-                              }}
-                            >
-                              {en.documents.types[document.type]}
-                            </button>
-                          </td>
-                          <td>{document.ownerName}</td>
-                          <td>{document.number ?? "—"}</td>
-                          <td className="tabular-nums">{formatDocumentDate(document.issuedAt)}</td>
-                          <td className="tabular-nums">{formatDocumentDate(document.expiresAt)}</td>
-                          <td>
-                            <span className={`document-status status-${document.status}`}>
-                              <Icon size={15} aria-hidden /> {en.documents.status[document.status]}
+                            <strong className="document-name">{typeLabel}</strong>
+                            <span className="document-sub">
+                              {document.number ??
+                                en.documents.uploadedOn.replace(
+                                  "{date}",
+                                  formatDocumentDate(document.uploadedAt),
+                                )}
                             </span>
                           </td>
-                          <td className="tabular-nums">{formatDocumentDate(document.uploadedAt)}</td>
+                          <td>{document.ownerName}</td>
+                          <td className="tabular-nums">{formatDocumentDate(document.expiresAt)}</td>
+                          <td>
+                            <DocumentStatusPill
+                              status={document.status}
+                              expiresAt={document.expiresAt}
+                              expiring={filter === "expiring"}
+                            />
+                          </td>
+                          <td>
+                            <div className="document-actions">
+                              <button
+                                className="ui-button"
+                                type="button"
+                                aria-label={`${en.documents.view}: ${name}`}
+                                onClick={() => setOpened({ id: document.id, mode: "view" })}
+                              >
+                                {en.documents.view}
+                              </button>
+                              {awaiting ? (
+                                <>
+                                  <button
+                                    className="ui-button primary"
+                                    type="button"
+                                    aria-label={`${en.documents.verify}: ${name}`}
+                                    onClick={() => setOpened({ id: document.id, mode: "verify" })}
+                                  >
+                                    {en.documents.verify}
+                                  </button>
+                                  <button
+                                    className="ui-button"
+                                    type="button"
+                                    aria-label={`${en.documents.reject}: ${name}`}
+                                    onClick={() => setOpened({ id: document.id, mode: "reject" })}
+                                  >
+                                    {en.documents.reject}
+                                  </button>
+                                </>
+                              ) : (
+                                document.status !== "uploaded" &&
+                                canUploadFor(document.ownerType) && (
+                                  <button
+                                    className="ui-button"
+                                    type="button"
+                                    aria-label={`${en.documents.uploadRenewal}: ${name}`}
+                                    onClick={() => {
+                                      setUploadRequest({
+                                        ownerId: document.ownerId,
+                                        ownerType: document.ownerType,
+                                        ownerName: document.ownerName,
+                                        type: document.type,
+                                      });
+                                      setDialogOpen(true);
+                                    }}
+                                  >
+                                    {en.documents.uploadRenewal}
+                                  </button>
+                                )
+                              )}
+                            </div>
+                          </td>
                         </tr>
                       );
                     })}
@@ -321,7 +369,7 @@ export function Documents() {
       <UploadDialog
         key={`${uploadRequest.ownerType ?? ""}:${uploadRequest.ownerId}:${uploadRequest.type ?? ""}:${uploadRequest.ownerName}`}
         open={dialogOpen}
-        roles={session.data?.roles ?? []}
+        roles={roles}
         initialOwnerId={uploadRequest.ownerId}
         initialOwnerType={uploadRequest.ownerType}
         initialOwnerName={uploadRequest.ownerName}
@@ -329,25 +377,32 @@ export function Documents() {
         onClose={() => setDialogOpen(false)}
         onSaved={() => {
           setDialogOpen(false);
-          setToast(true);
+          setToast(en.documents.success);
           refresh();
         }}
       />
-      {openId && (
-        <DocumentDetailDrawer
-          id={openId}
-          roles={session.data?.roles ?? []}
-          onClose={() => setOpenId(null)}
+      {opened && (
+        <DocumentDialog
+          key={`${opened.id}:${opened.mode}`}
+          id={opened.id}
+          mode={opened.mode}
+          roles={roles}
+          onClose={() => setOpened(null)}
           onChanged={refresh}
+          onDone={(message) => {
+            setOpened(null);
+            setToast(message);
+            refresh();
+          }}
         />
       )}
       <Toast
-        open={toast}
-        onClose={() => setToast(false)}
+        open={toast !== null}
+        onClose={() => setToast(null)}
         dismissLabel={en.documents.dismiss}
         undoLabel={en.documents.undo}
       >
-        {en.documents.success}
+        {toast}
       </Toast>
     </div>
   );
@@ -371,19 +426,7 @@ function QueueCard({
   const [number, setNumber] = useState(document.number ?? "");
   const [busy, setBusy] = useState(false);
   const canDelete = roles.includes("hr");
-  const typeNeedsExpiry = [
-    "licence_c_ce",
-    "driver_card",
-    "code95",
-    "medical",
-    "adr_certificate",
-    "id_card",
-    "hu_report",
-    "sp_report",
-    "tacho_calibration",
-    "insurance",
-    "community_licence",
-  ].includes(document.type);
+  const typeNeedsExpiry = typesWithExpiry.includes(document.type);
   async function run(action: () => Promise<unknown>) {
     setBusy(true);
     setFailure(false);
@@ -507,88 +550,6 @@ function QueueCard({
         </div>
       )}
     </article>
-  );
-}
-
-function DocumentDetailDrawer({
-  id,
-  roles,
-  onClose,
-  onChanged,
-}: {
-  id: string;
-  roles: string[];
-  onClose: () => void;
-  onChanged: () => void;
-}) {
-  const detail = useQuery({ queryKey: ["document", id], queryFn: () => documentsApi.detail(id) });
-  const [checkedAt, setCheckedAt] = useState(new Date().toISOString().slice(0, 10));
-  if (detail.isError)
-    return (
-      <Drawer open title={en.documents.detail} onClose={onClose} closeLabel={en.documents.close}>
-        <Banner
-          kind="error"
-          label={en.documents.errorLabel}
-          retryLabel={en.documents.retry}
-          onRetry={() => void detail.refetch()}
-        >
-          {en.documents.error}
-        </Banner>
-      </Drawer>
-    );
-  if (!detail.data)
-    return (
-      <Drawer open title={en.documents.detail} onClose={onClose} closeLabel={en.documents.close}>
-        {en.documents.loading}
-      </Drawer>
-    );
-  const item = detail.data;
-  return (
-    <Drawer open title={item.ownerName} onClose={onClose} closeLabel={en.documents.close}>
-      <div className="document-detail">
-        <p>
-          <strong>{en.documents.types[item.type]}</strong>
-          <br />
-          {en.documents.status[item.status]}
-        </p>
-        {item.rejectReason && <p className="document-reject-reason">{item.rejectReason}</p>}
-        {item.files.length === 0 && <p className="ui-muted">{en.documents.noFiles}</p>}
-        <ul>
-          {item.files.map((file) => (
-            <li key={file.id}>
-              <button
-                type="button"
-                className="document-link"
-                onClick={async () => {
-                  const link = await documentsApi.fileLink(item.id, file.id);
-                  window.open(link.url, "_blank", "noopener,noreferrer");
-                }}
-              >
-                {file.contentType === "application/pdf" ? "Open PDF" : `Open ${file.page}`}
-              </button>
-            </li>
-          ))}
-        </ul>
-        {item.type === "licence_c_ce" && item.status === "verified" && (
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              void documentsApi.sightCheck(item.id, { version: item.version, checkedAt }).then(onChanged);
-            }}
-          >
-            <label>
-              {en.documents.sightCheckDate}
-              <input type="date" value={checkedAt} onChange={(event) => setCheckedAt(event.target.value)} />
-            </label>
-            <p className="ui-muted">{en.documents.sightCheckNote}</p>
-            <button className="ui-button primary" type="submit">
-              {en.documents.recordSightCheck}
-            </button>
-          </form>
-        )}
-        {item.canAct && roles.includes("hr") && <p className="ui-muted">{en.documents.deleteAvailable}</p>}
-      </div>
-    </Drawer>
   );
 }
 
