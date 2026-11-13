@@ -3,17 +3,16 @@ import { Corrections } from "../timesheets/Corrections";
 import { TachoDownload } from "../fleet/TachoDownload";
 import { useEffect, useId, useMemo, useState } from "react";
 import { CalendarDays, Check, ChevronDown, CircleAlert, Clock3, Info, Truck, UserRound } from "lucide-react";
-import { apiClient } from "@fleetops/api-client";
 import { documentLabel } from "../people/labels";
-import { checked } from "../people/api";
 import { ReleaseReview } from "./ReleaseReview";
 import { PlanningActions } from "./PlanningActions";
 import "../people/people.css";
 import { Banner, Plate, SegmentedControl, Skeleton, Toast } from "@fleetops/ui";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate } from "react-router";
+import { Link } from "react-router";
 import { useSession } from "../auth/AuthGate";
 import { OwnerStrip } from "./OwnerStrip";
+import { decisionsPerPage, Pagination, QuickActions, StatusTiles, TodayPanel } from "./ControlPanel";
 import { en } from "../i18n/en";
 import { formatDocumentDate, formatTodayBerlin } from "../shell/date";
 import { useOnline } from "../shell/Shell";
@@ -117,14 +116,13 @@ export function Attention() {
   const session = useSession();
   const online = useOnline();
   const client = useQueryClient();
-  const navigate = useNavigate();
   const owner = session.data?.roles.includes("owner") === true;
   const canManagePeople = session.data?.roles.some((role) => role === "hr" || role === "owner") === true;
   const dispatcherOnly = session.data?.roles.includes("dispatcher") === true && !canManagePeople;
   const [reviewing, setReviewing] = useState<{ item: AttentionItem; group: AttentionGroup } | null>(null);
   const canSnooze = session.data?.roles.some((role) => role === "hr" || role === "dispatcher") === true;
   const [filter, setFilter] = useState("all");
-  const [visibleCount, setVisibleCount] = useState(8);
+  const [page, setPage] = useState(1);
   const [snoozing, setSnoozing] = useState<{ item: AttentionItem; group: AttentionGroup } | null>(null);
   const [toast, setToast] = useState<{ id: string; version: number } | null>(null);
   const query = useQuery({ queryKey: ["attention"], queryFn: attentionApi.list, refetchInterval: 60_000 });
@@ -135,17 +133,13 @@ export function Attention() {
         .sort((left, right) => severityRank[right.worstSeverity] - severityRank[left.worstSeverity]),
     [filter, query.data?.groups],
   );
-  const readiness = useQuery({
-    queryKey: ["readiness-summary"],
-    queryFn: () => apiClient.GET("/api/v1/readiness/summary").then(checked),
-    enabled: owner || Boolean(session.data),
-    refetchInterval: 60_000,
-  });
   useEffect(() => {
     document.title = `${en.nav.attention} \u00b7 ${en.appName}`;
   }, []);
-  const visibleGroups = groups.slice(0, visibleCount);
-  useEffect(() => setVisibleCount(8), [filter]);
+  const pageCount = Math.max(1, Math.ceil(groups.length / decisionsPerPage));
+  const currentPage = Math.min(page, pageCount);
+  const visibleGroups = groups.slice((currentPage - 1) * decisionsPerPage, currentPage * decisionsPerPage);
+  useEffect(() => setPage(1), [filter]);
   useEffect(() => {
     if (query.isSuccess) void client.invalidateQueries({ queryKey: ["attention"] });
   }, []);
@@ -219,69 +213,59 @@ export function Attention() {
           {en.states.offline}
         </Banner>
       )}
-      {owner && (
-        <div className="attention-kpis">
-          <button type="button" onClick={() => setFilter("all")}>
-            <strong>{data.totals.open}</strong>
-            <span>{en.attention.open}</span>
-          </button>
-          <button type="button" onClick={() => setFilter("critical")}>
-            <strong>{data.totals.critical}</strong>
-            <span>{en.attention.critical}</span>
-          </button>
-          <button type="button" onClick={() => navigate("/fleet")}>
-            <strong>{readiness.data?.vehiclesUsable ?? "-"}</strong>
-            <span>{en.attention.usable}</span>
-          </button>
-        </div>
-      )}
-      <div className="attention-toolbar">
-        <h2>{en.attention.queueTitle}</h2>
-        <SegmentedControl
-          ariaLabel={en.attention.filterLabel}
-          value={filter}
-          onChange={setFilter}
-          options={[
-            { id: "all", label: en.attention.all },
-            { id: "critical", label: en.attention.critical },
-            { id: "warning", label: en.attention.warnings },
-          ]}
-        />
-        <Link to="/fleet" className="attention-readiness">
-          {en.attention.readiness(readiness.data?.vehiclesUsable ?? 0, readiness.data?.vehiclesTotal ?? 0)}
-        </Link>
-      </div>
-      {groups.length === 0 ? (
-        <section className="attention-empty">
-          <Check size={28} aria-hidden />
-          <h2>{en.attention.empty}</h2>
-        </section>
-      ) : (
-        <div className="attention-groups">
-          {visibleGroups.map((group) => (
-            <AttentionCard
-              key={`${group.subjectType}-${group.subjectId}`}
-              group={group}
-              owner={owner}
-              canSnooze={canSnooze}
-              canManagePeople={canManagePeople}
-              dispatcherOnly={dispatcherOnly}
-              onReview={setReviewing}
-              onSnooze={setSnoozing}
+      <StatusTiles
+        open={data.totals.open}
+        critical={data.totals.critical}
+        onShowQueue={(value) => {
+          setFilter(value);
+          document.getElementById("cp-queue-title")?.scrollIntoView({ block: "nearest" });
+        }}
+      />
+      <div className="cp-layout">
+        <section className="cp-queue" aria-labelledby="cp-queue-title">
+          <div className="attention-toolbar">
+            <h2 id="cp-queue-title">{en.attention.queueTitle}</h2>
+            <SegmentedControl
+              ariaLabel={en.attention.filterLabel}
+              value={filter}
+              onChange={setFilter}
+              options={[
+                { id: "all", label: en.attention.all },
+                { id: "critical", label: en.attention.critical },
+                { id: "warning", label: en.attention.warnings },
+              ]}
             />
-          ))}
-          {groups.length > visibleCount && (
-            <button
-              className="attention-show-more"
-              type="button"
-              onClick={() => setVisibleCount((count) => count + 8)}
-            >
-              <ChevronDown size={16} aria-hidden />
-              {en.attention.more(Math.min(8, groups.length - visibleCount))}
-            </button>
+          </div>
+          {groups.length === 0 ? (
+            <section className="attention-empty">
+              <Check size={28} aria-hidden />
+              <h2>{en.attention.empty}</h2>
+            </section>
+          ) : (
+            <div className="attention-groups">
+              {visibleGroups.map((group) => (
+                <AttentionCard
+                  key={`${group.subjectType}-${group.subjectId}`}
+                  group={group}
+                  owner={owner}
+                  canSnooze={canSnooze}
+                  canManagePeople={canManagePeople}
+                  dispatcherOnly={dispatcherOnly}
+                  onReview={setReviewing}
+                  onSnooze={setSnoozing}
+                />
+              ))}
+              <Pagination page={currentPage} total={groups.length} onPage={setPage} />
+            </div>
           )}
-        </div>
-      )}
+        </section>
+        <aside className="cp-side">
+          {!(owner && !session.data?.roles.some((role) => role === "hr" || role === "dispatcher")) && (
+            <QuickActions canManagePeople={canManagePeople} />
+          )}
+          <TodayPanel />
+        </aside>
+      </div>
       {reviewing && (
         <ReleaseReview
           group={reviewing.group}

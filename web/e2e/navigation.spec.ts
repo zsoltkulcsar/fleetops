@@ -2,7 +2,7 @@ import { test, expect } from "./fixtures";
 import type { components } from "@fleetops/api-client";
 
 const routes = [
-  ["/", "Attention"],
+  ["/", "Control panel"],
   ["/people", "People"],
   ["/payroll", "Payroll export"],
   ["/settings", "Settings"],

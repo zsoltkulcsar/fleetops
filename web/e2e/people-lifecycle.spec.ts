@@ -37,11 +37,11 @@ test("people list shows status, can drive and documents per row", async ({ page 
   const dana = page.getByRole("row").filter({ hasText: "Dana Driver" });
   await expect(dana.getByRole("cell", { name: "Active", exact: true })).toBeVisible();
   await expect(dana.getByRole("cell", { name: "Yes", exact: true })).toBeVisible();
-  await expect(dana.getByRole("cell", { name: /2 of 2 valid/ })).toBeVisible();
+  await expect(dana.getByRole("cell", { name: "Documents: Valid", exact: true })).toBeVisible();
   const sam = page.getByRole("row").filter({ hasText: "Sam Suspended" });
   await expect(sam.getByRole("cell", { name: "Suspended", exact: true })).toBeVisible();
   await expect(sam.getByRole("cell", { name: /No.*Suspended/ })).toBeVisible();
-  await expect(sam.getByRole("cell", { name: /1 of 2 valid.*Expired/ })).toBeVisible();
+  await expect(sam.getByRole("cell", { name: "Documents: Expired", exact: true })).toBeVisible();
 });
 
 test("empty people list explains roles and offers import or add", async ({ page }) => {

@@ -8,9 +8,11 @@ import {
   Clock,
   Download,
   FileCheck2,
-  MousePointerClick,
+  Keyboard,
   Plus,
+  Search,
   TriangleAlert,
+  X,
 } from "lucide-react";
 import { Link, useSearchParams } from "react-router";
 import { ComingLater } from "../shell/ComingLater";
@@ -25,6 +27,7 @@ import { timesheetsApi, type Schema } from "./api";
 import { addDays, dateLabel, hours, monday, ShiftStatus } from "./presentation";
 import { ShiftDrawer } from "./ShiftDrawer";
 import { ShiftEditor } from "./ShiftEditor";
+import "../people/people.css";
 import "./timesheets.css";
 
 const capacityWeeks = 5;
@@ -421,6 +424,98 @@ export function Timesheets() {
           weeks={capacityWeeks}
         />
       )}
+      <section className="ui-panel people-filter-card" aria-label="Filters">
+        <div className="people-toolbar">
+          <div className="people-roles" role="group" aria-label="Filter timesheets">
+            {(
+              [
+                ["all", "All"],
+                ["awaiting", "Awaiting"],
+                ["missing", "Missing"],
+                ["warnings", "Warnings"],
+              ] as const
+            ).map(([chip, label]) => (
+              <button
+                key={chip}
+                type="button"
+                aria-pressed={filter === chip}
+                onClick={() => {
+                  setFilter(chip);
+                  reset();
+                }}
+              >
+                {label}
+                {query.data && <span className="people-count tabular-nums"> {query.data.counts[chip]}</span>}
+              </button>
+            ))}
+          </div>
+          <div className="people-search">
+            <Search size={16} aria-hidden />
+            <label htmlFor={`${fieldId}-search`} className="visually-hidden">
+              Search driver
+            </label>
+            <input
+              id={`${fieldId}-search`}
+              ref={searchInput}
+              maxLength={200}
+              value={search}
+              placeholder="Search by name or personnel number"
+              onChange={(event) => {
+                setSearch(event.target.value);
+                reset();
+              }}
+            />
+            {search && (
+              <button
+                type="button"
+                className="people-search-clear"
+                aria-label="Clear search"
+                onClick={() => {
+                  setSearch("");
+                  reset();
+                }}
+              >
+                <X size={14} aria-hidden />
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="people-chips">
+          <label
+            className="people-chip check"
+            htmlFor={`${fieldId}-shortcuts`}
+            title="/ search, j/k move, Enter open, Esc clear, a approve"
+          >
+            <input
+              id={`${fieldId}-shortcuts`}
+              type="checkbox"
+              checked={shortcuts}
+              onChange={(event) => {
+                setShortcuts(event.target.checked);
+                try {
+                  localStorage.setItem("fleetops.timesheets.shortcuts", event.target.checked ? "on" : "off");
+                } catch {
+                  /* Browser storage unavailable. */
+                }
+              }}
+            />
+            <Keyboard size={14} aria-hidden /> Keyboard shortcuts
+          </label>
+          {(filter !== "all" || search) && (
+            <button
+              className="ui-button ghost people-clear"
+              type="button"
+              onClick={() => {
+                setFilter("all");
+                setSearch("");
+                reset();
+              }}
+            >
+              <X size={14} aria-hidden /> Clear filters
+            </button>
+          )}
+        </div>
+      </section>
       <Panel
         title="Week review"
         filters={
@@ -453,53 +548,6 @@ export function Timesheets() {
           </div>
         }
       >
-        <div className="ts-toolbar">
-          <div role="group" aria-label="Filter timesheets">
-            {(["all", "awaiting", "missing", "warnings"] as const).map((chip) => (
-              <button
-                key={chip}
-                className="ui-button"
-                aria-pressed={filter === chip}
-                onClick={() => {
-                  setFilter(chip);
-                  reset();
-                }}
-              >
-                {chip[0].toUpperCase() + chip.slice(1)} {query.data?.counts[chip] ?? ""}
-              </button>
-            ))}
-          </div>
-          <div className="ts-field">
-            <label htmlFor={`${fieldId}-search`}>Search driver</label>
-            <input
-              id={`${fieldId}-search`}
-              ref={searchInput}
-              maxLength={200}
-              value={search}
-              placeholder="Name or personnel number"
-              onChange={(event) => {
-                setSearch(event.target.value);
-                reset();
-              }}
-            />
-          </div>
-          <div className="ts-field">
-            <input
-              id={`${fieldId}-shortcuts`}
-              type="checkbox"
-              checked={shortcuts}
-              onChange={(event) => {
-                setShortcuts(event.target.checked);
-                try {
-                  localStorage.setItem("fleetops.timesheets.shortcuts", event.target.checked ? "on" : "off");
-                } catch {
-                  /* Browser storage unavailable. */
-                }
-              }}
-            />
-            <label htmlFor={`${fieldId}-shortcuts`}> Keyboard shortcuts</label>
-          </div>
-        </div>
         <div className="ts-legend" role="group" aria-label="Cell colours">
           <span className="ts-legend-item day-approved">Approved shift</span>
           <span className="ts-legend-item day-awaiting">Waiting for approval</span>
@@ -507,14 +555,6 @@ export function Timesheets() {
           <span className="ts-legend-item day-missing">No hours entered</span>
           <span className="ts-legend-item day-absence">Absence day</span>
         </div>
-        <p className="ui-muted ts-help">
-          <MousePointerClick size={14} aria-hidden /> Click a day to open the shift. Drivers enter hours on
-          the phone; the office approves or asks for a correction.{" "}
-          {zone
-            ? `Times shown in ${zone}${Intl.DateTimeFormat().resolvedOptions().timeZone !== zone ? " (company time)" : ""}.`
-            : "Loading company time zone..."}{" "}
-          {shortcuts && "/ Search \u00B7 j/k Move \u00B7 Enter Open \u00B7 Esc Clear \u00B7 a Approve"}
-        </p>
         {query.isLoading && (
           <div role="status" aria-label="Loading timesheets">
             <Skeleton />

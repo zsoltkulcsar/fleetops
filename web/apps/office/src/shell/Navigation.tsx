@@ -1,10 +1,10 @@
 import {
-  Bell,
   CalendarClock,
   CalendarRange,
   FileText,
   MoreHorizontal,
   Settings,
+  SlidersHorizontal,
   Truck,
   Users,
 } from "lucide-react";
@@ -15,9 +15,9 @@ import { useSession } from "../auth/AuthGate";
 import { useQuery } from "@tanstack/react-query";
 import { documentsApi } from "../documents/api";
 
-export type NavigationItem = { id: string; label: string; icon: typeof Bell };
+export type NavigationItem = { id: string; label: string; icon: typeof Truck };
 export const navigation: NavigationItem[] = [
-  { id: "attention", label: en.nav.attention, icon: Bell },
+  { id: "attention", label: en.nav.attention, icon: SlidersHorizontal },
   { id: "plan", label: en.nav.plan, icon: CalendarRange },
   { id: "timesheets", label: en.nav.timesheets, icon: CalendarClock },
   { id: "fleet", label: en.nav.fleet, icon: Truck },

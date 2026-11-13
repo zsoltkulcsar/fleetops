@@ -303,15 +303,11 @@
   border: 1px solid;
   border-radius: 3px;
 }
-.ts-help svg {
-  vertical-align: -2px;
-  margin-right: 4px;
-}
 .ts-grid tbody th {
-  min-width: 130px;
+  min-width: 116px;
 }
 .ts-total {
-  min-width: 112px;
+  min-width: 80px;
   white-space: nowrap;
 }
 .ts-grid thead th {
@@ -400,7 +396,7 @@
   font-size: 13px;
 }
 .ts-status {
-  min-width: 128px;
+  min-width: 104px;
 }
 .ts-approve-row {
   display: inline-flex;

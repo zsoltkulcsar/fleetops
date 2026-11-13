@@ -3,7 +3,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { openWithPausedClock } from "./clock";
 
 const routes = [
-  ["/", "Attention"],
+  ["/", "Control panel"],
   ["/timesheets", "Timesheets"],
   ["/people", "People"],
   ["/documents", "Documents"],
@@ -45,7 +45,7 @@ test.describe("navigation and responsive shell", () => {
   test("unknown paths redirect to home", async ({ page }) => {
     await page.goto("/not-a-section");
     await expect(page).toHaveURL(/\/$/);
-    await expect(page.getByRole("heading", { level: 1, name: "Attention", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Control panel", exact: true })).toBeVisible();
   });
 
   test("mobile More reaches its three links", async ({ page }) => {

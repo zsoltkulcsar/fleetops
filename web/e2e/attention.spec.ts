@@ -109,7 +109,7 @@ test("warning group has one primary button and more actions", async ({ page }) =
   await expect(page.getByRole("button", { name: "More actions" })).toBeVisible();
 });
 
-test("show more appears after eight groups", async ({ page }) => {
+test("queue shows eight groups a page with pagination", async ({ page }) => {
   await session(page, ["dispatcher"]);
   await queue(
     page,
@@ -121,11 +121,15 @@ test("show more appears after eight groups", async ({ page }) => {
   );
   await page.goto("/");
 
-  await expect(page.getByText("Show 1 more", { exact: true })).toBeVisible();
+  await expect(page.getByText("Showing 1 to 8 of 9", { exact: true })).toBeVisible();
   await expect(page.locator(".attention-card")).toHaveCount(8);
-  await page.getByRole("button", { name: "Show 1 more" }).click();
-  await expect(page.locator(".attention-card")).toHaveCount(9);
-  await expect(page.getByRole("button", { name: "Show 1 more" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Previous" })).toBeDisabled();
+  await page.getByRole("button", { name: "Next" }).click();
+  await expect(page.getByText("Showing 9 to 9 of 9", { exact: true })).toBeVisible();
+  await expect(page.locator(".attention-card")).toHaveCount(1);
+  await expect(page.getByRole("button", { name: "Next" })).toBeDisabled();
+  await page.getByRole("button", { name: "Page 1", exact: true }).click();
+  await expect(page.locator(".attention-card")).toHaveCount(8);
 });
 
 test("more actions expands useful secondary links and collapses them again", async ({ page }) => {
@@ -196,11 +200,11 @@ test("upload link opens the prefilled dialog", async ({ page }) => {
   await expect(page.getByRole("combobox", { name: "Type", exact: true })).toHaveValue("medical");
 });
 
-test("attention line shows the date with a middle dot", async ({ page }) => {
+test("control panel line shows the date with a middle dot", async ({ page }) => {
   await session(page, ["dispatcher"]);
   await queue(page, attention([group()]));
   await page.goto("/");
-  await expect(page.getByTestId("today")).toHaveText(/Attention · \d{2}\.\d{2}\.\d{4}/);
+  await expect(page.getByTestId("today")).toHaveText(/Control panel · \d{2}\.\d{2}\.\d{4}/);
 });
 
 test("due date shows as DD.MM.YYYY", async ({ page }) => {
@@ -258,7 +262,7 @@ test("owner sees view instead of actions", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Snooze" })).toHaveCount(0);
 });
 
-test("owner kpi tile filters the queue", async ({ page }) => {
+test("needs a decision tile filters the queue to critical", async ({ page }) => {
   await session(page, ["owner"]);
   await queue(
     page,
@@ -276,18 +280,19 @@ test("owner kpi tile filters the queue", async ({ page }) => {
     ),
   );
   await page.goto("/");
-  await page.getByRole("button", { name: /1 Critical/ }).click();
+  await page.getByRole("button", { name: /Needs a decision/ }).click();
 
   await expect(page.locator(".attention-card")).toHaveCount(1);
   await expect(page.getByText("B-X 1002", { exact: true })).toBeVisible();
 });
 
-test("dispatcher sees no kpi strip", async ({ page }) => {
+test("dispatcher sees the status tiles", async ({ page }) => {
   await session(page, ["dispatcher"]);
   await queue(page, attention([group()]));
   await page.goto("/");
 
-  await expect(page.locator(".attention-kpis")).toHaveCount(0);
+  await expect(page.locator(".cp-tiles .cp-tile")).toHaveCount(4);
+  await expect(page.getByRole("link", { name: /Vehicles ready 1 of 1/ })).toBeVisible();
 });
 
 test("empty company shows guided setup", async ({ page }) => {

@@ -185,7 +185,6 @@ export function PersonQuickView({
           <Phone size={15} aria-hidden />
           {person.phone ? (
             <>
-              <span className="ui-mono">{person.phone}</span>
               <ContactActions name={person.name} phone={person.phone} />
             </>
           ) : (

@@ -83,10 +83,10 @@ function DocumentSummary({ person }: { person: PersonRow }) {
   return (
     <span className={`people-doc-summary tone-${documentPill(state)}`}>
       <Icon size={14} aria-hidden />
-      <span className="tabular-nums">
-        {person.validDocuments} of {person.requiredDocuments} valid
-      </span>
-      {state && state !== "verified" && (
+      <span className="visually-hidden">Documents: </span>
+      {!state || state === "verified" ? (
+        <span>Valid</span>
+      ) : (
         <StatusPill status={documentPill(state)} label={stateLabels[state] ?? "Unknown state"} />
       )}
     </span>
@@ -446,7 +446,6 @@ export function People() {
                       <td>
                         {person.phone ? (
                           <div className="people-contact">
-                            <span className="ui-mono">{person.phone}</span>
                             <ContactActions
                               name={person.name}
                               phone={person.phone}
@@ -456,7 +455,7 @@ export function People() {
                         ) : (
                           <div className="people-contact">
                             <span className="ui-muted">Not recorded</span>
-                            <span className="people-contact-actions">
+                            <span className="people-contact-icons">
                               <MessageButton name={person.name} onMessage={() => setMessageTo(person)} />
                             </span>
                           </div>

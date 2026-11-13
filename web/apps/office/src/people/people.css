@@ -984,36 +984,53 @@
 .people-table .people-contact {
   flex-wrap: wrap;
   gap: 4px 6px;
-  max-width: 250px;
+  max-width: 220px;
 }
-.people-contact-pill {
+.people-contact-actions {
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+.people-phone,
+.people-contact-icons {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  min-height: 26px;
-  padding: 2px 8px;
+  gap: 2px;
+}
+.people-phone .ui-mono {
+  white-space: nowrap;
+}
+.people-icon-button.small {
+  width: 26px;
+  height: 26px;
+}
+.people-contact-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
   border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--surface-2);
-  color: var(--ink);
-  font: 600 var(--type-eyebrow) var(--font-body);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--ink-2);
   text-decoration: none;
   cursor: pointer;
 }
-.people-contact-pill:hover {
-  background: var(--accent-soft);
-}
-.people-contact-pill.whatsapp {
+.people-contact-icon.call:hover {
   border-color: var(--ok-border);
   background: var(--ok-bg);
   color: var(--ok);
 }
-.people-contact-pill.message {
+.people-contact-icon.whatsapp:hover {
+  border-color: var(--ok-border);
+  background: var(--ok-bg);
+  color: var(--ok);
+}
+.people-contact-icon.message:hover {
   border-color: var(--info-border);
   background: var(--info-bg);
   color: var(--accent-strong);
 }
-.people-contact-pill:focus-visible {
+.people-contact-icon:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
 }

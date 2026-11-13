@@ -476,3 +476,35 @@ test("timesheets has no accessibility violations", async ({ page }) => {
     (await new AxeBuilder({ page: page as unknown as import("playwright-core").Page }).analyze()).violations,
   ).toEqual([]);
 });
+
+test("filters sit in a card like People and Fleet, and the page has no help paragraph", async ({ page }) => {
+  await timesheetRoutes(page);
+  await page.goto("/timesheets");
+  const card = page.getByRole("region", { name: "Filters" });
+  await expect(card.getByRole("group", { name: "Filter timesheets" })).toBeVisible();
+  await expect(card.getByLabel("Search driver")).toBeVisible();
+  await expect(card.getByLabel("Keyboard shortcuts")).toBeVisible();
+  await card.getByLabel("Search driver").fill("Dana");
+  await card.getByRole("button", { name: "Clear search" }).click();
+  await expect(card.getByLabel("Search driver")).toHaveValue("");
+  await expect(page.getByText(/Click a day to open the shift/)).toHaveCount(0);
+  await expect(page.getByText("j/k Move", { exact: false })).toHaveCount(0);
+});
+
+test("status column fits at 1440 px and the side navigation stays while the page scrolls", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 700 });
+  await timesheetRoutes(page);
+  await page.goto("/timesheets");
+  await expect(page.getByRole("table", { name: "Driver week grid" })).toBeVisible();
+  const fits = await page.evaluate(() => {
+    const cell = document.querySelector(".ts-status")!.getBoundingClientRect();
+    const wrap = document.querySelector(".ts-scroll")!.getBoundingClientRect();
+    return cell.right <= wrap.right + 1;
+  });
+  expect(fits).toBe(true);
+  await page.mouse.wheel(0, 2000);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+  const sidebar = await page.locator(".sidebar").boundingBox();
+  expect(sidebar!.y).toBe(0);
+  expect(sidebar!.height).toBe(700);
+});

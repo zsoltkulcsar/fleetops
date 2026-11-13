@@ -97,7 +97,7 @@ test("row opens a drawer with overview and documents; the profile opens from the
 
 test("documents cell opens the drawer on the documents tab", async ({ page }) => {
   await page.goto("/people");
-  await page.getByRole("button", { name: /2 of 2 valid/ }).click();
+  await page.getByRole("button", { name: "Documents: Valid" }).click();
   const dialog = page.getByRole("dialog", { name: "Dana Driver" });
   await expect(dialog.getByRole("tab", { name: /Documents/ })).toHaveAttribute("aria-selected", "true");
   await expect(dialog.getByRole("listitem")).toHaveCount(personDetail().checklist.length);
@@ -230,7 +230,19 @@ test("quick message opens a demo composer that says nothing is delivered", async
 test("contact offers call, WhatsApp and a quick message from the row", async ({ page }) => {
   await page.goto("/people");
   const dana = page.getByRole("row").filter({ hasText: "Dana Driver" });
-  await expect(dana.getByRole("link", { name: "Call Dana Driver" })).toHaveText("Call");
+  // Icons only: the action is named on hover (title) and for assistive technology (aria-label).
+  const call = dana.getByRole("link", { name: "Call Dana Driver" });
+  await expect(call).toHaveText("");
+  await expect(call).toHaveAttribute("title", "Call");
+  await expect(dana.getByRole("link", { name: /WhatsApp Dana Driver/ })).toHaveAttribute("title", "WhatsApp");
+  await expect(dana.getByRole("button", { name: "Message Dana Driver in the app" })).toHaveAttribute(
+    "title",
+    "Message in the app",
+  );
+  // The copy button sits right after the number.
+  const phone = dana.locator(".people-phone");
+  await expect(phone).toContainText("+40123456789");
+  await expect(phone.getByRole("button", { name: "Copy phone number of Dana Driver" })).toBeVisible();
   const whatsapp = dana.getByRole("link", { name: /WhatsApp Dana Driver/ });
   await expect(whatsapp).toHaveAttribute("href", "https://wa.me/40123456789");
   await expect(whatsapp).toHaveAttribute("target", "_blank");
