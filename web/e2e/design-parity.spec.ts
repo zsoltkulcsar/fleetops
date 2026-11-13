@@ -86,15 +86,15 @@ test("office queue preserves responsive layout and readable theme tokens", async
     const action = page.locator(".attention-card .ui-button.primary").first();
     const box = await action.boundingBox();
     expect(box?.height).toBeGreaterThanOrEqual(32);
-    await expect(action).toHaveCSS("border-radius", "6px");
-    await expect(page.locator(".attention-toolbar")).toHaveCSS("border-top-left-radius", "8px");
+    await expect(action).toHaveCSS("border-radius", "10px");
+    await expect(page.locator(".attention-toolbar")).toHaveCSS("border-top-left-radius", "16px");
     const badge = page.locator(".nav-badge").first();
     if (await badge.isVisible()) {
       const colors = await badge.evaluate((el) => ({
         foreground: getComputedStyle(el).color,
         intended: getComputedStyle(el).getPropertyValue("--accent-ink").trim(),
       }));
-      expect(colors.foreground).toBe(colorScheme === "dark" ? "rgb(14, 20, 27)" : "rgb(255, 255, 255)");
+      expect(colors.foreground).toBe(colorScheme === "dark" ? "rgb(11, 17, 32)" : "rgb(255, 255, 255)");
     }
   }
 });

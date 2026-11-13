@@ -1,13 +1,13 @@
 /* tastemaker · driver transactional/data screens · existing FleetOps tokens · critique: ShowTell 4 · Phil 4 · Hier 4 · Spec 5 · Restr 5 · Var 3 */
 :root {
   color-scheme: dark;
-  --bg: #0e141b;
-  --surface: #161f29;
-  --ink: #e6ecf2;
-  --ink-2: #a2b0be;
-  --line: #8494a4;
-  --accent: #78a9ea;
-  --accent-ink: #0e141b;
+  --bg: #0b1120;
+  --surface: #111827;
+  --ink: #f1f5f9;
+  --ink-2: #cbd5e1;
+  --line: #94a3b8;
+  --accent: #a5b4fc;
+  --accent-ink: #0b1120;
   --warn: #f2c257;
   --warn-bg: #352909;
   --crit: #ff8c7c;
@@ -17,12 +17,12 @@
 @media (prefers-color-scheme: light) {
   :root {
     color-scheme: light;
-    --bg: #edf0f3;
+    --bg: #f8fafc;
     --surface: #ffffff;
-    --ink: #15202b;
-    --ink-2: #4b5968;
-    --line: #5a6676;
-    --accent: #1b4e91;
+    --ink: #0f172a;
+    --ink-2: #475569;
+    --line: #64748b;
+    --accent: #4338ca;
     --accent-ink: #ffffff;
     --warn: #8a5600;
     --warn-bg: #fff1d1;

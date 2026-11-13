@@ -25,8 +25,8 @@ test.describe("navigation and responsive shell", () => {
       if (page.viewportSize()!.width < 768 && ["/documents", "/payroll", "/settings"].includes(route)) {
         await expect(page.getByRole("button", { name: "More" })).toHaveAttribute("aria-current", "page");
       } else {
-        await expect(page.locator('nav a[aria-current="page"]')).toHaveCount(1);
-        await expect(page.locator('nav a[aria-current="page"]')).toHaveText(label);
+        await expect(page.locator('nav:not(.people-views) a[aria-current="page"]')).toHaveCount(1);
+        await expect(page.locator('nav:not(.people-views) a[aria-current="page"]')).toHaveText(label);
       }
     });
   }
@@ -38,8 +38,8 @@ test.describe("navigation and responsive shell", () => {
     await expect(page.getByText("No vehicles yet.")).toBeVisible();
     await expect(page.locator(".topbar strong")).toHaveText("Fleet");
     await expect(page).toHaveTitle("Fleet · FleetOps Office");
-    await expect(page.locator('nav a[aria-current="page"]')).toHaveCount(1);
-    await expect(page.locator('nav a[aria-current="page"]')).toHaveText("Fleet");
+    await expect(page.locator('nav:not(.people-views) a[aria-current="page"]')).toHaveCount(1);
+    await expect(page.locator('nav:not(.people-views) a[aria-current="page"]')).toHaveText("Fleet");
   });
 
   test("unknown paths redirect to home", async ({ page }) => {
@@ -72,8 +72,8 @@ test("breakpoint boundaries update as the viewport crosses each width", async ({
 test("computed design tokens follow the selected theme", async ({ page }) => {
   await page.goto("/");
   for (const [scheme, background] of [
-    ["light", "rgb(237, 240, 243)"],
-    ["dark", "rgb(14, 20, 27)"],
+    ["light", "rgb(248, 250, 252)"],
+    ["dark", "rgb(11, 17, 32)"],
   ] as const) {
     await page.emulateMedia({ colorScheme: scheme });
     await page.reload();

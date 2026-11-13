@@ -68,7 +68,10 @@ export function Sidebar() {
         <span className="brand-mark">
           <Truck size={20} aria-hidden />
         </span>
-        <span>FleetOps</span>
+        <span className="brand-text">
+          <span>FleetOps</span>
+          <small>Office</small>
+        </span>
       </Link>
       <nav aria-label="Primary">
         {items.map((item) => (

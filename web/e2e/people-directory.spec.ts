@@ -14,6 +14,7 @@ const office: components["schemas"]["PersonRow"] = {
   defaultVehiclePlate: null,
   phone: null,
 };
+const absenceId = "44444444-4444-4444-4444-444444444444";
 
 function berlinToday() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Berlin" }).format(new Date());
@@ -32,7 +33,7 @@ function absence(
 ): components["schemas"]["AbsenceDetail"] {
   return {
     absence: {
-      id: "44444444-4444-4444-4444-444444444444",
+      id: absenceId,
       employeeId: personId,
       from,
       to,
@@ -64,9 +65,17 @@ test.beforeEach(async ({ page }) => {
   await mockPerson(page);
   const none: components["schemas"]["AbsenceList"] = { items: [] };
   await page.route("**/api/v1/absences?*", (route) => route.fulfill({ json: none }));
+  const balance: components["schemas"]["VacationBalance"] = {
+    year: 2026,
+    opening: 2,
+    entitlement: 28,
+    used: 14,
+    remaining: 16,
+  };
+  await page.route("**/api/v1/people/*/vacation-balance?*", (route) => route.fulfill({ json: balance }));
 });
 
-test("row opens a quick view with overview, documents and a link to the full profile", async ({ page }) => {
+test("row opens a drawer with overview, documents and a link to the full profile", async ({ page }) => {
   await page.goto("/people");
   await page.getByRole("row").filter({ hasText: "Dana Driver" }).getByRole("cell").nth(1).click();
   const dialog = page.getByRole("dialog", { name: "Dana Driver" });
@@ -84,13 +93,12 @@ test("row opens a quick view with overview, documents and a link to the full pro
   await expect(dialog).toHaveCount(0);
 });
 
-test("documents cell opens the quick view on the documents tab", async ({ page }) => {
+test("documents cell opens the drawer on the documents tab", async ({ page }) => {
   await page.goto("/people");
   await page.getByRole("button", { name: /2 of 2 valid/ }).click();
   const dialog = page.getByRole("dialog", { name: "Dana Driver" });
   await expect(dialog.getByRole("tab", { name: /Documents/ })).toHaveAttribute("aria-selected", "true");
-  const detail = personDetail();
-  await expect(dialog.getByRole("listitem")).toHaveCount(detail.checklist.length);
+  await expect(dialog.getByRole("listitem")).toHaveCount(personDetail().checklist.length);
 });
 
 test("role tab filters the list and shows counts", async ({ page }) => {
@@ -105,38 +113,51 @@ test("role tab filters the list and shows counts", async ({ page }) => {
   await expect(page.getByRole("row").filter({ hasText: "Dana Driver" })).toHaveCount(1);
 });
 
-test("blocked tile filters to people blocked from driving", async ({ page }) => {
+test("blocked chip filters to people blocked from driving", async ({ page }) => {
   await page.goto("/people");
   const request = page.waitForRequest(
     (req) => req.url().includes("blockedOnly=true") && req.url().includes("pageSize=50"),
   );
-  await page.getByRole("button", { name: /Blocked from driving/ }).click();
+  await page.getByRole("checkbox", { name: "Blocked only" }).check();
   await request;
-  await expect(page.getByRole("button", { name: /Blocked from driving/ })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
-  await expect(page.getByRole("checkbox", { name: "Blocked only" })).toBeChecked();
+  await expect(page.getByRole("button", { name: "Clear filters" })).toBeVisible();
 });
 
-test("office staff show not a driver and no phone", async ({ page }) => {
+test("office staff show not a driver, no phone and no truck", async ({ page }) => {
   await page.goto("/people");
   const olga = page.getByRole("row").filter({ hasText: "Olga Office" });
   await expect(olga.getByText("Not a driver", { exact: true })).toBeVisible();
   await expect(olga.getByText("Not recorded", { exact: true })).toBeVisible();
+  await expect(olga.getByText("\u2014 Not relevant", { exact: true })).toBeVisible();
   await expect(olga.getByRole("button", { name: "Send enrolment" })).toHaveCount(0);
+  await expect(olga.getByRole("link", { name: "Timesheet of Olga Office" })).toHaveCount(0);
 });
 
-test("phone can be called from the row", async ({ page }) => {
+test("phone can be called and the timesheet opened from the row", async ({ page }) => {
   await page.goto("/people");
   await expect(page.getByRole("link", { name: "Call Dana Driver" })).toHaveAttribute(
     "href",
     "tel:+40123456789",
   );
   await expect(page.getByRole("button", { name: "Copy phone number of Dana Driver" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Timesheet of Dana Driver" })).toHaveAttribute(
+    "href",
+    "/timesheets?search=Dana%20Driver",
+  );
 });
 
-test("upcoming absence shows in the row and the notice", async ({ page }) => {
+test("view switcher links People, Timesheets and Absences", async ({ page }) => {
+  await page.goto("/people");
+  const views = page.getByRole("navigation", { name: "People views" });
+  await expect(views.getByRole("link", { name: /People/ })).toHaveAttribute("aria-current", "page");
+  await expect(views.getByRole("link", { name: /Timesheets/ })).toHaveAttribute("href", "/timesheets");
+  await expect(views.getByRole("link", { name: "Absences & capacity" })).toHaveAttribute(
+    "href",
+    "/people/absences",
+  );
+});
+
+test("leave request shows in the row, the pill and the drawer, and can be approved", async ({ page }) => {
   const list: components["schemas"]["AbsenceList"] = {
     items: [absence(plusDays(2), plusDays(4), "requested")],
   };
@@ -144,19 +165,45 @@ test("upcoming absence shows in the row and the notice", async ({ page }) => {
   await page.goto("/people");
   const dana = page.getByRole("row").filter({ hasText: "Dana Driver" });
   await expect(dana.getByText("Request waiting", { exact: true })).toBeVisible();
-  await expect(page.getByRole("note")).toContainText("1 person is away");
-  await expect(page.getByRole("note")).toContainText("1 request is waiting for a decision");
-  await expect(page.getByRole("note").getByRole("link", { name: "Review requests" })).toHaveAttribute(
-    "href",
-    "/people/absences",
-  );
+  const pill = page.getByRole("link", { name: /1 leave request is waiting for a decision/ });
+  await expect(pill).toHaveAttribute("href", "/people/absences");
   await dana.getByText("Request waiting", { exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "Dana Driver" });
-  await expect(dialog.getByRole("tab", { name: /Absences/ })).toHaveAttribute("aria-selected", "true");
-  await expect(dialog.getByText("Requested", { exact: true })).toBeVisible();
+  await expect(dialog.getByRole("tab", { name: /Leave/ })).toHaveAttribute("aria-selected", "true");
+  await expect(dialog.getByText("16 days", { exact: true })).toBeVisible();
+  let body: unknown;
+  await page.route(`**/api/v1/absences/${absenceId}/decide`, async (route) => {
+    body = route.request().postDataJSON();
+    await route.fulfill({ json: absence(plusDays(2), plusDays(4), "approved") });
+  });
+  await dialog.getByRole("button", { name: "Approve request" }).click();
+  await expect.poll(() => body).toEqual({ approve: true, reason: null, confirmOverlap: false });
 });
 
-test("people directory and quick view have no accessibility violations", async ({ page }) => {
+test("capacity strip shows the next five weeks", async ({ page }) => {
+  const list: components["schemas"]["AbsenceList"] = {
+    items: [absence(plusDays(7), plusDays(9), "approved")],
+  };
+  await page.route("**/api/v1/absences?*", (route) => route.fulfill({ json: list }));
+  await page.goto("/people");
+  const strip = page.getByRole("region", { name: "Driver capacity, next 5 weeks" });
+  await expect(strip.getByRole("listitem")).toHaveCount(5);
+  await expect(strip.getByRole("listitem").first()).toContainText("(now)");
+  await expect(strip).toContainText("% away");
+});
+
+test("data FleetOps does not store yet is shown as Epic 15 placeholders", async ({ page }) => {
+  await page.goto("/people");
+  await page.getByRole("button", { name: "Quick view of Dana Driver" }).click();
+  const dialog = page.getByRole("dialog", { name: "Dana Driver" });
+  await dialog.getByRole("tab", { name: /Cards/ }).click();
+  for (const title of ["Fuel card", "Toll devices", "Per diem this week"])
+    await expect(dialog.getByText(title, { exact: true })).toBeVisible();
+  await expect(dialog.getByRole("tabpanel").getByText("Coming in Epic 15", { exact: true })).toHaveCount(3);
+  await expect(dialog.getByRole("button", { name: "Message to driver app" })).toBeDisabled();
+});
+
+test("people page and drawer have no accessibility violations", async ({ page }) => {
   await page.goto("/people");
   await expect(page.getByRole("row").filter({ hasText: "Dana Driver" })).toBeVisible();
   const tags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
@@ -164,6 +211,6 @@ test("people directory and quick view have no accessibility violations", async (
   expect(list.violations).toEqual([]);
   await page.getByRole("button", { name: "Quick view of Dana Driver" }).click();
   await expect(page.getByRole("dialog", { name: "Dana Driver" })).toBeVisible();
-  const quick = await new AxeBuilder({ page: page as never }).withTags(tags).analyze();
-  expect(quick.violations).toEqual([]);
+  const drawer = await new AxeBuilder({ page: page as never }).withTags(tags).analyze();
+  expect(drawer.violations).toEqual([]);
 });

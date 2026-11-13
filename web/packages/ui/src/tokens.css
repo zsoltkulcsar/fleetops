@@ -1,40 +1,64 @@
-@import "@fontsource/barlow/400.css";
-@import "@fontsource/barlow/500.css";
-@import "@fontsource/barlow/600.css";
-@import "@fontsource/barlow-condensed/600.css";
-@import "@fontsource/barlow-condensed/700.css";
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
+@import "@fontsource/inter/800.css";
 @import "@fontsource/ibm-plex-mono/400.css";
 
 :root {
   color-scheme: light dark;
-  --bg: #edf0f3;
+  /* Round 7 (2026-11-13): slate + indigo, Inter, rounded cards (user reference). */
+  --bg: #f8fafc;
   --surface: #ffffff;
-  --surface-2: #f5f7f9;
-  --ink: #15202b;
-  --ink-2: #4b5968;
-  --ink-3: #5a6676;
-  --line: #d3dae1;
-  --accent: #1b4e91;
+  --surface-2: #f1f5f9;
+  --ink: #0f172a;
+  --ink-2: #475569;
+  --ink-3: #556070;
+  --line: #e2e8f0;
+  --line-strong: #cbd5e1;
+  --accent: #4f46e5;
   --accent-ink: #ffffff;
-  --accent-soft: #e2ebf7;
-  --focus: #f2b705;
-  --ok: #17693c;
-  --ok-bg: #e1f2e7;
-  --warn: #8a5600;
-  --warn-bg: #fff1d1;
-  --crit: #af1f14;
-  --crit-bg: #fce6e3;
-  --idle: #56606d;
-  --idle-bg: #e9edf1;
-  --font-body: Barlow, system-ui, Arial, sans-serif;
-  --font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --accent-soft: #eef2ff;
+  --focus: #818cf8;
+  --ok: #047857;
+  --ok-bg: #ecfdf5;
+  --warn: #92400e;
+  --warn-bg: #fffbeb;
+  --crit: #be123c;
+  --crit-bg: #fff1f2;
+  --idle: #475569;
+  --idle-bg: #f1f5f9;
+  --info: #1d4ed8;
+  --info-bg: #eff6ff;
+  --accent-strong: #4338ca;
+  --accent-border: #c7d2fe;
+  --accent-tint: #e0e7ff;
+  --ok-border: #a7f3d0;
+  --warn-strong: #78350f;
+  --warn-border: #fcd34d;
+  --warn-tint: #fef3c7;
+  --crit-strong: #9f1239;
+  --crit-border: #fda4af;
+  --crit-tint: #ffe4e6;
+  --info-strong: #1e3a8a;
+  --info-border: #bfdbfe;
+  --orange-bg: #fff7ed;
+  --orange-ink: #9a3412;
+  --orange-border: #fed7aa;
+  --row-hover: rgb(238 242 255 / 55%);
+  --sidebar: #0f172a;
+  --sidebar-2: #1e293b;
+  --sidebar-ink: #cbd5e1;
+  --sidebar-muted: #94a3b8;
+  --font-body: Inter, system-ui, Arial, sans-serif;
+  --font-display: Inter, system-ui, Arial, sans-serif;
   --font-data: "IBM Plex Mono", ui-monospace, monospace;
   --type-body: 15px;
   --type-table: 14px;
   --type-caption: 13px;
   --type-eyebrow: 12px;
-  --type-h1: 32px;
-  --type-h2: 21px;
+  --type-h1: 26px;
+  --type-h2: 18px;
   --type-big: 56px;
   --type-activity: 28px;
   --space-1: 4px;
@@ -43,13 +67,14 @@
   --space-4: 16px;
   --space-5: 20px;
   --space-6: 24px;
-  --radius-control: 6px;
-  --radius-panel: 8px;
+  --radius-control: 10px;
+  --radius-panel: 16px;
   --radius-driver-card: 12px;
   --radius-primary: 14px;
   --radius-sheet: 18px;
   --toggle-knob: var(--accent-ink);
-  --elevation-overlay: 0 12px 30px rgb(21 32 43 / 15%);
+  --elevation-overlay: 0 20px 40px rgb(15 23 42 / 18%);
+  --elevation-card: 0 1px 2px rgb(15 23 42 / 5%);
 }
 
 @theme {
@@ -72,17 +97,38 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0e141b;
-    --surface: #161f29;
-    --surface-2: #1c2733;
-    --ink: #e6ecf2;
-    --ink-2: #a2b0be;
-    --ink-3: #8494a4;
-    --line: #2a3746;
-    --accent: #78a9ea;
-    --accent-ink: #0e141b;
-    --accent-soft: #1a2e47;
-    --focus: #f2c14e;
+    --bg: #0b1120;
+    --surface: #111827;
+    --surface-2: #1e293b;
+    --ink: #f1f5f9;
+    --ink-2: #cbd5e1;
+    --ink-3: #94a3b8;
+    --line: #273449;
+    --line-strong: #334155;
+    --accent: #a5b4fc;
+    --accent-ink: #0b1120;
+    --accent-soft: #1e1b4b;
+    --focus: #a5b4fc;
+    --info: #93c5fd;
+    --info-bg: #172554;
+    --accent-strong: #c7d2fe;
+    --accent-border: #3730a3;
+    --accent-tint: #312e81;
+    --ok-border: #065f46;
+    --warn-strong: #fcd34d;
+    --warn-border: #92400e;
+    --warn-tint: #451a03;
+    --crit-strong: #fecdd3;
+    --crit-border: #9f1239;
+    --crit-tint: #4c0519;
+    --info-strong: #bfdbfe;
+    --info-border: #1e3a8a;
+    --orange-bg: #2a1407;
+    --orange-ink: #fdba74;
+    --orange-border: #7c2d12;
+    --row-hover: rgb(49 46 129 / 35%);
+    --sidebar: #020617;
+    --sidebar-2: #111827;
     --ok: #62cb8c;
     --ok-bg: #12301f;
     --warn: #f2c257;
@@ -117,8 +163,9 @@ button:disabled {
   opacity: 0.6;
 }
 :focus-visible {
-  outline: 2px solid var(--ink);
-  box-shadow: 0 0 0 4px var(--focus);
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgb(99 102 241 / 25%);
 }
 h1,
 h2,
@@ -128,10 +175,20 @@ h3 {
 }
 h1 {
   font-size: var(--type-h1);
-  line-height: 1.1;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
 }
 h2 {
   font-size: var(--type-h2);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+h3 {
+  font-weight: 700;
+}
+body {
+  -webkit-font-smoothing: antialiased;
 }
 .eyebrow {
   color: var(--ink-3);
@@ -145,6 +202,7 @@ h2 {
   border: 1px solid var(--line);
   border-radius: var(--radius-panel);
   padding: var(--space-4);
+  box-shadow: var(--elevation-card);
 }
 .ui-muted {
   color: var(--ink-2);
@@ -157,10 +215,10 @@ h2 {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-height: 36px;
-  border: 1px solid var(--line);
+  min-height: 38px;
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius-control);
-  padding: 6px 12px;
+  padding: 7px 14px;
   background: var(--surface);
   color: var(--ink);
   font-weight: 600;
@@ -182,9 +240,12 @@ h2 {
   border-color: transparent;
   background: transparent;
 }
+.ui-button.primary {
+  box-shadow: 0 1px 2px rgb(79 70 229 / 25%);
+}
 .ui-button.primary:hover:not(:disabled) {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: #4338ca;
+  border-color: #4338ca;
   color: var(--accent-ink);
 }
 .ui-status {
@@ -192,7 +253,8 @@ h2 {
   align-items: center;
   gap: 6px;
   border-radius: 99px;
-  padding: 2px 7px;
+  padding: 2px 9px;
+  border: 1px solid color-mix(in srgb, var(--status-color) 22%, transparent);
   line-height: 1.4;
   color: var(--status-color);
   background: var(--status-bg);
@@ -253,8 +315,8 @@ h2 {
 }
 .plate .eu {
   padding: 3px 5px;
-  background: var(--accent);
-  color: var(--accent-ink);
+  background: #1e3a8a;
+  color: #ffffff;
   font-size: 10px;
 }
 .plate .ui-mono {

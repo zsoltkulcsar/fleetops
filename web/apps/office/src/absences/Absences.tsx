@@ -15,6 +15,7 @@ import {
   type AbsenceDetail,
 } from "./api";
 import { ShiftDrawer } from "../timesheets/ShiftDrawer";
+import { PeopleViews } from "../people/PeopleViews";
 import "./absences.css";
 
 export function Absences({ employeeId }: { employeeId?: string }) {
@@ -93,12 +94,7 @@ export function Absences({ employeeId }: { employeeId?: string }) {
       {!employeeId && (
         <>
           <h1>People</h1>
-          <div className="directory-tabs" role="group" aria-label="People views">
-            <Link to="/people">People</Link>
-            <Link to="/people/absences" aria-current="page">
-              Absences
-            </Link>
-          </div>
+          <PeopleViews current="absences" />
         </>
       )}
       <header className="page-title">

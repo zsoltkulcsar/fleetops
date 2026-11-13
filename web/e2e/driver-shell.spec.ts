@@ -62,8 +62,8 @@ test("dark theme is used", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "dark" });
   await enrolDriver(page);
   await expect(page.locator("html")).toHaveCSS("color-scheme", "dark");
-  await expect(page.locator("body")).toHaveCSS("background-color", "rgb(14, 20, 27)");
-  await expect(page.getByRole("navigation")).toHaveCSS("background-color", "rgb(22, 31, 41)");
+  await expect(page.locator("body")).toHaveCSS("background-color", "rgb(11, 17, 32)");
+  await expect(page.getByRole("navigation")).toHaveCSS("background-color", "rgb(17, 24, 39)");
 });
 
 test("font scale follows the root size", async ({ page }) => {

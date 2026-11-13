@@ -1,8 +1,20 @@
 import { useId, useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Banner, Drawer, Panel, Skeleton, StatusPill } from "@fleetops/ui";
-import { ChevronLeft, ChevronRight, Plus, TriangleAlert } from "lucide-react";
-import { useSearchParams } from "react-router";
+import {
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Download,
+  FileCheck2,
+  MousePointerClick,
+  Plus,
+  TriangleAlert,
+} from "lucide-react";
+import { Link, useSearchParams } from "react-router";
+import { ComingLater } from "../shell/ComingLater";
+import { weekNumber } from "../people/directory";
 import { useSession } from "../auth/AuthGate";
 import { AuthRequestError } from "../auth/api";
 import { useOnline } from "../shell/Shell";
@@ -79,6 +91,31 @@ export function Timesheets() {
   });
   const rows = query.data?.rows ?? [];
   const zone = query.data?.companyTimeZone;
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: zone ?? "Europe/Berlin" }).format(new Date());
+  const totalMinutes = rows.reduce((sum, row) => sum + row.workMinutes, 0);
+  const absenceDays = rows.reduce(
+    (sum, row) => sum + row.days.filter((day) => day.absences.length).length,
+    0,
+  );
+  const missingDays = rows.reduce((sum, row) => sum + row.days.filter((day) => day.missing).length, 0);
+  const awaitingRows = rows.filter((row) =>
+    row.days.some((day) => day.shifts.some((shift) => shift.status === "submitted")),
+  );
+  const canExport = session.data?.roles.some((role) => ["hr", "owner"].includes(role)) === true;
+  const cellTone = (day: Schema["WeekRow"]["days"][number]) =>
+    day.absences.length
+      ? "absence"
+      : day.missing
+        ? "missing"
+        : day.shifts.length === 0
+          ? "empty"
+          : ["approved", "exported"].includes(day.status)
+            ? "approved"
+            : ["submitted", "awaiting"].includes(day.status)
+              ? "awaiting"
+              : day.status === "rejected"
+                ? "rejected"
+                : "open";
   const refresh = () => {
     void client.invalidateQueries({ queryKey: ["timesheets"] });
   };
@@ -219,20 +256,83 @@ export function Timesheets() {
     );
   return (
     <div className="page timesheets-page">
-      <div className="page-title">
+      <div className="page-title ts-header">
         <div>
-          <span className="eyebrow">Operations / Timesheets</span>
-          <h1>Timesheets</h1>
-          <p className="ui-muted">Review hours, resolve warnings and close the week.</p>
+          <div className="ts-title-row">
+            <h1>Timesheets</h1>
+            <span className="ts-title-badge">Hours & approval</span>
+          </div>
+          <p className="ui-muted">Review the hours drivers enter, resolve warnings and close the week.</p>
         </div>
-        <button
-          className="ui-button primary"
-          disabled={!online || !zone}
-          onClick={() => setAdding({ employeeId: "", date: week })}
-        >
-          <Plus size={17} aria-hidden /> Add shift
-        </button>
+        <div className="ts-header-actions">
+          {canExport && (
+            <Link className="ui-button" to="/payroll">
+              <Download size={16} aria-hidden /> Payroll export
+            </Link>
+          )}
+          <button
+            className="ui-button primary"
+            disabled={!online || !zone}
+            onClick={() => setAdding({ employeeId: "", date: week })}
+          >
+            <Plus size={17} aria-hidden /> Add shift
+          </button>
+        </div>
       </div>
+      <section className="ts-kpis" aria-label="This week at a glance">
+        <div className="ui-panel ts-kpi">
+          <span className="ts-kpi-head">
+            <span>Hours worked</span>
+            <span className="ts-kpi-icon tone-accent" aria-hidden>
+              <Clock size={16} />
+            </span>
+          </span>
+          <strong className="tabular-nums">{query.data ? `${hours(totalMinutes)} h` : "\u2013"}</strong>
+          <small>
+            {rows.length} {rows.length === 1 ? "driver" : "drivers"}
+            {query.data && query.data.total > rows.length ? " on this page" : " this week"}
+          </small>
+        </div>
+        <ComingLater title="Driving time">
+          <p>From the tachograph; manual entry has no driving split yet.</p>
+        </ComingLater>
+        <div className="ui-panel ts-kpi">
+          <span className="ts-kpi-head">
+            <span>Absence days</span>
+            <span className="ts-kpi-icon tone-warn" aria-hidden>
+              <CalendarDays size={16} />
+            </span>
+          </span>
+          <strong className="tabular-nums">{query.data ? absenceDays : "\u2013"}</strong>
+          <small>
+            {missingDays} {missingDays === 1 ? "day" : "days"} with no hours
+          </small>
+        </div>
+        <div className="ui-panel ts-kpi">
+          <span className="ts-kpi-head">
+            <span>To approve</span>
+            <span className="ts-kpi-icon tone-crit" aria-hidden>
+              <FileCheck2 size={16} />
+            </span>
+          </span>
+          <strong className="tabular-nums">
+            {query.data
+              ? `${query.data.counts.awaiting} ${query.data.counts.awaiting === 1 ? "driver" : "drivers"}`
+              : "\u2013"}
+          </strong>
+          <button
+            type="button"
+            className="ts-kpi-link"
+            disabled={!awaitingRows.length || busy || !online}
+            onClick={() => requestApproval(awaitingRows)}
+          >
+            Approve all on this page
+          </button>
+        </div>
+        <ComingLater title="Per diem">
+          <p>Meal allowance per trip day; rates to confirm with payroll.</p>
+        </ComingLater>
+      </section>
       {!online && (
         <Banner kind="offline" label="Offline">
           Cached timesheets are read-only. Reconnect to make changes.
@@ -304,8 +404,10 @@ export function Timesheets() {
             >
               <ChevronLeft size={18} />
             </button>
-            <strong>
+            <strong className="ts-week-label">
+              <CalendarDays size={16} aria-hidden />
               {dateLabel(week)} {"\u2013"} {dateLabel(addDays(week, 6))}
+              <span className="ui-muted"> (week {weekNumber(week)})</span>
             </strong>
             <button
               className="ui-button"
@@ -367,7 +469,16 @@ export function Timesheets() {
             <label htmlFor={`${fieldId}-shortcuts`}> Keyboard shortcuts</label>
           </div>
         </div>
+        <div className="ts-legend" role="group" aria-label="Cell colours">
+          <span className="ts-legend-item day-approved">Approved shift</span>
+          <span className="ts-legend-item day-awaiting">Waiting for approval</span>
+          <span className="ts-legend-item day-open">Draft or in progress</span>
+          <span className="ts-legend-item day-missing">No hours entered</span>
+          <span className="ts-legend-item day-absence">Absence day</span>
+        </div>
         <p className="ui-muted ts-help">
+          <MousePointerClick size={14} aria-hidden /> Click a day to open the shift. Drivers enter hours on
+          the phone; the office approves or asks for a correction.{" "}
           {zone
             ? `Times shown in ${zone}${Intl.DateTimeFormat().resolvedOptions().timeZone !== zone ? " (company time)" : ""}.`
             : "Loading company time zone..."}{" "}
@@ -413,12 +524,17 @@ export function Timesheets() {
                   </th>
                   <th>Driver</th>
                   {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day, index) => (
-                    <th scope="col" className="ts-desktop" key={day}>
+                    <th
+                      scope="col"
+                      className={`ts-desktop${addDays(week, index) === today ? " ts-today" : ""}`}
+                      key={day}
+                    >
                       {day}
+                      {addDays(week, index) === today && " (today)"}
                       <small>{dateLabel(addDays(week, index)).slice(0, 6)}</small>
                     </th>
                   ))}
-                  <th>Hours</th>
+                  <th>Week total</th>
                   <th className="ts-desktop">Nights</th>
                   <th>Status</th>
                 </tr>
@@ -455,9 +571,9 @@ export function Timesheets() {
                       <small>{row.personnelNumber}</small>
                     </th>
                     {row.days.map((day) => (
-                      <td className="ts-desktop" key={day.date}>
+                      <td className={`ts-desktop${day.date === today ? " ts-today" : ""}`} key={day.date}>
                         <button
-                          className="ts-cell"
+                          className={`ts-cell day-${cellTone(day)}`}
                           aria-label={`${row.driver}, ${dateLabel(day.date)}, ${day.label}, ${hours(day.workMinutes)}`}
                           onClick={() => {
                             if (day.shifts.length === 1) setOpened(day.shifts[0].id);
@@ -493,13 +609,32 @@ export function Timesheets() {
                         </button>
                       </td>
                     ))}
-                    <td>{hours(row.workMinutes)}</td>
+                    <td className="ts-total">
+                      <strong className="tabular-nums">{hours(row.workMinutes)} h</strong>
+                      {row.days.some((day) => day.absences.length) && (
+                        <small>
+                          {row.days.filter((day) => day.absences.length).length} absence{" "}
+                          {row.days.filter((day) => day.absences.length).length === 1 ? "day" : "days"}
+                        </small>
+                      )}
+                    </td>
                     <td className="ts-desktop">
                       {row.nights.map((night) => `${night.count} (${night.countryCode})`).join(", ") || "0"}
                     </td>
-                    <td>
+                    <td className="ts-status">
                       <ShiftStatus status={row.status} />
                       {row.warnings && <StatusPill status="warning" />}
+                      {awaitingRows.includes(row) && row.employeeId !== session.data?.employeeId && (
+                        <button
+                          type="button"
+                          className="ts-approve-row"
+                          aria-label={`Approve week of ${row.driver}`}
+                          disabled={busy || !online}
+                          onClick={() => requestApproval([row])}
+                        >
+                          Approve
+                        </button>
+                      )}
                       {(row.ruleWarnings ?? []).map((warning) => (
                         <small
                           key={warning.ruleId}

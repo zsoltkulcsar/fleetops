@@ -63,3 +63,25 @@ export const languageLabels: Record<string, string> = {
   de: "German",
   en: "English",
 };
+
+export function mondayOf(isoDate: string) {
+  const day = new Date(`${isoDate}T12:00:00Z`).getUTCDay();
+  return addDays(isoDate, -((day + 6) % 7));
+}
+
+/** ISO 8601 week number. */
+export function weekNumber(isoDate: string) {
+  const date = new Date(`${isoDate}T12:00:00Z`);
+  const thursday = new Date(date);
+  thursday.setUTCDate(date.getUTCDate() + 3 - ((date.getUTCDay() + 6) % 7));
+  const firstThursday = new Date(Date.UTC(thursday.getUTCFullYear(), 0, 4));
+  return (
+    1 +
+    Math.round(
+      ((thursday.getTime() - firstThursday.getTime()) / 86400000 -
+        3 +
+        ((firstThursday.getUTCDay() + 6) % 7)) /
+        7,
+    )
+  );
+}

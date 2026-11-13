@@ -1,19 +1,25 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useNavigate } from "react-router";
+import { Link } from "react-router";
 import {
-  CalendarDays,
   CheckCircle2,
   ChevronRight,
+  Clock,
+  Download,
+  OctagonAlert,
   Search,
-  ShieldAlert,
+  SearchX,
+  SlidersHorizontal,
   TriangleAlert,
+  UserPlus,
   X,
 } from "lucide-react";
 import { Banner, Drawer, EmptyState, Plate, StatusPill } from "@fleetops/ui";
 import { useSession } from "../auth/AuthGate";
 import { useOnline } from "../shell/Shell";
+import { ComingLater } from "../shell/ComingLater";
 import { absenceLabels, absencesApi } from "../absences/api";
+import { timesheetsApi } from "../timesheets/api";
 import { peopleApi, type PeopleQuery, type PersonRow } from "./api";
 import { roleLabels, stateLabels, statusLabels } from "./labels";
 import { CanDrive, PersonStatus } from "./PersonStatus";
@@ -21,6 +27,8 @@ import { PersonForm } from "./PersonForm";
 import { SendEnrolment } from "./SendEnrolment";
 import { ContactActions } from "./ContactActions";
 import { PersonQuickView, type QuickViewTab } from "./PersonQuickView";
+import { PeopleViews } from "./PeopleViews";
+import { CapacityStrip } from "./Capacity";
 import {
   absenceRange,
   absenceWindowDays,
@@ -28,6 +36,7 @@ import {
   berlinToday,
   documentPill,
   initials,
+  mondayOf,
   openAbsences,
   type AbsenceItem,
 } from "./directory";
@@ -42,71 +51,58 @@ const roleTabs = [
   { value: "owner", label: "Owners" },
 ] as const;
 
-function Tile({
-  icon,
-  label,
-  value,
-  detail,
-  tone,
-  pressed,
-  onClick,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: string;
-  detail: string;
-  tone: "ok" | "crit" | "warn" | "idle";
-  pressed?: boolean;
-  onClick: () => void;
-}) {
+const capacityWeeks = 5;
+
+function DocumentSummary({ person }: { person: PersonRow }) {
+  if (!person.requiredDocuments) return <span className="ui-muted">None required</span>;
+  const state = person.worstState;
+  const Icon =
+    state === "verified" ? CheckCircle2 : documentPill(state) === "blocked" ? OctagonAlert : TriangleAlert;
   return (
-    <button
-      type="button"
-      className={`ui-panel people-tile tone-${tone}`}
-      aria-pressed={pressed}
-      onClick={onClick}
-    >
-      <span className="people-tile-head">
-        <span className="eyebrow">{label}</span>
-        <span className="people-tile-icon" aria-hidden>
-          {icon}
-        </span>
+    <span className={`people-doc-summary tone-${documentPill(state)}`}>
+      <Icon size={14} aria-hidden />
+      <span className="tabular-nums">
+        {person.validDocuments} of {person.requiredDocuments} valid
       </span>
-      <strong className="tabular-nums">{value}</strong>
-      <span className="ui-muted">{detail}</span>
-    </button>
+      {state && state !== "verified" && (
+        <StatusPill status={documentPill(state)} label={stateLabels[state] ?? "Unknown state"} />
+      )}
+    </span>
   );
 }
 
 export function People() {
   const session = useSession();
-  const navigate = useNavigate();
-  const canAccess = session.data?.roles.some((role) => ["hr", "dispatcher", "owner"].includes(role)) === true;
+  const roles = session.data?.roles ?? [];
+  const canAccess = roles.some((role) => ["hr", "dispatcher", "owner"].includes(role));
+  const canManage = roles.some((role) => ["hr", "owner"].includes(role));
   const online = useOnline();
-  const canManage = session.data?.roles.some((role) => ["hr", "owner"].includes(role)) === true;
   const [filters, setFilters] = useState<PeopleQuery>({ page: 1, pageSize: 50 });
   const [adding, setAdding] = useState(false);
   const [importing, setImporting] = useState(false);
   const [saved, setSaved] = useState("");
   const [quick, setQuick] = useState<{ person: PersonRow; tab: QuickViewTab } | null>(null);
   const today = berlinToday();
-  const windowEnd = addDays(today, absenceWindowDays - 1);
-  const people = useQuery({ queryKey: ["people", filters], queryFn: () => peopleApi.list(filters) });
+  const thisMonday = mondayOf(today);
+  const windowEnd = addDays(thisMonday, capacityWeeks * 7 - 1);
+  const people = useQuery({
+    queryKey: ["people", filters],
+    queryFn: () => peopleApi.list(filters),
+    placeholderData: (previous) => previous,
+  });
   const everyone = useQuery({
     queryKey: ["people", { page: 1, pageSize: 100 }],
     queryFn: () => peopleApi.list({ page: 1, pageSize: 100 }),
   });
-  const blocked = useQuery({
-    queryKey: ["people", { page: 1, pageSize: 1, blockedOnly: true }],
-    queryFn: () => peopleApi.list({ page: 1, pageSize: 1, blockedOnly: true }),
-  });
-  const expiring = useQuery({
-    queryKey: ["people", { page: 1, pageSize: 1, expiringWithin30: true }],
-    queryFn: () => peopleApi.list({ page: 1, pageSize: 1, expiringWithin30: true }),
-  });
   const absences = useQuery({
-    queryKey: ["absences", today, windowEnd],
-    queryFn: () => absencesApi.list(today, windowEnd),
+    queryKey: ["absences", thisMonday, windowEnd],
+    queryFn: () => absencesApi.list(thisMonday, windowEnd),
+    retry: false,
+  });
+  const week = useQuery({
+    queryKey: ["timesheets", thisMonday, "all", "", 1],
+    queryFn: () => timesheetsApi.week(thisMonday, "all", "", 1),
+    enabled: canAccess,
     retry: false,
   });
   useEffect(() => {
@@ -119,22 +115,18 @@ export function People() {
   const reset = () => setFilters({ page: 1, pageSize: 50 });
 
   const upcoming = useMemo(() => openAbsences(absences.data?.items, today), [absences.data, today]);
+  const soonEnd = addDays(today, absenceWindowDays - 1);
   const byPerson = useMemo(() => {
     const map = new Map<string, AbsenceItem[]>();
     for (const item of upcoming) {
+      if (item.absence.from > soonEnd) continue;
       const list = map.get(item.absence.employeeId) ?? [];
       list.push(item);
       map.set(item.absence.employeeId, list);
     }
     return map;
-  }, [upcoming]);
-  const absentToday = new Set(
-    upcoming
-      .filter((item) => item.absence.status === "approved" && item.absence.from <= today)
-      .map((item) => item.absence.employeeId),
-  ).size;
-  const absentPeople = new Set(upcoming.map((item) => item.absence.employeeId)).size;
-  const awaiting = upcoming.filter((item) => item.absence.status === "requested").length;
+  }, [upcoming, soonEnd]);
+  const requests = upcoming.filter((item) => item.absence.status === "requested");
 
   // Role and status counts are exact only while the whole company fits in one page.
   const all = everyone.data && everyone.data.total <= everyone.data.items.length ? everyone.data.items : null;
@@ -142,11 +134,19 @@ export function People() {
     all ? all.filter((person) => !role || person.roles.includes(role)).length : null;
   const statusCount = (status: string) =>
     all ? all.filter((person) => person.status === status).length : null;
-  const drivers = all?.filter((person) => person.roles.includes("driver") && person.status !== "left");
-  const canDriveCount = drivers?.filter((person) => person.canDrive).length;
+  const driverIds = useMemo(
+    () =>
+      new Set(
+        (all ?? [])
+          .filter((person) => person.roles.includes("driver") && person.status === "active")
+          .map((person) => person.id),
+      ),
+    [all],
+  );
 
   const addButton = canManage && (
     <button type="button" className="ui-button primary" disabled={!online} onClick={() => setAdding(true)}>
+      <UserPlus size={16} aria-hidden />
       Add person
     </button>
   );
@@ -156,75 +156,52 @@ export function People() {
   ];
   return (
     <div className="page directory-page people-page">
-      <header className="page-title">
+      <header className="page-title people-header">
         <div>
-          <h1 tabIndex={-1}>People</h1>
-          <p className="ui-muted people-subtitle">Drivers, office staff and their documents in one place.</p>
+          <div className="people-title-row">
+            <h1 tabIndex={-1}>People</h1>
+            <span className="people-title-badge">Fleet HR & hours</span>
+          </div>
+          <p className="ui-muted people-subtitle">
+            Who can drive, document expiry, absences and weekly hours in one place.
+          </p>
         </div>
-        {addButton}
+        <div className="people-actions">
+          {canManage && (
+            <Link className="ui-button" to="/payroll">
+              <Download size={16} aria-hidden />
+              Payroll export
+            </Link>
+          )}
+          {addButton}
+        </div>
       </header>
-      <div className="directory-tabs" role="group" aria-label="People views">
-        <Link to="/people" aria-current="page">
-          People
-        </Link>
-        <Link to="/people/absences">Absences</Link>
+      <div className="people-switch-row">
+        <PeopleViews current="people" people={roleCount()} awaitingShifts={week.data?.counts.awaiting} />
+        {requests.length > 0 && (
+          <Link className="people-leave-pill" to="/people/absences">
+            <span className="people-leave-dot" aria-hidden />
+            <span>
+              <strong>
+                {requests.length} leave {requests.length === 1 ? "request" : "requests"}
+              </strong>{" "}
+              {requests.length === 1 ? "is" : "are"} waiting for a decision
+            </span>
+            <ChevronRight size={14} aria-hidden />
+          </Link>
+        )}
       </div>
+      {absences.data && all && driverIds.size > 0 && (
+        <CapacityStrip
+          absences={absences.data.items}
+          driverIds={driverIds}
+          firstMonday={thisMonday}
+          weeks={capacityWeeks}
+        />
+      )}
       {!online && <Banner label="Offline">Cached people are read-only until the connection returns.</Banner>}
       {saved && <Banner label="Saved">{saved}</Banner>}
-      {absences.data && absentPeople > 0 && (
-        <div className={`people-notice ${awaiting ? "warn" : ""}`} role="note">
-          {awaiting ? <TriangleAlert size={16} aria-hidden /> : <CalendarDays size={16} aria-hidden />}
-          <span>
-            <strong>Next {absenceWindowDays} days:</strong> {absentPeople}{" "}
-            {absentPeople === 1 ? "person is" : "people are"} away
-            {awaiting > 0 && (
-              <>
-                , {awaiting} {awaiting === 1 ? "request is" : "requests are"} waiting for a decision
-              </>
-            )}
-            .
-          </span>
-          <Link to="/people/absences">{awaiting ? "Review requests" : "Open absences"}</Link>
-        </div>
-      )}
-      <div className="people-tiles" role="group" aria-label="People at a glance">
-        <Tile
-          icon={<CheckCircle2 size={16} />}
-          tone="ok"
-          label="Drivers able to drive"
-          value={canDriveCount == null ? "\u2013" : `${canDriveCount}`}
-          detail={drivers ? `of ${drivers.length} drivers` : "Driver count unavailable"}
-          pressed={filters.role === "driver" && !filters.blockedOnly && !filters.status}
-          onClick={() => setFilters({ page: 1, pageSize: 50, role: "driver" })}
-        />
-        <Tile
-          icon={<ShieldAlert size={16} />}
-          tone="crit"
-          label="Blocked from driving"
-          value={blocked.data ? `${blocked.data.total}` : "\u2013"}
-          detail="Document, status or medical reason"
-          pressed={filters.blockedOnly === true}
-          onClick={() => setFilters({ page: 1, pageSize: 50, blockedOnly: true })}
-        />
-        <Tile
-          icon={<TriangleAlert size={16} />}
-          tone="warn"
-          label="Documents expiring"
-          value={expiring.data ? `${expiring.data.total}` : "\u2013"}
-          detail="Within 30 days"
-          pressed={filters.expiringWithin30 === true}
-          onClick={() => setFilters({ page: 1, pageSize: 50, expiringWithin30: true })}
-        />
-        <Tile
-          icon={<CalendarDays size={16} />}
-          tone="idle"
-          label="Absent today"
-          value={absences.data ? `${absentToday}` : "\u2013"}
-          detail={absences.data ? `${awaiting} awaiting a decision` : "Absences unavailable"}
-          onClick={() => navigate("/people/absences")}
-        />
-      </div>
-      <section className="ui-panel directory-panel" aria-label="People">
+      <section className="ui-panel people-filter-card" aria-label="Filters">
         <div className="people-toolbar">
           <div className="people-roles" role="group" aria-label="Filter by role">
             {roleTabs.map((tab) => {
@@ -254,10 +231,22 @@ export function People() {
               value={filters.search ?? ""}
               onChange={(event) => change({ search: event.target.value })}
             />
+            {filters.search && (
+              <button
+                type="button"
+                className="people-search-clear"
+                aria-label="Clear search"
+                onClick={() => change({ search: undefined })}
+              >
+                <X size={14} aria-hidden />
+              </button>
+            )}
           </div>
         </div>
         <div className="people-chips">
-          <span className="eyebrow">Status</span>
+          <span className="eyebrow people-chips-label">
+            <SlidersHorizontal size={13} aria-hidden /> Status
+          </span>
           <div className="people-chip-group" role="group" aria-label="Filter by status">
             {statusChips.map((chip) => {
               const count = chip.value ? statusCount(chip.value) : null;
@@ -292,12 +281,17 @@ export function People() {
             />
             {"Expiring \u226430 days"}
           </label>
+          <span className="people-chip-divider" aria-hidden />
+          <ComingLater compact title="On road" />
+          <ComingLater compact title="Resting" />
           {filtered && (
             <button className="ui-button ghost people-clear" type="button" onClick={reset}>
               <X size={14} aria-hidden /> Clear filters
             </button>
           )}
         </div>
+      </section>
+      <section className="ui-panel directory-panel" aria-label="People">
         {people.isError && (
           <Banner
             kind="error"
@@ -314,16 +308,16 @@ export function People() {
           </p>
         ) : people.data?.items.length ? (
           <div className="table-wrap">
-            <table className="people-table">
+            <table className="people-table" aria-busy={people.isFetching || undefined}>
               <caption className="visually-hidden">People</caption>
               <thead>
                 <tr>
-                  <th>Person</th>
+                  <th>Person & role</th>
                   <th>Status</th>
                   <th>Can drive</th>
-                  <th>Documents</th>
                   <th>Default vehicle</th>
                   <th>Contact</th>
+                  <th>Documents</th>
                   <th>Next absence</th>
                   <th>
                     <span className="visually-hidden">Actions</span>
@@ -357,7 +351,14 @@ export function People() {
                             {initials(person.name)}
                           </span>
                           <div>
-                            <Link to={`/people/${person.id}`}>{person.name}</Link>
+                            <div className="people-name">
+                              <Link to={`/people/${person.id}`}>{person.name}</Link>
+                              {requested && (
+                                <span className="people-name-dot" title="Leave request waiting">
+                                  <span className="visually-hidden">Leave request waiting</span>
+                                </span>
+                              )}
+                            </div>
                             <div className="people-role-badges">
                               {person.roles.map((role) => (
                                 <span key={role} className={`people-role-badge role-${role}`}>
@@ -379,27 +380,14 @@ export function People() {
                         )}
                       </td>
                       <td>
-                        <button
-                          type="button"
-                          className="people-cell-button stacked"
-                          onClick={() => open("documents")}
-                        >
-                          <span className="tabular-nums">
-                            {person.validDocuments} of {person.requiredDocuments} valid
-                          </span>
-                          {person.worstState && (
-                            <StatusPill
-                              status={documentPill(person.worstState)}
-                              label={stateLabels[person.worstState] ?? "Unknown state"}
-                            />
-                          )}
-                        </button>
-                      </td>
-                      <td>
                         {person.defaultVehiclePlate ? (
                           <Plate>{person.defaultVehiclePlate}</Plate>
+                        ) : isDriver ? (
+                          <Link className="people-assign" to="/plan">
+                            Assign in Plan
+                          </Link>
                         ) : (
-                          <span className="ui-muted">{isDriver ? "Not assigned" : "\u2014"}</span>
+                          <span className="ui-muted">{"\u2014 Not relevant"}</span>
                         )}
                       </td>
                       <td>
@@ -413,13 +401,22 @@ export function People() {
                         )}
                       </td>
                       <td>
+                        <button
+                          type="button"
+                          className="people-cell-button"
+                          onClick={() => open("documents")}
+                        >
+                          <DocumentSummary person={person} />
+                        </button>
+                      </td>
+                      <td>
                         {absences.isError ? (
                           <span className="ui-muted">{"\u2014"}</span>
                         ) : next ? (
                           <button
                             type="button"
                             className="people-cell-button stacked"
-                            onClick={() => open("absences")}
+                            onClick={() => open("leave")}
                           >
                             <span>{absenceRange(next.absence.from, next.absence.to)}</span>
                             <span className="people-absence-type">
@@ -435,6 +432,16 @@ export function People() {
                         <div className="people-row-actions">
                           {canAccess && online && isDriver && person.status !== "left" && (
                             <SendEnrolment id={person.id} name={person.name} />
+                          )}
+                          {isDriver && (
+                            <Link
+                              className="people-icon-button"
+                              to={`/timesheets?search=${encodeURIComponent(person.name)}`}
+                              aria-label={`Timesheet of ${person.name}`}
+                              title="Timesheet"
+                            >
+                              <Clock size={16} aria-hidden />
+                            </Link>
                           )}
                           <button
                             type="button"
@@ -454,38 +461,40 @@ export function People() {
             </table>
           </div>
         ) : (
-          !people.isError && (
-            <EmptyState heading={filtered ? "No matching people" : "No people yet."}>
-              {filtered ? (
-                <>
-                  <p>Try another name or clear the filters.</p>
-                  <button className="ui-button" type="button" onClick={reset}>
-                    Clear filters
+          !people.isError &&
+          (filtered ? (
+            <div className="people-empty">
+              <span className="people-empty-icon" aria-hidden>
+                <SearchX size={22} />
+              </span>
+              <h2>No matching people</h2>
+              <p className="ui-muted">Try another name or clear the filters.</p>
+              <button className="ui-button" type="button" onClick={reset}>
+                Clear filters
+              </button>
+            </div>
+          ) : (
+            <EmptyState heading="No people yet.">
+              <p>Driver: uses the phone app.</p>
+              <p>Dispatcher: plans trucks and approves shifts.</p>
+              <p>HR: people, documents and payroll.</p>
+              <p>Owner: everything and settings.</p>
+              <div className="people-actions">
+                {addButton}
+                {canManage && (
+                  <button className="ui-button" type="button" onClick={() => setImporting(true)}>
+                    Import from Excel
                   </button>
-                </>
-              ) : (
-                <>
-                  <p>Driver: uses the phone app.</p>
-                  <p>Dispatcher: plans trucks and approves shifts.</p>
-                  <p>HR: people, documents and payroll.</p>
-                  <p>Owner: everything and settings.</p>
-                  <div className="people-actions">
-                    {addButton}
-                    {canManage && (
-                      <button className="ui-button" type="button" onClick={() => setImporting(true)}>
-                        Import from Excel
-                      </button>
-                    )}
-                  </div>
-                </>
-              )}
+                )}
+              </div>
             </EmptyState>
-          )
+          ))
         )}
         {people.data && (
           <footer className="directory-footer">
             <span>
-              Showing {people.data.items.length} of {people.data.total} people
+              Showing {people.data.items.length} of {people.data.total} people {"\u00b7"} Click a row for
+              details
             </span>
             <div className="people-actions">
               <button
@@ -515,7 +524,7 @@ export function People() {
           tab={quick.tab}
           onTab={(tab) => setQuick({ ...quick, tab })}
           onClose={() => setQuick(null)}
-          absences={byPerson.get(quick.person.id) ?? []}
+          absences={upcoming.filter((item) => item.absence.employeeId === quick.person.id)}
           absencesFailed={absences.isError}
           today={today}
           canManage={canManage}
