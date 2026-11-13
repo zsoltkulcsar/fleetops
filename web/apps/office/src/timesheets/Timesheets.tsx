@@ -1,4 +1,4 @@
-import { useId, useEffect, useRef, useState } from "react";
+import { useId, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Banner, Drawer, Panel, Skeleton, StatusPill } from "@fleetops/ui";
 import {
@@ -14,7 +14,10 @@ import {
 } from "lucide-react";
 import { Link, useSearchParams } from "react-router";
 import { ComingLater } from "../shell/ComingLater";
-import { weekNumber } from "../people/directory";
+import { initials, weekNumber } from "../people/directory";
+import { CapacityStrip } from "../people/Capacity";
+import { peopleApi } from "../people/api";
+import { absencesApi } from "../absences/api";
 import { useSession } from "../auth/AuthGate";
 import { AuthRequestError } from "../auth/api";
 import { useOnline } from "../shell/Shell";
@@ -23,6 +26,8 @@ import { addDays, dateLabel, hours, monday, ShiftStatus } from "./presentation";
 import { ShiftDrawer } from "./ShiftDrawer";
 import { ShiftEditor } from "./ShiftEditor";
 import "./timesheets.css";
+
+const capacityWeeks = 5;
 
 export function Timesheets() {
   const fieldId = useId();
@@ -89,6 +94,24 @@ export function Timesheets() {
     queryFn: () => timesheetsApi.week(week, filter, search, page),
     enabled: allowed,
   });
+  // Capacity heatmap: always the next five weeks from today, whichever week is being reviewed.
+  const capacityFrom = monday("Europe/Berlin");
+  const capacityAbsences = useQuery({
+    queryKey: ["absences", capacityFrom, addDays(capacityFrom, capacityWeeks * 7 - 1)],
+    queryFn: () => absencesApi.list(capacityFrom, addDays(capacityFrom, capacityWeeks * 7 - 1)),
+    enabled: allowed,
+    retry: false,
+  });
+  const capacityDrivers = useQuery({
+    queryKey: ["people", { page: 1, pageSize: 100, role: "driver", status: "active" }],
+    queryFn: () => peopleApi.list({ page: 1, pageSize: 100, role: "driver", status: "active" }),
+    enabled: allowed,
+    retry: false,
+  });
+  const driverIds = useMemo(
+    () => new Set((capacityDrivers.data?.items ?? []).map((person) => person.id)),
+    [capacityDrivers.data],
+  );
   const rows = query.data?.rows ?? [];
   const zone = query.data?.companyTimeZone;
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: zone ?? "Europe/Berlin" }).format(new Date());
@@ -390,6 +413,14 @@ export function Timesheets() {
           </button>
         </Banner>
       )}
+      {capacityAbsences.data && driverIds.size > 0 && (
+        <CapacityStrip
+          absences={capacityAbsences.data.items}
+          driverIds={driverIds}
+          firstMonday={capacityFrom}
+          weeks={capacityWeeks}
+        />
+      )}
       <Panel
         title="Week review"
         filters={
@@ -560,14 +591,21 @@ export function Timesheets() {
                       />
                     </td>
                     <th>
-                      <button
-                        className="ts-driver"
-                        onFocus={() => setFocus(index)}
-                        onClick={() => openRow(row)}
-                      >
-                        {row.driver}
-                      </button>
-                      <small>{row.personnelNumber}</small>
+                      <div className="ts-driver-cell">
+                        <span className="ts-avatar" aria-hidden>
+                          {initials(row.driver)}
+                        </span>
+                        <div>
+                          <button
+                            className="ts-driver"
+                            onFocus={() => setFocus(index)}
+                            onClick={() => openRow(row)}
+                          >
+                            {row.driver}
+                          </button>
+                          <small>{row.personnelNumber}</small>
+                        </div>
+                      </div>
                     </th>
                     {row.days.map((day) => (
                       <td className={`ts-desktop${day.date === today ? " ts-today" : ""}`} key={day.date}>

@@ -1,5 +1,6 @@
-import { Activity } from "lucide-react";
-import { addDays, weekNumber, type AbsenceItem } from "./directory";
+import { Activity, TriangleAlert } from "lucide-react";
+import { absenceRange, addDays, weekNumber, type AbsenceItem } from "./directory";
+import "./capacity.css";
 
 /** Share of driver working days (Mon-Fri) lost to approved absences, per week. */
 export function weekCapacity(
@@ -49,11 +50,17 @@ export function CapacityStrip({
           const tone = away >= capacityCriticalAt ? "crit" : away >= capacityWarnAt ? "warn" : "ok";
           return (
             <li key={monday} className={`capacity-week tone-${tone}`}>
-              <span>
-                Week {weekNumber(monday)}
-                {index === 0 ? " (now)" : ""}
+              <span className="capacity-week-label">
+                <span>
+                  Week {weekNumber(monday)}
+                  {index === 0 ? " (now)" : ""}
+                </span>
+                <small>{absenceRange(monday, addDays(monday, 6))}</small>
               </span>
-              <strong>{away > 0 ? `${away}% away` : `${100 - away}% available`}</strong>
+              <strong>
+                {tone !== "ok" && <TriangleAlert size={13} aria-hidden />}
+                {tone === "ok" ? `${100 - away}% available` : `${away}% away`}
+              </strong>
               {pending > 0 && <small>+{pending}% requested</small>}
             </li>
           );

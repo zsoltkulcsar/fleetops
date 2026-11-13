@@ -24,6 +24,64 @@ test("week grid shows shifts, absences, missing days and warnings with icon and 
   await expect(grid).toContainText("1 (DE)");
 });
 
+test("capacity heatmap above the grid shows the next five weeks from today", async ({ page }) => {
+  await timesheetRoutes(page);
+  const driver: Schema["PersonRow"] = {
+    id: detail().employeeId,
+    name: "Dana Driver",
+    roles: ["driver"],
+    status: "active",
+    canDrive: true,
+    reasonCategory: null,
+    validDocuments: 2,
+    requiredDocuments: 2,
+    worstState: "verified",
+    defaultVehiclePlate: null,
+    phone: null,
+  };
+  const drivers: Schema["PeoplePage"] = { items: [driver], page: 1, pageSize: 100, total: 1 };
+  await page.route("**/api/v1/people?*", (route) => route.fulfill({ json: drivers }));
+  // Fixed clock: Tuesday 2026-11-10, so week 46 is now. Dana is away Mon-Wed of week 47.
+  const absences: Schema["AbsenceList"] = {
+    items: [
+      {
+        absence: {
+          id: "00000000-0000-0000-0000-000000000081",
+          employeeId: driver.id,
+          from: "2026-11-16",
+          to: "2026-11-18",
+          halfDay: null,
+          type: "vacation",
+          status: "approved",
+          note: null,
+          declineReason: null,
+          cancelReason: null,
+        },
+        employeeName: driver.name,
+        workingDays: 3,
+        balancesBefore: [],
+        balancesAfter: [],
+        othersAbsentCount: 0,
+        othersAbsentNames: [],
+        dayCounting: "Mon\u2013Fri",
+      },
+    ],
+  };
+  await page.route("**/api/v1/absences?*", (route) => route.fulfill({ json: absences }));
+  await page.goto("/timesheets?week=2026-10-05");
+  const strip = page.getByRole("region", { name: "Driver capacity, next 5 weeks" });
+  const weeks = strip.getByRole("listitem");
+  await expect(weeks).toHaveCount(5);
+  await expect(weeks.nth(0)).toContainText("Week 46 (now)");
+  await expect(weeks.nth(0)).toContainText("100% available");
+  await expect(weeks.nth(1)).toContainText("Week 47");
+  await expect(weeks.nth(1)).toContainText("60% away");
+  await expect(weeks.nth(4)).toContainText("Week 50");
+  const stripBox = await strip.boundingBox();
+  const gridBox = await page.getByRole("table", { name: "Driver week grid" }).boundingBox();
+  expect(stripBox!.y + stripBox!.height).toBeLessThanOrEqual(gridBox!.y);
+});
+
 test("filter chips and search ask the server for the page", async ({ page }) => {
   await timesheetRoutes(page);
   await page.goto("/timesheets");
@@ -197,7 +255,7 @@ test("reject needs a reason", async ({ page }) => {
     });
   });
   await openShift(page);
-  await page.getByRole("button", { name: "Reject…", exact: true }).click();
+  await page.getByRole("button", { name: "Reject\u2026", exact: true }).click();
   await page.getByRole("button", { name: "Reject and notify driver" }).click();
   expect(
     await page
@@ -367,7 +425,7 @@ test("office ends a running shift", async ({ page }) => {
     });
   });
   await openShift(page);
-  await page.getByRole("button", { name: "End shift…", exact: true }).click();
+  await page.getByRole("button", { name: "End shift\u2026", exact: true }).click();
   await page.getByLabel("End \u00B7 Europe/Berlin", { exact: true }).fill("2026-11-09T17:00");
   await page.getByLabel("Reason", { exact: true }).fill("Driver phone unavailable");
   await page.getByRole("button", { name: "End shift and notify driver" }).click();
@@ -388,7 +446,7 @@ test("payroll cutoff banner shows near the cutoff", async ({ page }) => {
   await timesheetRoutes(page, grid);
   await page.goto("/timesheets");
   await expect(
-    page.getByText("Payroll cutoff 12.11.2026 — 3 shifts still awaiting approval.", { exact: true }),
+    page.getByText("Payroll cutoff 12.11.2026 \u2014 3 shifts still awaiting approval.", { exact: true }),
   ).toBeVisible();
 });
 

@@ -1,7 +1,17 @@
 import { useEffect, useState } from "react";
-import { Check, Copy, Phone } from "lucide-react";
+import { Check, Copy, MessageCircle, Phone, Send } from "lucide-react";
 
-export function ContactActions({ name, phone }: { name: string; phone: string }) {
+/** Copy, call and WhatsApp for a phone number, plus the in-app quick message when the caller offers one. */
+export function ContactActions({
+  name,
+  phone,
+  onMessage,
+}: {
+  name: string;
+  phone: string;
+  onMessage?: () => void;
+}) {
+  const digits = phone.replace(/[^+\d]/g, "");
   const [copied, setCopied] = useState(false);
   useEffect(() => {
     if (!copied) return;
@@ -24,17 +34,40 @@ export function ContactActions({ name, phone }: { name: string; phone: string })
       >
         {copied ? <Check size={15} aria-hidden /> : <Copy size={15} aria-hidden />}
       </button>
-      <a
-        className="people-icon-button call"
-        href={`tel:${phone.replace(/[^+\d]/g, "")}`}
-        aria-label={`Call ${name}`}
-        title="Call"
-      >
-        <Phone size={15} aria-hidden />
+      <a className="people-contact-pill call" href={`tel:${digits}`} aria-label={`Call ${name}`} title="Call">
+        <Phone size={14} aria-hidden />
+        Call
       </a>
+      <a
+        className="people-contact-pill whatsapp"
+        href={`https://wa.me/${digits.replace("+", "")}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`WhatsApp ${name} (opens WhatsApp)`}
+        title="WhatsApp"
+      >
+        <MessageCircle size={14} aria-hidden />
+        WhatsApp
+      </a>
+      {onMessage && <MessageButton name={name} onMessage={onMessage} />}
       <span className="visually-hidden" aria-live="polite">
         {copied ? "Copied" : ""}
       </span>
     </span>
+  );
+}
+
+export function MessageButton({ name, onMessage }: { name: string; onMessage: () => void }) {
+  return (
+    <button
+      type="button"
+      className="people-contact-pill message"
+      aria-label={`Message ${name} in the app`}
+      title="Quick message in the app"
+      onClick={onMessage}
+    >
+      <Send size={14} aria-hidden />
+      Message
+    </button>
   );
 }

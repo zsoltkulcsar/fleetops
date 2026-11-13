@@ -450,3 +450,61 @@
     margin: 0 8px 8px;
   }
 }
+.timesheets-page .capacity-strip {
+  margin-bottom: 16px;
+}
+.ts-driver-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ts-avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: #4f46e5;
+  color: #ffffff;
+  font: 600 12px var(--font-body);
+  letter-spacing: 0.02em;
+}
+.ts-grid tbody tr:nth-child(4n + 2) .ts-avatar {
+  background: #047857;
+}
+.ts-grid tbody tr:nth-child(4n + 3) .ts-avatar {
+  background: #0369a1;
+}
+.ts-grid tbody tr:nth-child(4n + 4) .ts-avatar {
+  background: #6d28d9;
+}
+.ts-cell > span:first-child::before {
+  content: "";
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ink-3);
+}
+.ts-cell.day-approved > span:first-child::before {
+  background: var(--ok);
+}
+.ts-cell.day-awaiting > span:first-child::before {
+  background: var(--warn);
+}
+.ts-cell.day-open > span:first-child::before {
+  background: var(--accent);
+}
+.ts-cell.day-missing > span:first-child::before,
+.ts-cell.day-rejected > span:first-child::before {
+  background: var(--crit);
+}
+.ts-cell.day-absence > span:first-child::before {
+  background: var(--orange-border);
+}
+@media (max-width: 767px) {
+  .ts-avatar {
+    display: none;
+  }
+}

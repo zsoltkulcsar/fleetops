@@ -117,6 +117,7 @@ export function PersonQuickView({
   absencesFailed,
   today,
   canManage,
+  onMessage,
 }: {
   person: PersonRow;
   tab: QuickViewTab;
@@ -126,6 +127,8 @@ export function PersonQuickView({
   absencesFailed: boolean;
   today: string;
   canManage: boolean;
+  /** Opens the quick message composer; the caller closes this drawer first. */
+  onMessage: () => void;
 }) {
   const detail = useQuery({ queryKey: ["person", person.id], queryFn: () => peopleApi.detail(person.id) });
   const isDriver = person.roles.includes("driver");
@@ -377,7 +380,7 @@ export function PersonQuickView({
                     {balance.isLoading
                       ? "Loading vacation balance\u2026"
                       : balance.data
-                        ? "No vacation entitlement recorded. Set it with Edit fields on the full profile."
+                        ? "No vacation entitlement recorded. Set it with Edit fields on the profile page (click the name in the list)."
                         : "Vacation balance unavailable."}
                   </p>
                 )}
@@ -477,12 +480,9 @@ export function PersonQuickView({
             Close
           </button>
           <span className="people-quick-footer-actions">
-            <button type="button" className="ui-button" disabled title="Coming in Epic 15">
-              <Send size={15} aria-hidden /> Message to driver app
+            <button type="button" className="ui-button primary" onClick={onMessage}>
+              <Send size={15} aria-hidden /> Message
             </button>
-            <Link className="ui-button primary" to={`/people/${person.id}`}>
-              Open full profile
-            </Link>
           </span>
         </footer>
       </div>

@@ -20,12 +20,14 @@ import { useOnline } from "../shell/Shell";
 import { ComingLater } from "../shell/ComingLater";
 import { absenceLabels, absencesApi } from "../absences/api";
 import { timesheetsApi } from "../timesheets/api";
-import { peopleApi, type PeopleQuery, type PersonRow } from "./api";
+import { PeopleError, peopleApi, type PeopleQuery, type PersonRow } from "./api";
 import { roleLabels, stateLabels, statusLabels } from "./labels";
-import { CanDrive, PersonStatus } from "./PersonStatus";
+import { CanDrive } from "./PersonStatus";
 import { PersonForm } from "./PersonForm";
 import { SendEnrolment } from "./SendEnrolment";
-import { ContactActions } from "./ContactActions";
+import { ContactActions, MessageButton } from "./ContactActions";
+import { MessageComposer } from "./MessageComposer";
+import { currentAbsence, DemoTag, LiveStatus, liveState } from "./live";
 import { PersonQuickView, type QuickViewTab } from "./PersonQuickView";
 import { PeopleViews } from "./PeopleViews";
 import { CapacityStrip } from "./Capacity";
@@ -38,6 +40,7 @@ import {
   initials,
   mondayOf,
   openAbsences,
+  shortDate,
   type AbsenceItem,
 } from "./directory";
 import "../fleet/fleet.css";
@@ -52,6 +55,25 @@ const roleTabs = [
 ] as const;
 
 const capacityWeeks = 5;
+/** Vacation balances are read one person at a time (a list field is Story 15.2); keep the burst small. */
+const balanceWorkers = 4;
+type VacationBalance = Awaited<ReturnType<typeof absencesApi.balance>>;
+
+function LeaveBalance({ balance }: { balance: VacationBalance | null | undefined }) {
+  const total = balance ? balance.entitlement + balance.opening : 0;
+  if (!balance || total <= 0) return null;
+  const share = Math.max(0, Math.min(100, Math.round((balance.remaining / total) * 100)));
+  return (
+    <div className="people-leave-balance">
+      <strong className="tabular-nums">
+        {balance.remaining} / {total} days left
+      </strong>
+      <span className="people-leave-bar" aria-hidden>
+        <span style={{ width: `${share}%` }} />
+      </span>
+    </div>
+  );
+}
 
 function DocumentSummary({ person }: { person: PersonRow }) {
   if (!person.requiredDocuments) return <span className="ui-muted">None required</span>;
@@ -82,6 +104,7 @@ export function People() {
   const [importing, setImporting] = useState(false);
   const [saved, setSaved] = useState("");
   const [quick, setQuick] = useState<{ person: PersonRow; tab: QuickViewTab } | null>(null);
+  const [messageTo, setMessageTo] = useState<PersonRow | null>(null);
   const today = berlinToday();
   const thisMonday = mondayOf(today);
   const windowEnd = addDays(thisMonday, capacityWeeks * 7 - 1);
@@ -104,6 +127,32 @@ export function People() {
     queryFn: () => timesheetsApi.week(thisMonday, "all", "", 1),
     enabled: canAccess,
     retry: false,
+  });
+  const year = Number(today.slice(0, 4));
+  const pageIds = useMemo(() => (people.data?.items ?? []).map((person) => person.id), [people.data]);
+  const balances = useQuery({
+    queryKey: ["vacation-balances", year, pageIds],
+    enabled: canAccess && pageIds.length > 0,
+    staleTime: 5 * 60_000,
+    retry: false,
+    queryFn: async () => {
+      const result: Record<string, VacationBalance | null> = {};
+      let next = 0;
+      let denied = false;
+      const worker = async () => {
+        while (!denied && next < pageIds.length) {
+          const id = pageIds[next++];
+          try {
+            result[id] = await absencesApi.balance(id, year);
+          } catch (error) {
+            result[id] = null;
+            if (error instanceof PeopleError && error.status === 403) denied = true;
+          }
+        }
+      };
+      await Promise.all(Array.from({ length: balanceWorkers }, worker));
+      return result;
+    },
   });
   useEffect(() => {
     document.title = "People \u00b7 FleetOps";
@@ -312,14 +361,14 @@ export function People() {
               <caption className="visually-hidden">People</caption>
               <thead>
                 <tr>
-                  <th>Person & role</th>
-                  <th>Status</th>
-                  <th>Can drive</th>
-                  <th>Default vehicle</th>
-                  <th>Contact</th>
-                  <th>Documents</th>
-                  <th>Next absence</th>
-                  <th>
+                  <th scope="col">Person & role</th>
+                  <th scope="col">Live status & position</th>
+                  <th scope="col">Can drive</th>
+                  <th scope="col">Default vehicle</th>
+                  <th scope="col">Contact</th>
+                  <th scope="col">Documents</th>
+                  <th scope="col">Leave / balance</th>
+                  <th scope="col">
                     <span className="visually-hidden">Actions</span>
                   </th>
                 </tr>
@@ -328,6 +377,7 @@ export function People() {
                 {people.data.items.map((person) => {
                   const isDriver = person.roles.includes("driver");
                   const next = byPerson.get(person.id)?.[0];
+                  const onLeave = currentAbsence(byPerson.get(person.id), today);
                   const requested = byPerson
                     .get(person.id)
                     ?.some((item) => item.absence.status === "requested");
@@ -370,7 +420,10 @@ export function People() {
                         </div>
                       </td>
                       <td>
-                        <PersonStatus status={person.status} />
+                        <LiveStatus
+                          person={person}
+                          state={liveState(person, today, byPerson.get(person.id), week.data?.rows)}
+                        />
                       </td>
                       <td>
                         {isDriver ? (
@@ -394,10 +447,19 @@ export function People() {
                         {person.phone ? (
                           <div className="people-contact">
                             <span className="ui-mono">{person.phone}</span>
-                            <ContactActions name={person.name} phone={person.phone} />
+                            <ContactActions
+                              name={person.name}
+                              phone={person.phone}
+                              onMessage={() => setMessageTo(person)}
+                            />
                           </div>
                         ) : (
-                          <span className="ui-muted">Not recorded</span>
+                          <div className="people-contact">
+                            <span className="ui-muted">Not recorded</span>
+                            <span className="people-contact-actions">
+                              <MessageButton name={person.name} onMessage={() => setMessageTo(person)} />
+                            </span>
+                          </div>
                         )}
                       </td>
                       <td>
@@ -410,8 +472,18 @@ export function People() {
                         </button>
                       </td>
                       <td>
+                        <LeaveBalance balance={balances.data?.[person.id]} />
                         {absences.isError ? (
                           <span className="ui-muted">{"\u2014"}</span>
+                        ) : onLeave ? (
+                          <button
+                            type="button"
+                            className="people-cell-button people-leave-active"
+                            onClick={() => open("leave")}
+                          >
+                            <span className="people-leave-dot" aria-hidden />
+                            On leave until {shortDate(onLeave.absence.to)}
+                          </button>
                         ) : next ? (
                           <button
                             type="button"
@@ -490,6 +562,13 @@ export function People() {
             </EmptyState>
           ))
         )}
+        {people.data && week.data && (
+          <p className="people-demo-note">
+            <DemoTag /> Position and ETA are sample values. FleetOps has no tachograph or GPS source yet;
+            connecting one is optional and replaces the samples (Epic 15). Status comes from shifts and
+            approved absences.
+          </p>
+        )}
         {people.data && (
           <footer className="directory-footer">
             <span>
@@ -528,8 +607,14 @@ export function People() {
           absencesFailed={absences.isError}
           today={today}
           canManage={canManage}
+          onMessage={() => {
+            // One dialog at a time: the drawer closes before the composer opens.
+            setMessageTo(quick.person);
+            setQuick(null);
+          }}
         />
       )}
+      {messageTo && <MessageComposer name={messageTo.name} onClose={() => setMessageTo(null)} />}
       {adding && (
         <PersonForm
           onClose={() => setAdding(false)}

@@ -617,81 +617,6 @@
   border-radius: 50%;
   background: #f59e0b;
 }
-.capacity-strip {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px 16px;
-  margin-bottom: 16px;
-  padding: 10px 14px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-panel);
-  background: var(--surface);
-}
-.capacity-strip-title {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--ink);
-  font-size: 13px;
-  font-weight: 600;
-}
-.capacity-strip-title svg {
-  color: var(--accent);
-}
-.capacity-strip ul {
-  display: grid;
-  flex: 1;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 8px;
-  min-width: min(100%, 560px);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.capacity-week {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 4px 8px;
-  padding: 6px 10px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--surface);
-  font-size: 12px;
-}
-.capacity-week > span {
-  color: var(--ink-2);
-  font-weight: 500;
-}
-.capacity-week strong {
-  padding: 1px 6px;
-  border-radius: 6px;
-  color: var(--ok);
-  background: var(--ok-bg);
-}
-.capacity-week small {
-  flex-basis: 100%;
-  color: var(--warn);
-  font-size: 11px;
-}
-.capacity-week.tone-warn {
-  border-color: var(--warn-border);
-  background: var(--warn-bg);
-}
-.capacity-week.tone-warn strong {
-  color: var(--warn);
-  background: var(--warn-tint);
-}
-.capacity-week.tone-crit {
-  border-color: var(--crit-border);
-  background: var(--crit-bg);
-}
-.capacity-week.tone-crit strong {
-  color: var(--crit);
-  background: var(--crit-tint);
-}
 .people-filter-card {
   margin-bottom: 16px;
   padding: 0;
@@ -1029,8 +954,129 @@
   .people-balance {
     grid-template-columns: 1fr;
   }
-  .capacity-strip ul {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    min-width: 0;
-  }
+}
+.people-live {
+  display: grid;
+  gap: 3px;
+  justify-items: start;
+}
+.people-live-sub {
+  color: var(--ink-2);
+  font-size: var(--type-eyebrow);
+}
+.people-demo-tag {
+  display: inline-block;
+  padding: 0 5px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 4px;
+  color: var(--ink-3);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  vertical-align: 1px;
+}
+.people-demo-note {
+  margin: 12px 0 0;
+  color: var(--ink-2);
+  font-size: var(--type-eyebrow);
+}
+.people-table .people-contact {
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  max-width: 250px;
+}
+.people-contact-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 26px;
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--ink);
+  font: 600 var(--type-eyebrow) var(--font-body);
+  text-decoration: none;
+  cursor: pointer;
+}
+.people-contact-pill:hover {
+  background: var(--accent-soft);
+}
+.people-contact-pill.whatsapp {
+  border-color: var(--ok-border);
+  background: var(--ok-bg);
+  color: var(--ok);
+}
+.people-contact-pill.message {
+  border-color: var(--info-border);
+  background: var(--info-bg);
+  color: var(--accent-strong);
+}
+.people-contact-pill:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.people-leave-balance {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+  font-size: var(--type-caption);
+  white-space: nowrap;
+}
+.people-leave-bar {
+  display: block;
+  width: 56px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+}
+.people-leave-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+}
+.people-cell-button.people-leave-active {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--orange-ink);
+  font-weight: 600;
+}
+.people-message,
+.people-message form {
+  display: grid;
+  gap: 10px;
+}
+.people-message .banner {
+  margin-bottom: 0;
+}
+.people-message-quick,
+.people-message-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.people-message label {
+  font-weight: 600;
+}
+.people-message textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--ink);
+  padding: 8px 10px;
+  font: inherit;
+  resize: vertical;
+}
+.people-message-preview {
+  margin: 0;
+  padding: 10px 12px;
+  border-left: 3px solid var(--accent);
+  background: var(--surface-2);
+  overflow-wrap: anywhere;
 }
