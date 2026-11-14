@@ -143,8 +143,12 @@ test("audit log filters and exports", async ({ page }) => {
   await expect(page.getByRole("cell", { name: "Olivia Owner", exact: true })).toBeVisible();
   await page.getByLabel("Entity", { exact: true }).selectOption("Vehicle");
   await page.getByLabel("From", { exact: true }).fill("2026-11-01");
-  await expect.poll(() => queries.at(-1)).toContain("EntityType=Vehicle");
-  expect(queries.at(-1)).toContain("From=2026-11-01");
+  // Both filters reach the server in one request; wait for it rather than the first change alone.
+  await expect
+    .poll(() =>
+      queries.some((query) => query.includes("EntityType=Vehicle") && query.includes("From=2026-11-01")),
+    )
+    .toBe(true);
   const download = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export", exact: true }).click();
   expect((await download).suggestedFilename()).toBe("audit-log.csv");
