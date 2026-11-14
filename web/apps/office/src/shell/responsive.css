@@ -6,7 +6,16 @@
      monitor  >= 1440 px   full sidebar; the People table stays compact up to 1719 px so real rows fit.
    Selectors start with .office-shell so they win over page styles whatever order the bundles load in. */
 
-/* ---------- all sizes: elements that only show on some targets ---------- */
+/* ---------- all sizes ---------- */
+/* Scroll boxes are the positioning context for the visually hidden labels inside them. Without it each row's
+   hidden "Select ..." label sat at the row's unscrolled position outside the box and stretched the page, so
+   Timesheets scrolled into a long empty area below the content (user, 2026-11-14). */
+.ts-scroll,
+.table-wrap {
+  position: relative;
+}
+
+/* Elements that only show on some targets. */
 .topbar-menu,
 .topbar-brand,
 .mobile-menu,

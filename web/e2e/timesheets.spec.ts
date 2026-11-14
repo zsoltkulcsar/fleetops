@@ -491,7 +491,9 @@ test("filters sit in a card like People and Fleet, and the page has no help para
   await expect(page.getByText("j/k Move", { exact: false })).toHaveCount(0);
 });
 
-test("status column fits at 1440 px and the side navigation stays while the page scrolls", async ({ page }) => {
+test("status column fits at 1440 px and the side navigation stays while the page scrolls", async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 1440, height: 700 });
   await timesheetRoutes(page);
   await page.goto("/timesheets");
@@ -507,4 +509,26 @@ test("status column fits at 1440 px and the side navigation stays while the page
   const sidebar = await page.locator(".sidebar").boundingBox();
   expect(sidebar!.y).toBe(0);
   expect(sidebar!.height).toBe(700);
+});
+
+test("the page ends with its content when the week grid has many drivers", async ({ page }) => {
+  // User, 2026-11-14: scrolling Timesheets ran into a long empty area. Hidden row labels escaped the
+  // grid's scroll box and stretched the page.
+  const base = week();
+  const rows = Array.from({ length: 25 }, (_, index) => ({
+    ...base.rows[0],
+    employeeId: `driver-${index}`,
+    driver: `Driver ${index}`,
+  }));
+  await timesheetRoutes(page, { ...base, rows, total: rows.length });
+  await page.goto("/timesheets");
+  await expect(page.getByRole("button", { name: "Driver 24", exact: true })).toBeAttached();
+  const sizes = await page.evaluate(() => ({
+    page: document.documentElement.scrollHeight,
+    content: Math.ceil(document.querySelector("#main-content")!.getBoundingClientRect().bottom + scrollY),
+    shell: Math.ceil(document.querySelector(".office-shell")!.getBoundingClientRect().bottom + scrollY),
+  }));
+  expect(sizes.page).toBeLessThanOrEqual(Math.max(sizes.content, sizes.shell) + 2);
+  await page.mouse.wheel(0, 20_000);
+  await expect(page.locator(".ts-toolbar").last()).toBeInViewport();
 });
