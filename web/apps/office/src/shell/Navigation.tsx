@@ -1,12 +1,15 @@
 import {
+  Bell,
   CalendarClock,
   CalendarRange,
   FileText,
-  MoreHorizontal,
+  Menu,
   Settings,
   SlidersHorizontal,
   Truck,
   Users,
+  Wallet,
+  X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router";
@@ -110,30 +113,48 @@ export function TabletRail() {
     </aside>
   );
 }
+/** Opens the phone menu from anywhere in the shell; the header menu button sends it with itself as detail. */
+export const OPEN_MOBILE_MENU = "fleetops:open-mobile-menu";
+const moreRoutes = ["/plan", "/documents", "/payroll", "/settings", "/me/notifications"];
+/** Phone navigation after the 2026-11-14 mobile reference: four tabs and More, which opens a dark menu panel
+    sliding in from the left with the remaining pages. */
 export function MobileNavigation() {
   const { data } = useSession();
   const items = visibleItems(data?.roles ?? []);
   const canSettings = data?.roles.includes("owner") || data?.roles.includes("hr");
   const [moreOpen, setMoreOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
+  const opener = useRef<HTMLElement | null>(null);
   const menu = useRef<HTMLDivElement>(null);
   const { pathname } = useLocation();
-  const moreCurrent = ["/plan", "/documents", "/payroll", "/settings"].includes(
-    pathname.toLowerCase().replace(/\/$/, ""),
-  );
+  const moreCurrent = moreRoutes.includes(pathname.toLowerCase().replace(/\/$/, ""));
   useEffect(() => {
     setMoreOpen(false);
   }, [pathname]);
   useEffect(() => {
+    const open = (event: Event) => {
+      const detail = event instanceof CustomEvent ? event.detail : null;
+      opener.current = detail instanceof HTMLElement ? detail : null;
+      setMoreOpen(true);
+    };
+    window.addEventListener(OPEN_MOBILE_MENU, open);
+    return () => window.removeEventListener(OPEN_MOBILE_MENU, open);
+  }, []);
+  useEffect(() => {
     if (!moreOpen) return;
     const close = (event: MouseEvent) => {
-      if (!menu.current?.contains(event.target as Node) && !trigger.current?.contains(event.target as Node))
+      const target = event.target as Node;
+      if (
+        !menu.current?.contains(target) &&
+        !trigger.current?.contains(target) &&
+        !opener.current?.contains(target)
+      )
         setMoreOpen(false);
     };
     const key = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setMoreOpen(false);
-        trigger.current?.focus();
+        (opener.current ?? trigger.current)?.focus();
       }
     };
     document.addEventListener("mousedown", close);
@@ -143,46 +164,64 @@ export function MobileNavigation() {
       document.removeEventListener("keydown", key);
     };
   }, [moreOpen]);
+  const closeMenu = () => setMoreOpen(false);
+  const menuLink = (to: string, label: string, Icon: typeof Truck) => (
+    <NavLink to={to} end onClick={closeMenu}>
+      <Icon size={18} aria-hidden />
+      <span>{label}</span>
+    </NavLink>
+  );
   return (
-    <nav className="bottom-nav" aria-label="Mobile navigation">
-      {items
-        .filter((item) => item.id !== "plan")
-        .slice(0, 4)
-        .map((item) => (
-          <NavigationLink key={item.id} item={item} />
-        ))}
-      <button
-        ref={trigger}
-        type="button"
-        className={moreOpen ? "more-trigger active" : "more-trigger"}
-        aria-current={moreCurrent ? "page" : undefined}
-        aria-expanded={moreOpen}
-        aria-controls="mobile-more-links"
-        onClick={() => setMoreOpen((open) => !open)}
-      >
-        <MoreHorizontal size={18} aria-hidden />
-        <span>{en.nav.more}</span>
-      </button>
+    <>
+      <nav className="bottom-nav" aria-label="Mobile navigation">
+        {items
+          .filter((item) => item.id !== "plan")
+          .slice(0, 4)
+          .map((item) => (
+            <NavigationLink key={item.id} item={item} />
+          ))}
+        <button
+          ref={trigger}
+          type="button"
+          className={moreOpen ? "more-trigger active" : "more-trigger"}
+          aria-current={moreCurrent ? "page" : undefined}
+          aria-expanded={moreOpen}
+          aria-controls="mobile-more-links"
+          onClick={() => {
+            opener.current = null;
+            setMoreOpen((open) => !open);
+          }}
+        >
+          <Menu size={18} aria-hidden />
+          <span>{en.nav.more}</span>
+        </button>
+      </nav>
       {moreOpen && (
-        <div ref={menu} id="mobile-more-links" className="more-menu">
-          <Link to="/plan" onClick={() => setMoreOpen(false)}>
-            {en.nav.plan}
-          </Link>
-          <Link to="/documents" onClick={() => setMoreOpen(false)}>
-            {en.nav.documents}
-          </Link>
-          {items.some((item) => item.id === "payroll") && (
-            <Link to="/payroll" onClick={() => setMoreOpen(false)}>
-              {en.nav.payroll}
-            </Link>
-          )}
-          {canSettings && (
-            <Link to="/settings" onClick={() => setMoreOpen(false)}>
-              {en.nav.settings}
-            </Link>
-          )}
-        </div>
+        <>
+          <div className="mobile-menu-backdrop" aria-hidden />
+          <div ref={menu} id="mobile-more-links" className="mobile-menu">
+            <div className="mobile-menu-brand">
+              <span className="brand-mark">
+                <Truck size={20} aria-hidden />
+              </span>
+              <span className="brand-text">
+                <span>FleetOps</span>
+                <small>Office</small>
+              </span>
+              <button type="button" className="mobile-menu-close" aria-label="Close menu" onClick={closeMenu}>
+                <X size={18} aria-hidden />
+              </button>
+            </div>
+            <nav aria-label="More pages">
+              {menuLink("/plan", en.nav.plan, CalendarRange)}
+              {menuLink("/documents", en.nav.documents, FileText)}
+              {items.some((item) => item.id === "payroll") && menuLink("/payroll", en.nav.payroll, Wallet)}
+              {canSettings && menuLink("/settings", en.nav.settings, Settings)}
+              {menuLink("/me/notifications", "My notifications", Bell)}
+            </nav>
+          </div>
+        </>
       )}
-    </nav>
+    </>
   );
 }

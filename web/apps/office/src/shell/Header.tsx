@@ -6,7 +6,8 @@ import { authApi } from "../auth/api";
 import { documentsApi } from "../documents/api";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { Bell } from "lucide-react";
+import { Bell, LogOut, Menu, Search, Truck } from "lucide-react";
+import { OPEN_MOBILE_MENU } from "./Navigation";
 import { apiClient } from "@fleetops/api-client";
 import { useQuery } from "@tanstack/react-query";
 import { formatBerlinDateTime } from "./date";
@@ -104,12 +105,26 @@ export function Header({ pageName }: { pageName: string }) {
   }, []);
   return (
     <header className="topbar">
+      <button
+        type="button"
+        className="topbar-menu"
+        aria-label="Open menu"
+        onClick={(event) =>
+          window.dispatchEvent(new CustomEvent(OPEN_MOBILE_MENU, { detail: event.currentTarget }))
+        }
+      >
+        <Menu size={20} aria-hidden />
+      </button>
+      <span className="topbar-brand" aria-hidden>
+        <Truck size={18} />
+      </span>
       <div className="topbar-title">
         <span className="eyebrow">{en.header.workspace}</span>
         <strong>{pageName}</strong>
       </div>
       <div className="topbar-actions">
         <div className="office-search">
+          <Search className="office-search-icon" size={16} aria-hidden />
           <label className="visually-hidden" htmlFor="office-search">
             {en.header.searchLabel}
           </label>
@@ -216,11 +231,12 @@ export function Header({ pageName }: { pageName: string }) {
             </div>
           )}
         </div>
-        <Link className="ui-button ghost" to="/me/notifications">
+        <Link className="ui-button ghost topbar-my-notifications" to="/me/notifications">
           My notifications
         </Link>
-        <button className="ui-button ghost" type="button" onClick={signOut}>
-          {en.auth.signOut}
+        <button className="ui-button ghost topbar-signout" type="button" onClick={signOut}>
+          <LogOut className="topbar-signout-icon" size={18} aria-hidden />
+          <span className="topbar-signout-label">{en.auth.signOut}</span>
         </button>
       </div>
     </header>

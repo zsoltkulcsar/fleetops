@@ -647,8 +647,12 @@ export function Timesheets() {
                         </div>
                       </div>
                     </th>
-                    {row.days.map((day) => (
-                      <td className={`ts-desktop${day.date === today ? " ts-today" : ""}`} key={day.date}>
+                    {row.days.map((day, dayIndex) => (
+                      <td
+                        className={`ts-desktop${day.date === today ? " ts-today" : ""}`}
+                        key={day.date}
+                        data-day={["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][dayIndex]}
+                      >
                         <button
                           className={`ts-cell day-${cellTone(day)}`}
                           aria-label={`${row.driver}, ${dateLabel(day.date)}, ${day.label}, ${hours(day.workMinutes)}`}

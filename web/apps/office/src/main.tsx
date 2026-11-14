@@ -21,6 +21,7 @@ import { Plan } from "./plan/Plan";
 import { Timesheets } from "./timesheets/Timesheets";
 import { Payroll } from "./payroll/Payroll";
 import { Absences } from "./absences/Absences";
+import "./shell/responsive.css";
 
 const queryClient = new QueryClient({
   defaultOptions: {

@@ -1,0 +1,953 @@
+/* Responsive pass (2026-11-14), after the user's mobile reference (design/tms_..._p_nz_gy.html, finance left out).
+   Three targets:
+     phone    < 768 px   compact sticky header with a menu button, bottom tab bar, dark slide-out menu,
+                         tables shown as cards, scrolling pill strips, drawers as bottom sheets.
+     laptop   768-1439 px  icon rail (768-1279) or narrower sidebar (1280-1439), tighter tables.
+     monitor  >= 1440 px   the full desktop layout, unchanged.
+   Selectors start with .office-shell so they win over page styles whatever order the bundles load in. */
+
+/* ---------- all sizes: elements that only show on some targets ---------- */
+.topbar-menu,
+.topbar-brand,
+.mobile-menu,
+.mobile-menu-backdrop {
+  display: none;
+}
+.office-search {
+  position: relative;
+}
+.office-search-icon {
+  position: absolute;
+  top: 50%;
+  left: 10px;
+  color: var(--ink-3);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.office-shell .office-search input {
+  padding-left: 32px;
+}
+.topbar-signout-icon {
+  display: none;
+}
+
+/* ---------- laptop: 768-1439 px ---------- */
+@media (1280px <= width < 1440px) {
+  .office-shell {
+    grid-template-columns: 216px minmax(0, 1fr);
+  }
+  .office-shell .sidebar {
+    width: 216px;
+  }
+  .office-shell > .content {
+    padding: 20px 24px;
+  }
+}
+@media (768px <= width < 1440px) {
+  .office-shell .topbar {
+    padding-inline: 20px;
+  }
+  .office-shell .office-search input {
+    width: min(300px, 24vw);
+  }
+  /* People: keep every column but drop what repeats elsewhere, so the table fits without scrolling. */
+  .office-shell .people-page .people-table td,
+  .office-shell .people-page .people-table th {
+    padding-inline: 8px;
+  }
+  .office-shell .people-table .people-phone .ui-mono {
+    font-size: 12px;
+  }
+  .office-shell .people-table .people-leave-bar,
+  .office-shell .people-table .people-live-sub {
+    display: none;
+  }
+  .office-shell .people-row-actions .ui-button {
+    padding-inline: 10px;
+  }
+}
+@media (768px <= width < 1280px) {
+  .office-shell > .content {
+    padding: 20px;
+  }
+  .office-shell .ts-kpis {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* ---------- phone: < 768 px ---------- */
+@media (width < 768px) {
+  .office-shell {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
+  }
+
+  /* Header: menu, title, bell and sign-out on one row; the search field below it. */
+  .office-shell > .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 15;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 10px 8px;
+    min-height: 0;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+    background: color-mix(in srgb, var(--surface) 94%, transparent);
+    backdrop-filter: blur(10px);
+  }
+  .office-shell .topbar-menu {
+    display: inline-grid;
+    width: 40px;
+    height: 40px;
+    place-items: center;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface);
+    color: var(--ink);
+    cursor: pointer;
+  }
+  .office-shell .topbar-menu:active {
+    transform: scale(0.96);
+  }
+  .office-shell .topbar-brand {
+    display: none;
+  }
+  .office-shell .topbar-title {
+    display: grid;
+    flex-basis: auto;
+    gap: 0;
+    min-width: 0;
+  }
+  .office-shell .topbar-title .eyebrow {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+  }
+  .office-shell .topbar-title strong {
+    overflow: hidden;
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .office-shell .topbar-actions {
+    display: contents;
+  }
+  .office-shell .office-search {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    flex: none;
+  }
+  .office-shell .office-search input {
+    width: 100%;
+    min-height: 38px;
+    border-color: var(--line-strong);
+    border-radius: 12px;
+    background: var(--surface-2);
+    font-size: 14px;
+  }
+  .office-shell .office-search input:focus {
+    background: var(--surface);
+  }
+  .office-shell .search-popover {
+    right: 0;
+    left: 0;
+    width: auto;
+  }
+  .office-shell .notification-menu,
+  .office-shell .topbar-signout {
+    grid-row: 1;
+  }
+  .office-shell .topbar-actions .notification-menu {
+    grid-column: 3;
+  }
+  .office-shell .topbar-signout {
+    grid-column: 4;
+  }
+  .office-shell .notification-button,
+  .office-shell .topbar-signout {
+    min-width: 40px;
+    min-height: 40px;
+    padding: 0 8px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+  }
+  .office-shell .topbar-signout {
+    padding: 0;
+    justify-content: center;
+  }
+  .office-shell .topbar-signout-icon {
+    display: block;
+  }
+  .office-shell .topbar-signout-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+  .office-shell .topbar-my-notifications {
+    display: none;
+  }
+  .office-shell .notification-popover {
+    position: fixed;
+    top: 64px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+  }
+
+  /* Bottom tab bar. */
+  .office-shell .bottom-nav {
+    z-index: 15;
+    gap: 4px;
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+    background: color-mix(in srgb, var(--surface) 95%, transparent);
+    backdrop-filter: blur(10px);
+  }
+  .office-shell .bottom-nav a,
+  .office-shell .bottom-nav .more-trigger {
+    position: relative;
+    gap: 3px;
+    padding: 4px 2px;
+    border-radius: 12px;
+    color: var(--ink-2);
+    font-size: 10.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .office-shell .bottom-nav a.active,
+  .office-shell .bottom-nav .more-trigger[aria-current="page"],
+  .office-shell .bottom-nav .more-trigger.active {
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .office-shell .bottom-nav .nav-badge {
+    position: absolute;
+    top: 0;
+    right: calc(50% - 22px);
+    min-width: 16px;
+    padding: 0 4px;
+    font-size: 10px;
+    line-height: 16px;
+  }
+
+  /* Dark menu panel that slides in from the left. */
+  .office-shell .mobile-menu-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    display: block;
+    background: rgb(15 23 42 / 60%);
+    backdrop-filter: blur(2px);
+    animation: mobile-menu-fade 0.2s ease;
+  }
+  .office-shell .mobile-menu {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 41;
+    display: flex;
+    width: min(290px, 82vw);
+    flex-direction: column;
+    overflow-y: auto;
+    background: var(--sidebar);
+    color: var(--sidebar-ink);
+    box-shadow: 0 25px 60px -15px rgb(0 0 0 / 55%);
+    animation: mobile-menu-in 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .office-shell .mobile-menu-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 64px;
+    padding: 0 16px 0 20px;
+    border-bottom: 1px solid var(--sidebar-2);
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 700;
+  }
+  .office-shell .mobile-menu-close {
+    display: grid;
+    width: 36px;
+    height: 36px;
+    margin-left: auto;
+    place-items: center;
+    border: 0;
+    border-radius: 12px;
+    background: var(--sidebar-2);
+    color: var(--sidebar-muted);
+    cursor: pointer;
+  }
+  .office-shell .mobile-menu nav {
+    display: grid;
+    gap: 4px;
+    padding: 12px;
+  }
+  .office-shell .mobile-menu nav a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 46px;
+    padding: 0 14px;
+    border-radius: 12px;
+    color: var(--sidebar-muted);
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+  }
+  .office-shell .mobile-menu nav a:hover {
+    background: var(--sidebar-2);
+    color: #ffffff;
+  }
+  .office-shell .mobile-menu nav a.active {
+    background: #4f46e5;
+    color: #ffffff;
+    font-weight: 600;
+  }
+
+  /* Page frame. */
+  .office-shell > .content {
+    padding: 14px 14px 20px;
+  }
+  .office-shell .page-title {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .office-shell .page-title h1 {
+    font-size: 22px;
+    line-height: 1.2;
+  }
+  .office-shell .page-title p {
+    margin-top: 2px;
+    font-size: 13px;
+  }
+  .office-shell .page-title .eyebrow {
+    font-size: 10px;
+  }
+  .office-shell .people-actions,
+  .office-shell .ts-header-actions,
+  .office-shell .plan-actions {
+    display: flex;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .office-shell .page-title .ui-button {
+    min-height: 38px;
+    padding: 0 12px;
+    border-radius: 12px;
+    font-size: 13px;
+  }
+
+  /* Section switches (People / Timesheets / Absences, Vehicles / Defects / Maintenance) become the
+     reference's horizontally scrolling pill strip. */
+  .office-shell .people-switch-row {
+    display: grid;
+    gap: 10px;
+  }
+  .office-shell .view-switch,
+  .office-shell .people-views {
+    display: flex;
+    max-width: 100%;
+    overflow-x: auto;
+    gap: 6px;
+    padding: 0 0 2px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    scrollbar-width: none;
+  }
+  .office-shell .people-views::-webkit-scrollbar,
+  .office-shell .view-switch::-webkit-scrollbar {
+    display: none;
+  }
+  .office-shell .people-views a,
+  .office-shell .view-switch a {
+    flex: none;
+    gap: 6px;
+    padding: 7px 12px;
+    border-radius: 12px;
+    background: var(--surface-2);
+    color: var(--ink-2);
+    font-size: 13px;
+  }
+  .office-shell .people-views a[aria-current="page"],
+  .office-shell .view-switch a[aria-current="page"] {
+    background: #4f46e5;
+    color: #ffffff;
+    box-shadow: 0 1px 2px rgb(15 23 42 / 12%);
+  }
+  .office-shell .people-views a[aria-current="page"] .people-views-count,
+  .office-shell .view-switch a[aria-current="page"] .view-switch-count {
+    background: rgb(255 255 255 / 22%);
+    color: #ffffff;
+  }
+  .office-shell .people-leave-pill {
+    width: 100%;
+    justify-content: space-between;
+    border-radius: 16px;
+  }
+
+  /* KPI cards: two to a row, compact. */
+  .office-shell .ts-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .office-shell .ts-kpis > .ui-panel,
+  .office-shell .timesheets-page .ts-kpis .ui-panel {
+    padding: 12px;
+    border-radius: 16px;
+  }
+  .office-shell .ts-kpis .coming-later {
+    padding: 12px;
+    border-radius: 16px;
+    font-size: 12px;
+  }
+  .office-shell .ts-kpi strong,
+  .office-shell .ts-kpi-value {
+    font-size: 20px;
+  }
+
+  /* Control panel and Absences summary tiles: the reference's 2 x 2 grid. */
+  .office-shell .cp-tiles,
+  .office-shell .abs-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .office-shell .cp-tile,
+  .office-shell .abs-kpi {
+    gap: 6px;
+    padding: 12px;
+    border-radius: 16px;
+  }
+  .office-shell .cp-tile .eyebrow {
+    font-size: 10px;
+  }
+  .office-shell .cp-tile strong {
+    font-size: 22px;
+  }
+  .office-shell .cp-tile small {
+    font-size: 12px;
+  }
+  .office-shell .cp-sub,
+  .office-shell .abs-kpi small {
+    font-size: 11px;
+  }
+  .office-shell .abs-kpi strong {
+    font-size: 20px;
+  }
+
+  /* Capacity: week pills in a wrapping grid (a sideways scroller would need its own tab stop). */
+  .office-shell .capacity-strip {
+    display: grid;
+    gap: 8px;
+    margin-bottom: 14px;
+    padding: 12px;
+    border-radius: 16px;
+  }
+  .office-shell .capacity-strip ul {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+    gap: 6px;
+    min-width: 0;
+  }
+  .office-shell .capacity-week {
+    display: grid;
+    gap: 2px;
+    padding: 6px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+  }
+  .office-shell .capacity-week strong {
+    padding: 0;
+    background: transparent;
+    font-size: 12px;
+  }
+
+  /* Filter cards: search full width, chip rows scroll sideways instead of wrapping. */
+  .office-shell .people-filter-card {
+    min-width: 0;
+    margin-bottom: 14px;
+    overflow: hidden;
+    border-radius: 16px;
+  }
+  .office-shell .people-toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    padding: 12px;
+  }
+  .office-shell .people-toolbar .people-search {
+    order: -1;
+    width: 100%;
+  }
+  .office-shell .people-roles,
+  .office-shell .people-chips,
+  .office-shell .people-chip-group {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .office-shell .people-roles::-webkit-scrollbar,
+  .office-shell .people-chips::-webkit-scrollbar,
+  .office-shell .people-chip-group::-webkit-scrollbar {
+    display: none;
+  }
+  .office-shell .people-roles > *,
+  .office-shell .people-chips > *,
+  .office-shell .people-chip-group > * {
+    flex: none;
+    white-space: nowrap;
+  }
+  .office-shell .people-chips {
+    position: relative;
+    padding: 10px 12px;
+  }
+  .office-shell .people-roles,
+  .office-shell .people-filter-card {
+    position: relative;
+  }
+  .office-shell .people-chip-group {
+    flex: none;
+    overflow: visible;
+  }
+
+  .office-shell .ts-legend {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0 0 10px;
+  }
+  .office-shell .ts-legend-item {
+    flex: none;
+  }
+  .office-shell .timesheets-page .panel-header,
+  .office-shell .timesheets-page .ui-panel .panel-header {
+    padding: 0 0 10px;
+    border: 0;
+  }
+
+  /* Drawers become bottom sheets; centred modals stay full screen. */
+  .drawer-backdrop {
+    z-index: 50;
+  }
+  .drawer-backdrop:not(.modal-backdrop) {
+    align-items: flex-end;
+    background: rgb(15 23 42 / 50%);
+  }
+  .drawer-backdrop:not(.modal-backdrop) > .drawer {
+    width: 100%;
+    height: auto;
+    max-height: 90dvh;
+    padding: 8px 16px calc(16px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--line-strong);
+    border-radius: 24px 24px 0 0;
+    animation: sheet-in 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .drawer-backdrop:not(.modal-backdrop) > .drawer::before {
+    content: "";
+    display: block;
+    width: 40px;
+    height: 4px;
+    margin: 0 auto 8px;
+    border-radius: 999px;
+    background: var(--line-strong);
+  }
+}
+
+/* Cards instead of tables below 1280 px: one column on phones, two from 768 px (tablets, small laptops). */
+@media (width < 1280px) {
+  /* Tables become a stack of cards. The table elements stay, so screen readers keep rows and cells. */
+  .office-shell .directory-panel,
+  .office-shell .timesheets-page .ui-panel:has(.ts-grid) {
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+  }
+  .office-shell .directory-panel .table-wrap,
+  .office-shell .ts-scroll {
+    max-height: none;
+    overflow: visible;
+    border: 0;
+  }
+  .office-shell .table-wrap table.people-table,
+  .office-shell .ts-scroll table.ts-grid {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    border: 0;
+  }
+  .office-shell .people-table thead,
+  .office-shell .ts-grid thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+  .office-shell .people-table tbody,
+  .office-shell .ts-grid tbody {
+    display: grid;
+    gap: 10px;
+  }
+  .office-shell .people-table tbody tr,
+  .office-shell .ts-grid tbody tr {
+    position: relative;
+    min-width: 0;
+    display: grid;
+    gap: 10px 8px;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--surface);
+    box-shadow: 0 1px 2px rgb(15 23 42 / 5%);
+  }
+  .office-shell .people-table tbody tr:hover,
+  .office-shell .people-table tbody tr.selected {
+    border-color: var(--accent-border, #a5b4fc);
+    background: var(--surface);
+  }
+  .office-shell .people-table tbody tr:active {
+    transform: scale(0.995);
+  }
+  .office-shell .people-table td,
+  .office-shell .ts-grid td,
+  .office-shell .ts-grid tbody th {
+    display: block;
+    min-width: 0;
+    width: auto;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  /* People card:  person | can drive  /  live status | leave (grey strip)  /  vehicle | documents  /
+     contact | actions */
+  .office-shell .people-page .people-table tbody tr {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "person drive"
+      "live leave"
+      "vehicle docs"
+      "contact actions";
+  }
+  .office-shell .people-page .people-table td,
+  .office-shell .people-page .people-table th {
+    padding: 0;
+  }
+  .office-shell .people-page .people-table td:nth-child(1) {
+    grid-area: person;
+  }
+  .office-shell .people-page .people-table td:nth-child(2) {
+    grid-area: live;
+    padding: 8px 10px;
+    border-radius: 12px 0 0 12px;
+    background: var(--surface-2);
+    font-size: 12px;
+  }
+  .office-shell .people-page .people-table td:nth-child(3) {
+    grid-area: drive;
+    justify-self: end;
+    text-align: right;
+  }
+  .office-shell .people-page .people-table td:nth-child(4) {
+    grid-area: vehicle;
+    align-self: center;
+  }
+  .office-shell .people-page .people-table td:nth-child(5) {
+    grid-area: contact;
+    align-self: center;
+  }
+  .office-shell .people-page .people-table td:nth-child(6) {
+    grid-area: docs;
+    justify-self: end;
+    align-self: center;
+  }
+  .office-shell .people-page .people-table td:nth-child(7) {
+    grid-area: leave;
+    display: grid;
+    justify-items: end;
+    align-content: center;
+    margin-left: -8px;
+    padding: 8px 10px;
+    border-radius: 0 12px 12px 0;
+    background: var(--surface-2);
+    font-size: 12px;
+    text-align: right;
+  }
+  .office-shell .people-page .people-table td:nth-child(8) {
+    grid-area: actions;
+    justify-self: end;
+    align-self: center;
+    width: auto;
+  }
+  .office-shell .people-page .people-table .people-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+  }
+  .office-shell .people-page .people-table .people-contact,
+  .office-shell .people-page .people-table .people-contact-actions {
+    flex-wrap: nowrap;
+    max-width: none;
+  }
+  /* Icons only on the card, as in the reference; the number stays readable for screen readers and in the
+     quick view. */
+  .office-shell .people-page .people-table .people-phone .ui-mono {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+  .office-shell .people-page .people-table .people-leave-bar {
+    display: none;
+  }
+  .office-shell .people-row-actions {
+    gap: 4px;
+  }
+  .office-shell .people-row-actions .ui-button {
+    min-height: 34px;
+    padding: 0 10px;
+    font-size: 12px;
+  }
+  .office-shell .people-demo-note {
+    margin-top: 10px;
+  }
+
+  /* Fleet card:  vehicle | status  /  driver today | next service (grey strip)  /
+     kind · ownership | defects | open. */
+  .office-shell .fleet-page .fleet-table tbody tr {
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "vehicle vehicle status status"
+      "driver driver service service"
+      "kind owner defects open";
+  }
+  .office-shell .fleet-table td:nth-child(1) {
+    grid-area: vehicle;
+  }
+  .office-shell .fleet-table td:nth-child(2) {
+    grid-area: kind;
+    align-self: center;
+    color: var(--ink-2);
+    font-size: 12px;
+  }
+  .office-shell .fleet-table td:nth-child(3) {
+    grid-area: status;
+    justify-self: end;
+    text-align: right;
+  }
+  .office-shell .fleet-table td:nth-child(4) {
+    grid-area: driver;
+    padding: 8px 10px;
+    border-radius: 12px 0 0 12px;
+    background: var(--surface-2);
+    font-size: 12px;
+  }
+  .office-shell .fleet-table td:nth-child(5) {
+    grid-area: defects;
+    justify-self: end;
+    align-self: center;
+  }
+  .office-shell .fleet-table td:nth-child(6) {
+    grid-area: service;
+    display: grid;
+    align-content: center;
+    justify-items: end;
+    margin-left: -8px;
+    padding: 8px 10px;
+    border-radius: 0 12px 12px 0;
+    background: var(--surface-2);
+    font-size: 12px;
+    text-align: right;
+  }
+  .office-shell .fleet-table td:nth-child(7) {
+    grid-area: owner;
+    align-self: center;
+    padding-left: 8px;
+    border-left: 1px solid var(--line-strong);
+    color: var(--ink-2);
+    font-size: 12px;
+  }
+  .office-shell .fleet-table td:nth-child(8) {
+    grid-area: open;
+    justify-self: end;
+    align-self: center;
+  }
+
+  /* Timesheet card:  driver | (select)  /  seven day tiles  /  week total | status and approve. */
+  .office-shell .ts-grid tbody tr {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 10px 4px;
+  }
+  .office-shell .ts-grid tbody td:first-child {
+    grid-column: 7;
+    grid-row: 1;
+    justify-self: end;
+    align-self: center;
+  }
+  .office-shell .ts-grid tbody th {
+    grid-column: 1 / 7;
+    grid-row: 1;
+    text-align: left;
+  }
+  .office-shell .ts-grid .ts-avatar {
+    display: grid;
+    width: 34px;
+    height: 34px;
+  }
+  .office-shell .ts-grid .ts-desktop {
+    display: block;
+    grid-row: 2;
+  }
+  .office-shell .ts-grid td.ts-desktop::before {
+    content: attr(data-day);
+    display: block;
+    margin-bottom: 2px;
+    color: var(--ink-3);
+    font-size: 10px;
+    font-weight: 700;
+    text-align: center;
+  }
+  .office-shell .ts-grid td.ts-today::before {
+    color: var(--accent);
+  }
+  .office-shell .ts-grid .ts-cell {
+    display: grid;
+    width: 100%;
+    min-height: 44px;
+    place-content: center;
+    padding: 6px 2px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 800;
+    text-align: center;
+  }
+  .office-shell .ts-grid .ts-cell > span:first-child {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .office-shell .ts-grid .ts-cell > span:first-child::before {
+    display: none;
+  }
+  .office-shell .ts-grid .ts-cell > :not(:first-child) {
+    display: none;
+  }
+  .office-shell .ts-grid td.ts-total {
+    grid-column: 1 / 4;
+    grid-row: 3;
+    display: grid;
+    align-content: center;
+    justify-items: start;
+    padding-top: 8px;
+    border-top: 1px solid var(--line);
+    font-size: 12px;
+    text-align: left;
+  }
+  .office-shell .timesheets-page .panel-header .ts-toolbar {
+    display: flex;
+    flex-wrap: nowrap;
+    width: 100%;
+    gap: 4px;
+    padding: 3px;
+    border: 1px solid var(--line-strong);
+    border-radius: 12px;
+    background: var(--surface-2);
+  }
+  .office-shell .timesheets-page .panel-header .ts-toolbar .ui-button {
+    min-height: 34px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+  }
+  .office-shell .timesheets-page .panel-header .ts-week-label {
+    flex: 1;
+    justify-content: center;
+    font-size: 12.5px;
+    white-space: nowrap;
+  }
+  .office-shell .timesheets-page .panel-header .ts-week-label svg {
+    display: none;
+  }
+  .office-shell .ts-grid td.ts-status {
+    grid-column: 4 / -1;
+    grid-row: 3;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+    padding-top: 8px;
+    border-top: 1px solid var(--line);
+  }
+  .office-shell .ts-grid td.ts-status > small {
+    flex-basis: 100%;
+    text-align: right;
+  }
+}
+@media (768px <= width < 1280px) {
+  .office-shell .people-table tbody {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+  /* Timesheet cards stay full width here, so each day tile has room for its state (Running, Approved…). */
+  .office-shell .ts-grid .ts-cell > .ui-status {
+    display: inline-flex;
+    justify-self: center;
+    max-width: 100%;
+    font-size: 10px;
+    white-space: normal;
+  }
+}
+/* 1280-1439 px laptops: the People table keeps every column; headers wrap and row actions shrink. */
+@media (1280px <= width < 1440px) {
+  .office-shell .people-table thead th {
+    white-space: normal;
+  }
+  .office-shell .people-row-actions {
+    gap: 2px;
+  }
+  .office-shell .people-row-actions .ui-button {
+    min-height: 32px;
+    padding: 0 8px;
+    font-size: 12px;
+  }
+}
+
+@keyframes mobile-menu-in {
+  from {
+    transform: translateX(-100%);
+  }
+}
+@keyframes mobile-menu-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mobile-menu,
+  .mobile-menu-backdrop,
+  .drawer {
+    animation: none !important;
+  }
+}

@@ -60,7 +60,13 @@ test("fleet and verification queue contain their content at office breakpoints",
     const rowBounds = await page.locator("tbody tr").boundingBox();
     expect(rowBounds).not.toBeNull();
     expect(rowBounds!.height).toBeGreaterThanOrEqual(46);
-    expect(rowBounds!.height).toBeLessThanOrEqual(64);
+    // Round 9 (decisions.md, 2026-11-14): below 1280 px rows are cards (vehicle, driver strip, kind and
+    // defects), so the dense row limit applies to the table layout only.
+    if (page.viewportSize()!.width >= 1280) expect(rowBounds!.height).toBeLessThanOrEqual(64);
+    else {
+      expect(rowBounds!.height).toBeLessThanOrEqual(200);
+      expect(rowBounds!.width).toBeLessThanOrEqual(page.viewportSize()!.width);
+    }
     await page.goto("/documents?filter=queue");
     await expect(page.locator(".queue-card")).toHaveCount(1);
     await page.screenshot({ path: testInfo.outputPath(`documents-${colorScheme}.png`), fullPage: true });
