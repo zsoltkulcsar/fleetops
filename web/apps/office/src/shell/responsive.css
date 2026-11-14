@@ -3,7 +3,7 @@
      phone    < 768 px   compact sticky header with a menu button, bottom tab bar, dark slide-out menu,
                          tables shown as cards, scrolling pill strips, drawers as bottom sheets.
      laptop   768-1439 px  icon rail (768-1279) or narrower sidebar (1280-1439), tighter tables.
-     monitor  >= 1440 px   the full desktop layout, unchanged.
+     monitor  >= 1440 px   full sidebar; the People table stays compact up to 1719 px so real rows fit.
    Selectors start with .office-shell so they win over page styles whatever order the bundles load in. */
 
 /* ---------- all sizes: elements that only show on some targets ---------- */
@@ -43,7 +43,7 @@
     padding: 20px 24px;
   }
 }
-@media (768px <= width < 1440px) {
+@media (768px <= width < 1720px) {
   .office-shell .topbar {
     padding-inline: 20px;
   }
@@ -914,13 +914,20 @@
     white-space: normal;
   }
 }
-/* 1280-1439 px laptops: the People table keeps every column; headers wrap and row actions shrink. */
-@media (1280px <= width < 1440px) {
+/* 1280-1719 px (laptops and smaller monitors): the People table keeps every column; headers wrap, the row actions stack (button
+   above the timesheet and quick-view icons) and the default vehicle link may wrap. */
+@media (1280px <= width < 1720px) {
   .office-shell .people-table thead th {
     white-space: normal;
   }
   .office-shell .people-row-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
     gap: 2px;
+    width: 112px;
+  }
+  .office-shell .people-table .people-assign {
+    white-space: normal;
   }
   .office-shell .people-row-actions .ui-button {
     min-height: 32px;
@@ -949,5 +956,21 @@
   .mobile-menu-backdrop,
   .drawer {
     animation: none !important;
+  }
+}
+/* Smallest laptops (1280-1365 px): a little more room for the People table. */
+@media (1280px <= width < 1366px) {
+  .office-shell {
+    grid-template-columns: 200px minmax(0, 1fr);
+  }
+  .office-shell .sidebar {
+    width: 200px;
+  }
+  .office-shell > .content {
+    padding-inline: 16px;
+  }
+  .office-shell .people-page .people-table td,
+  .office-shell .people-page .people-table th {
+    padding-inline: 6px;
   }
 }
