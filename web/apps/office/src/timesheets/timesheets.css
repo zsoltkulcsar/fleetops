@@ -505,3 +505,24 @@
     display: none;
   }
 }
+
+/* Fixed layout from tablet up: set widths for the side columns, the seven days share the rest, so the
+   Status column never runs past the panel at 1440 px. Below the minimum width the grid scrolls sideways. */
+@media (min-width: 1280px) {
+  .ts-grid {
+    table-layout: fixed;
+    min-width: 1080px;
+  }
+  .ts-grid thead th:nth-child(1) {
+    width: 32px;
+  }
+  .ts-grid thead th:nth-child(2) {
+    width: 124px;
+  }
+  .ts-grid thead th:nth-last-child(2) {
+    width: 84px;
+  }
+  .ts-grid thead th:last-child {
+    width: 104px;
+  }
+}
