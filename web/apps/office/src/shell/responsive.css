@@ -938,6 +938,25 @@
   .office-shell .people-table .people-assign {
     white-space: normal;
   }
+  /* Leave, documents and live status wrap inside a set width, so one long entry ("On leave until ...",
+     "Request waiting") does not widen the whole column (live Demo, 2026-11-14). */
+  .office-shell .people-page .people-table td:nth-child(7) {
+    width: 150px;
+    max-width: 150px;
+  }
+  .office-shell .people-page .people-table td:nth-child(6) {
+    max-width: 130px;
+  }
+  .office-shell .people-page .people-table td:nth-child(7) *,
+  .office-shell .people-page .people-table td:nth-child(6) .people-cell-button {
+    white-space: normal;
+  }
+  .office-shell .people-page .people-table .ui-status {
+    white-space: nowrap;
+  }
+  .office-shell .people-page .people-table .people-person {
+    min-width: 0;
+  }
   .office-shell .people-row-actions .ui-button {
     min-height: 32px;
     padding: 0 8px;
