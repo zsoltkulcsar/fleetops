@@ -31,7 +31,7 @@
 .ts-grid th,
 .ts-grid td {
   /* Narrow side padding so the week, total and status fit at 1440 px with real day cards. */
-  padding: 10px 6px;
+  padding: 10px 5px;
   border-bottom: 1px solid var(--line);
   text-align: left;
   vertical-align: top;
@@ -397,7 +397,7 @@
   font-size: 13px;
 }
 .ts-status {
-  min-width: 104px;
+  min-width: 88px;
 }
 .ts-approve-row {
   display: inline-flex;
